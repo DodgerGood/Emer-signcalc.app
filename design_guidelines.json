@@ -1,0 +1,192 @@
+{
+  "identity": {
+    "name": "E1",
+    "persona": "The Anti-AI Designer",
+    "mission": "Create a 'Swiss Industrial' aesthetic that merges architectural precision with digital utility. Reject generic SaaS templates.",
+    "core_principles": [
+      "Fusion: Architectural Blueprints x Digital Dashboard",
+      "Density: High-density data for professionals, not sparse marketing fluff",
+      "Clarity: Data is the hero. Use strict grids and mono fonts for numbers",
+      "Texture: Use subtle paper/material grain to ground the digital interface"
+    ]
+  },
+  "universal_guidelines": [
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy",
+    "Use glass-morphism effects with backdrop filters (12-24px blur) for sticky headers only",
+    "You MUST NOT apply universal transition. Eg: transition: all. This results in breaking transforms. Always add transitions for specific interactive elements like button, input excluding transforms",
+    "You MUST NOT center align the app container. This disrupts the human natural reading flow of text",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style",
+    "NEVER: use AI assistant Emoji characters for icons",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations. Static = dead.",
+    "Use 2-3x more spacing than feels comfortable in marketing sections, but KEEP IT DENSE in data tables.",
+    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations: separates good from extraordinary.",
+    "Prioritize using pre-existing components from src/components/ui when applicable",
+    "Components MUST use named exports (export const ComponentName = ...)",
+    "Pages MUST use default exports (export default function PageName() {...})",
+    "Use sonner for toasts located in /app/frontend/src/components/ui/sonner.jsx"
+  ],
+  "typography": {
+    "fonts": [
+      {
+        "role": "Headings",
+        "family": "Chivo",
+        "fallback": "sans-serif",
+        "weights": ["900", "700"],
+        "usage": "Page titles, Hero text, Section headers",
+        "import": "@import url('https://fonts.googleapis.com/css2?family=Chivo:wght@700;900&display=swap');"
+      },
+      {
+        "role": "Body",
+        "family": "Manrope",
+        "fallback": "sans-serif",
+        "weights": ["400", "500", "600"],
+        "usage": "General text, labels, navigation",
+        "import": "@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&display=swap');"
+      },
+      {
+        "role": "Data/Numbers",
+        "family": "JetBrains Mono",
+        "fallback": "monospace",
+        "weights": ["400", "500"],
+        "usage": "Prices, measurements, calculations, IDs, Tables",
+        "import": "@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');"
+      }
+    ],
+    "rules": [
+      "Headings (32px+) must use tracking-tight (-0.02em)",
+      "Overlines/Labels must be Uppercase + tracking-widest + text-xs",
+      "All prices and dimensions must use JetBrains Mono",
+      "Line height: leading-none for headers, leading-normal for body"
+    ]
+  },
+  "colors": {
+    "palette": {
+      "primary": {
+        "main": "#0F172A", 
+        "foreground": "#F8FAFC",
+        "description": "Slate 900 - Deep, technical dark"
+      },
+      "accent": {
+        "main": "#2563EB",
+        "foreground": "#FFFFFF",
+        "description": "Blueprint Blue - precise, trustworthy"
+      },
+      "surface": {
+        "base": "#FDFDFD",
+        "card": "#FFFFFF",
+        "border": "#E2E8F0"
+      },
+      "semantic": {
+        "success": "#10B981", 
+        "warning": "#F59E0B",
+        "error": "#EF4444",
+        "info": "#3B82F6"
+      }
+    },
+    "theme_strategy": "Light mode dominant for high-contrast data reading. Dark mode option for low-light environments.",
+    "rules": [
+      "Never use pure black (#000000). Use Slate 950 (#020617)",
+      "Borders should be subtle: border-slate-200 in light mode",
+      "Use 'Industrial Orange' (#F97316) for high-priority alerts/CTAs to mimic safety gear",
+      "FORBIDDEN: Purple, Teal, Gradients on text"
+    ]
+  },
+  "layout": {
+    "grid_system": {
+      "dashboard": "Bento Grid Mode B (High Density)",
+      "specs": "grid-cols-1 md:grid-cols-4 lg:grid-cols-12 gap-4",
+      "rules": "Every pixel utilized. Use h-full on children. No jagged bottoms."
+    },
+    "containers": {
+      "card": "bg-white border border-slate-200 shadow-sm hover:shadow-md transition-shadow duration-200 rounded-md",
+      "page_wrapper": "max-w-[1600px] mx-auto p-6 md:p-8"
+    },
+    "spacing": {
+      "base": "p-4",
+      "generous": "p-8",
+      "dense": "p-2",
+      "rules": "Use dense spacing for data tables (py-2 px-3). Use generous spacing for onboarding/empty states."
+    }
+  },
+  "components": {
+    "library": "Shadcn UI",
+    "customization": {
+      "radius": "rounded-md",
+      "shadows": "shadow-sm",
+      "borders": "1px solid #E2E8F0"
+    },
+    "specific_instructions": [
+      "Buttons: Use sharp or slightly rounded corners (rounded-md). Avoid full pill shapes for primary actions.",
+      "Inputs: Use 'h-9' or 'h-10' for compact professional feel.",
+      "Tables: Use 'Table' component but add 'font-mono' to numerical columns. Striped rows allowed for complex data.",
+      "Cards: Add a 'technical' accent - e.g., a top border with the accent color (border-t-4 border-t-accent).",
+      "Dialogs: Use for 'Quick Add' forms. Use Sheets for 'Edit/Detailed View'."
+    ],
+    "paths": {
+      "button": "/app/frontend/src/components/ui/button.jsx",
+      "card": "/app/frontend/src/components/ui/card.jsx",
+      "input": "/app/frontend/src/components/ui/input.jsx",
+      "table": "/app/frontend/src/components/ui/table.jsx",
+      "sheet": "/app/frontend/src/components/ui/sheet.jsx",
+      "dialog": "/app/frontend/src/components/ui/dialog.jsx"
+    }
+  },
+  "pages_structure": {
+    "Login": {
+      "layout": "Split Screen (50/50)",
+      "left": "LoginForm centered",
+      "right": "Full height architectural image with overlay and quote",
+      "image_url": "https://images.unsplash.com/photo-1745488018261-13afb4842790?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MjJ8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBhcmNoaXRlY3R1cmFsJTIwcHJpbnQlMjBzdHVkaW8lMjBpbnRlcmlvciUyMHdpZGUlMjBzaG90fGVufDB8fHx8MTc3MTgzOTI4Mnww&ixlib=rb-4.1.0&q=85"
+    },
+    "Dashboard": {
+      "layout": "Bento Grid (High Density)",
+      "widgets": ["Key Metrics (Recipe Count, Monthly Quotes)", "Recent Activity Feed", "Quick Actions Row", "Pending Approvals List"]
+    },
+    "QuoteBuilder": {
+      "layout": "Two Column Layout (Input Left / Preview Right)",
+      "features": "Real-time cost calculation update. Sticky Preview panel."
+    },
+    "Materials": {
+      "layout": "Data Table with Search & Filters Header",
+      "features": "Inline editing or Slide-over Sheet for editing details."
+    }
+  },
+  "visual_enhancers": {
+    "textures": {
+      "paper_grain": "url('https://images.pexels.com/photos/7598248/pexels-photo-7598248.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940')",
+      "usage": "Use as a subtle opacity blend (opacity-5) on the main background to reduce digital sterility."
+    },
+    "icons": {
+      "library": "Lucide React",
+      "style": "Stroke width 1.5px (Thin/Technical)",
+      "color": "Text-slate-500"
+    },
+    "motion": {
+      "hover": "translate-y-[-2px] shadow-md",
+      "list_entry": "staggered fade-in",
+      "page_transition": "opacity fade"
+    }
+  },
+  "accessibility": {
+    "contrast": "Ensure 4.5:1 contrast ratio for all text.",
+    "focus": "Visible ring-2 ring-offset-2 ring-accent on all interactive elements.",
+    "aria": "All icon-only buttons must have aria-label."
+  },
+  "testing": {
+    "attribute": "data-testid",
+    "format": "kebab-case",
+    "examples": ["login-submit-btn", "material-row-1", "quote-total-price"]
+  },
+  "instructions_to_main_agent": [
+    "Do not ask clarifying questions. Proceed with implementation based on these guidelines.",
+    "Use 'Chivo' for all Headings and 'Manrope' for body.",
+    "Use 'JetBrains Mono' for ALL numbers, prices, and dimensions.",
+    "Implement the Multi-Tenant architecture: Ensure API calls carry tenant context.",
+    "Strictly follow the 'Bento Grid' layout for the dashboard.",
+    "Use the provided image URLs for login and textures.",
+    "Mock any API calls if backend is not ready, but ensure the frontend logic for calculations (SqM, Waste, Markup) is robust and accurate.",
+    "Ensure 'Manager' and 'Estimator' roles have distinct visible permissions (e.g., Estimator cannot see 'Approve' buttons)."
+  ]
+}

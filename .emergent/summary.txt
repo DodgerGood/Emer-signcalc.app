@@ -1,0 +1,176 @@
+<analysis>**original_problem_statement:**
+Build a multi-tenant web application for wide format signage estimating.
+**PRODUCT REQUIREMENTS:**
+- **Authentication:** Role-based (Manager, Estimator, Procurement, Quoting Staff, CEO). Initially JWT was chosen.
+- **Data Isolation:** Each company (tenant) has isolated data.
+- **Core Entities & Management:** Managers can create and manage Materials, Ink Profiles, Labour Types, Install Types, and Travel Settings.
+- **Recipes:** Managers can create Recipes which are assemblies of different line item types (MATERIAL, INK, LABOUR, etc.).
+- **Quoting:** Estimators can create quotes by selecting a recipe and providing dimensions. The system calculates costs, waste, and markup.
+- **Approvals:** Markup overrides and quote-to-job conversion require manager approval.
+- **Exports:** PDF for client quotes and Excel (BOM) for internal bill of materials.
+- **Recipe Versioning:** New versions should replace old ones, with old versions being archived.
+- **UI:** Keep it clean and simple.
+- **Currency:** Prices should be in South African Rands (ZAR).
+- **Role-Specific Access:**
+    - **Manager:** Full access except creating quotes.
+    - **Procurement:** Access to materials pricelist only.
+    - **Quoting Staff:** Access to quotes and approvals, can convert to job tickets.
+    - **CEO:** Full access except creating quotes.
+- **Material Types:** Support for different units like SQM, Sheet, Roll, Board, and Unit.
+- **Password Management:** Users should have a settings tab to change their password.
+- **Session Management:** If a user logs in from a new device, the old session should be terminated.
+
+**User's preferred language**: English
+
+**what currently exists?**
+A full-stack web application with a FastAPI backend, React frontend, and MongoDB database has been built. It includes role-based authentication for multiple roles (Manager, Procurement, Quoting Staff, CEO), multi-tenancy with company-scoped data, and core features for managing materials, recipes, and quotes. A quote approval workflow and PDF/BOM exports are also implemented. The backend logic is largely consolidated into a single  file, and the frontend is built with React, using TailwindCSS for styling.
+
+**Last working item**:
+- **Last item agent was working:** The agent was implementing two user requests simultaneously. The primary focus was on simplifying the backend Material model and its corresponding API endpoints. The goal was to replace multiple dimension fields (roll_width, sheet_width, etc.) with simple  and  fields, and have the backend automatically calculate the  (square meters).
+- **Status:** IN PROGRESS
+- **Agent Testing Done:** N
+- **Which testing method agent to use?** both
+- **User Testing Done:** N
+
+**All Pending/In progress Issue list**:
+- **Issue 1: (P0)** Complete the simplification of the Material entity.
+- **Issue 2: (P1)** Implement a 'Settings' tab for password changes and enforce single-session login.
+
+**Issues Detail:**
+- **Issue 1: Complete the simplification of the Material entity**
+    - **Attempted fixes:** The agent successfully updated the  Pydantic model in  to use  and . It then started updating the POST endpoint () to calculate  based on these new fields but did not complete the changes for update (PUT) endpoints or the frontend.
+    - **Next debug checklist:**
+        1.  Finish updating the material creation logic in the POST  endpoint in .
+        2.  Update the material update logic in the PUT  endpoint in  to also recalculate .
+        3.  Modify the frontend form in  to replace the old, complex dimension fields with simple  and  inputs.
+        4.  Update the data table in  to display the new fields correctly.
+        5.  Verify that the quote calculation logic in  correctly uses the simplified material data.
+    - **Why fix this issue and what will be achieved with the fix?** This will simplify the material management process as requested by the user, making it more intuitive to input material dimensions.
+    - **Status:** IN PROGRESS
+    - **Is recurring issue?** N
+    - **Should Test frontend/backend/both after fix?** both
+    - **Blocked on other issue:** None.
+
+- **Issue 2: Implement 'Settings' tab for password changes and enforce single-session login**
+    - **Attempted fixes:** None.
+    - **Next debug checklist:**
+        1.  **Backend:** Create a new API endpoint (e.g., ) in  that allows an authenticated user to change their password.
+        2.  **Backend:** Investigate and implement a session invalidation mechanism. When a user logs in, store a unique session identifier with their user record. On a new login, invalidate the previous session's token. The user's request for a 3-hour delay is complex and may need clarification; a simpler logout other sessions approach is recommended first.
+        3.  **Frontend:** Add a Settings icon or link in  near the logout button.
+        4.  **Frontend:** Create a new  with a form for password change (current password, new password, confirm new password).
+        5.  **Frontend:** Connect the form to the new backend endpoint.
+    - **Why fix this issue and what will be achieved with the fix?** To provide users with self-service password management and enhance account security as per the user's requirements.
+    - **Status:** NOT STARTED
+    - **Is recurring issue?** N
+    - **Should Test frontend/backend/both after fix?** both
+    - **Blocked on other issue:** None.
+
+**In progress Task List**:
+- The current work is fully captured in the 'All Pending/In progress Issue list'.
+
+**Upcoming and Future Tasks**
+- **P2: Implement Recipe Versioning:** This was part of the original problem statement but has not been implemented. When a recipe is modified, a new version should be created instead of updating it in-place. The old version should be archived after 3 months.
+    - **Files:** , .
+
+**Completed work in this session**
+- **Full-stack Application Scaffolding:** Created the FastAPI backend and React frontend structure.
+- **Role-Based Authentication:** Implemented JWT authentication and authorization for Manager, Procurement, Quoting Staff, and CEO roles.
+- **Core Feature Implementation:** Built backend and frontend for managing Materials, Ink Profiles, Labour, Installations, Recipes, and Quotes.
+- **Dynamic Quote Calculation Engine:** Implemented logic to calculate quote prices based on materials, dimensions, waste, and markup.
+- **Quote-Specific Forms:** Refactored Travel, Labour, and Installation to be configurable per-quote rather than global settings.
+- **Quote Approval Workflow:** Implemented a multi-step approval process (Submit for Approval -> Approve/Reject) before a quote can become a job.
+- **PDF & BOM Exports:** Added backend endpoints to generate a PDF quote and an Excel Bill of Materials.
+- **UI Enhancements:**
+    - Created a dashboard with clickable stat cards.
+    - Added a role selector to the user registration page.
+    - Updated UI to consistently use South African Rand (ZAR) currency symbol R.
+- **Bug Fixes:** Resolved multiple Python linting issues and a critical React compilation error.
+
+**Earlier issues found/mentioned but not fixed**
+- The future task of **Recipe Versioning** was part of the original problem statement and has not been addressed.
+
+**Known issue recurrence from previous fork**
+- None.
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+- **Backend:** FastAPI, Pydantic, Motor (async MongoDB driver), JWT (pyjwt), Passlib.
+- **Frontend:** React, React Router, Axios, TailwindCSS, Headless UI,  (for toasts).
+- **Architecture:** Multi-tenant monolith, Role-Based Access Control (RBAC).
+
+**key DB schema**
+- **users:** {email, hashed_password, role, company_id}
+- **materials:** {name, company_id, material_type, width, height, sqm_price, unit_price}
+- **recipes:** {name, company_id, lines: [{type, multiplier, waste_percent, markup_percent}]}
+- **quotes:** {name, company_id, status, lines: [...], labour_items: [...], install_items: [...], travel_items: [...]}
+
+**changes in tech stack**
+- None.
+
+**All files of reference**
+- : The single source of truth for all backend logic. **This is the most critical file.**
+- : The frontend for material management. **Requires significant updates.**
+- : The complex UI for managing individual quotes.
+- : The main application layout containing navigation. **Needs a Settings link.**
+- : The login/registration page.
+- : Manages authentication state and logic.
+
+**Areas that need refactoring**:
+- ****: This file is over 1500 lines long and contains all models, routes, and business logic. It has become a god object and should be broken down into a structured package with separate files for routers, models, and services to improve maintainability.
+- **Frontend State Management:** The state logic, especially in , is complex and managed with . Introducing a global state manager like Zustand or Redux Toolkit would simplify state synchronization and reduce prop drilling.
+
+**key api endpoints**
+-  (POST)
+-  (POST for login)
+-  (GET, POST) &  (PUT, DELETE)
+-  (GET, POST) &  (GET, PUT)
+-  (POST)
+-  (POST)
+-  (POST)
+-  (GET)
+-  (GET)
+-  (GET, POST)
+
+**Critical Info for New Agent**
+- The backend is a single, large  file. All backend changes will likely happen there.
+- The currency for the application is South African Rand (ZAR), and its symbol is R. This must be maintained in all UI and exports.
+- The most immediate task is to finish the refactoring of the Material entity, which involves changes to both the backend  and the frontend . The application's material management feature is currently in a broken state.
+- A custom decorator, , is used extensively in  to enforce role-based access control on API endpoints.
+
+**documents and test reports created in this job**
+- 
+
+**Last 10 User Messages and any pending HUMAN messages**
+1. **User request (In Progress):** Simplify materials to width/height and add a password change setting.
+2. **User confirmation:** Approved the plan to implement a quote approval workflow.
+3. **User request (Done):** Implement quote approval workflow.
+4. **User confirmation:** Approved the plan for the three requested enhancements (self-approval prevention, PDF/BOM updates).
+5. **User request (Done):** Prevent self-approval, update PDF export with new items, and update BOM for unit-based materials.
+6. **User confirmation:** Approved plan to add role selector and update recipe creation.
+7. **User request (Done):** Add role selector on registration and prevent travel/install types from being added to recipes.
+8. **User confirmation:** Approved plan to complete MaterialsPage, update QuoteDetailPage, and test.
+9. **User request (Done):** Clarified that some materials are per-unit, not just SQM.
+10. **User confirmation:** Agreed with the summary of pending frontend work.
+
+**Project Health Check:**
+- **Broken:**
+    - The material management feature is non-functional. The backend model has been changed, but the corresponding frontend form () and API update logic are incomplete.
+- **Mocked:**
+    - None.
+
+**3rd Party Integrations**
+- None implemented.
+
+**Testing status**
+- **Testing agent used after significant changes:** NO
+- **Troubleshoot agent used after agent stuck in loop:** NO
+- **Test files created:** None
+- **Known regressions:** The material creation and editing feature is currently broken due to the ongoing refactoring.
+
+**Credentials to test flow:**
+New users can be created via the registration form on the login page. Any role (Manager, Procurement, etc.) can be selected during registration to test role-specific functionality.
+
+**What agent forgot to execute**
+- **Recipe Versioning:** This requirement from the original problem statement—to create new versions of recipes on update and archive old ones—was never implemented.</analysis>
