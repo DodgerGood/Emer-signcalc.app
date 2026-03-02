@@ -37,6 +37,13 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24
 
 app = FastAPI()
+@app.get("/")
+def root():
+    return {"status": "ok"}
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 api_router = APIRouter(prefix="/api")
 
 # ===== MODELS =====
