@@ -22,6 +22,10 @@ from io import BytesIO
 from openpyxl import Workbook
 import math
 
+DEVICE_LOCK_HOURS = 24
+KICKOUT_HOURS = 3
+MAX_BCRYPT_BYTES = 72
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
@@ -38,6 +42,25 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24
 
 app = FastAPI()
+
+def now_utc() -> datetime:
+    return datetime.now(timezone.utc)
+
+def iso(dt: datetime) -> str:
+    return dt.astimezone(timezone.utc).isoformat()
+
+def parse_iso(dt_str: Optional[str]) -> Optional[datetime]:
+    if not dt_str:
+        return None
+    try:
+        # fromisoformat handles offsets like +00:00
+        return datetime.fromisoformat(dt_str)
+    except Exception:
+        return None
+
+def password_byte_len(pw: str) -> int:
+    return len(pw.encode("utf-8"))
+
 @app.get("/")
 def root():
     return {"status": "ok"}
@@ -48,6 +71,22 @@ def health():
 api_router = APIRouter(prefix="/api")
 
 # ===== MODELS =====
+class User(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    email: str
+    full_name: str
+    role: str
+    company_id: str
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+    session_id: Optional[str] = None
+    lockout_until: Optional[str] = None  # keep if you already use it
+
+    # NEW: device lock + kickout
+    device_id: Optional[str] = None
+    device_locked_until: Optional[str] = None
+    kickout_until: Optional[str] = None
 
 class UserRole(str):
     MANAGER = "MANAGER"
@@ -74,17 +113,19 @@ class ApprovalStatus(str):
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
 
-# Auth Models
+# Auth Model
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     company_name: str
     full_name: str
-    role: str = "MANAGER"  # Default to MANAGER if not specified
+    role: str = "MANAGER"
+    device_id: str
 
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+    device_id: str
 
 class TokenResponse(BaseModel):
     access_token: str
