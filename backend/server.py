@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
@@ -458,6 +459,16 @@ class QuoteBlueprint(BaseModel):
 # ===== AUTH HELPERS =====
 
 def hash_password(password: str) -> str:
+    # bcrypt only supports 72 bytes; reject longer to avoid silent truncation
+    if password is None:
+        raise HTTPException(status_code=400, detail="Password is required")
+
+    if len(password.encode("utf-8")) > 72:
+        raise HTTPException(
+            status_code=400,
+            detail="Password too long (max 72 bytes). Use a shorter password."
+        )
+
     return pwd_context.hash(password)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
