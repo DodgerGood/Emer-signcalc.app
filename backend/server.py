@@ -612,15 +612,16 @@ if len(req.password.encode("utf-8")) > 72:
 
 user_dict["password_hash"] = hash_password(req.password)
 
-await db.users.insert_one(user_dict)    
-    access_token = create_access_token(data={"sub": user.id, "session_id": new_session_id})
-    
-    user_response = user.model_dump()
-    return TokenResponse(
-        access_token=access_token,
-        token_type="bearer",
-        user=user_response
-    )
+await db.users.insert_one(user_dict)
+
+access_token = create_access_token(data={"sub": user.id, "session_id": new_session_id})
+
+user_response = user.model_dump()
+return TokenResponse(
+    access_token=access_token,
+    token_type="bearer",
+    user=user_response
+)
 
 @api_router.post("/auth/login", response_model=TokenResponse)
 async def login(req: LoginRequest):
