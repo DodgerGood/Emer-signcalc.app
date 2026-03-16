@@ -628,50 +628,99 @@ async def login(req: LoginRequest):
     user = await db.users.find_one({"email": req.email}, {"_id": 0})
     if not user or not verify_password(req.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    
+
     now = datetime.now(timezone.utc)
-    
-    # Check if account is locked out
+
+    # Check if account is currently locked out
     if user.get("lockout_until"):
-        lockout_time = datetime.fromisoformat(user["lockout_until"].replace('Z', '+00:00'))
+        lockout_time = datetime.fromisoformat(user["lockout_until"].replace("Z", "+00:00"))
         if now < lockout_time:
             remaining = lockout_time - now
             hours = int(remaining.total_seconds() // 3600)
             minutes = int((remaining.total_seconds() % 3600) // 60)
             raise HTTPException(
-                status_code=403, 
-                detail=f"Account locked. Try again in {hours}h {minutes}m. This lockout was triggered by a login from another device."
+                status_code=403,
+                detail=f"Account locked. Try again in {hours}h {minutes}m."
             )
-    
-    # Check if there's an existing active session
-    if user.get("session_id"):
-        # Another device is logged in - terminate that session and apply lockout
-        lockout_until = (now + timedelta(hours=SESSION_LOCKOUT_HOURS)).isoformat()
+
+    incoming_device_id = req.device_id.strip()
+
+    current_device_id = user.get("device_id")
+
+    device_lock_until = None
+    if user.get("device_lock_until"):
+        device_lock_until = datetime.fromisoformat(
+            user["device_lock_until"].replace("Z", "+00:00")
+        )
+
+    # If no device lock yet OR device lock expired
+    if not current_device_id or not device_lock_until or now >= device_lock_until:
+
+        new_session_id = str(uuid.uuid4())
+        new_device_lock_until = (now + timedelta(hours=DEVICE_LOCK_HOURS)).isoformat()
+
         await db.users.update_one(
             {"id": user["id"]},
-            {"$set": {"session_id": None, "lockout_until": lockout_until}}
+            {"$set": {
+                "session_id": new_session_id,
+                "device_id": incoming_device_id,
+                "device_lock_until": new_device_lock_until,
+                "lockout_until": None
+            }}
         )
-        raise HTTPException(
-            status_code=403,
-            detail=f"Another device was logged in. All sessions terminated. Account locked for {SESSION_LOCKOUT_HOURS} hours as a security measure."
+
+        updated_user = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+
+        access_token = create_access_token(
+            data={"sub": user["id"], "session_id": new_session_id}
         )
-    
-    # No existing session - create new session
-    new_session_id = str(uuid.uuid4())
+
+        return TokenResponse(
+            access_token=access_token,
+            token_type="bearer",
+            user=User(**updated_user).model_dump()
+        )
+
+    # Device lock is active — same device allowed
+    if current_device_id == incoming_device_id:
+
+        new_session_id = str(uuid.uuid4())
+
+        await db.users.update_one(
+            {"id": user["id"]},
+            {"$set": {
+                "session_id": new_session_id,
+                "lockout_until": None
+            }}
+        )
+
+        updated_user = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+
+        access_token = create_access_token(
+            data={"sub": user["id"], "session_id": new_session_id}
+        )
+
+        return TokenResponse(
+            access_token=access_token,
+            token_type="bearer",
+            user=User(**updated_user).model_dump()
+        )
+
+    # Different device attempted login during 24h device lock
+    new_lockout_until = (now + timedelta(hours=SESSION_LOCKOUT_HOURS)).isoformat()
+
     await db.users.update_one(
         {"id": user["id"]},
-        {"$set": {"session_id": new_session_id, "lockout_until": None}}
-    )
-    
-    access_token = create_access_token(data={"sub": user["id"], "session_id": new_session_id})
-    
-    user_response = User(**user).model_dump()
-    return TokenResponse(
-        access_token=access_token,
-        token_type="bearer",
-        user=user_response
+        {"$set": {
+            "session_id": None,
+            "lockout_until": new_lockout_until
+        }}
     )
 
+    raise HTTPException(
+        status_code=403,
+        detail="Another device attempted to use this seat. Account locked for 3 hours."
+    )
 @api_router.get("/auth/me", response_model=User)
 async def get_me(user: dict = Depends(get_current_user)):
     return User(**user)
