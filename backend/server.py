@@ -591,37 +591,37 @@ async def register(req: RegisterRequest):
     company = Company(name=req.company_name)
     await db.companies.insert_one(company.model_dump())
     
-# Create new session for the user
-new_session_id = str(uuid.uuid4())
+    # Create new session for the user
+    new_session_id = str(uuid.uuid4())
 
-user = User(
-    email=req.email,
-    full_name=req.full_name,
-    role=req.role,  # Use the role from request
-    company_id=company.id,
-    session_id=new_session_id
-)
-user_dict = user.model_dump()
-
-# bcrypt cannot hash passwords longer than 72 bytes
-if len(req.password.encode("utf-8")) > 72:
-    raise HTTPException(
-        status_code=400,
-        detail="Password too long. Maximum length is 72 bytes."
+    user = User(
+        email=req.email,
+        full_name=req.full_name,
+        role=req.role,  # Use the role from request
+        company_id=company.id,
+        session_id=new_session_id
     )
+    user_dict = user.model_dump()
 
-user_dict["password_hash"] = hash_password(req.password)
+    # bcrypt cannot hash passwords longer than 72 bytes
+    if len(req.password.encode("utf-8")) > 72:
+        raise HTTPException(
+            status_code=400,
+            detail="Password too long. Maximum length is 72 bytes."
+        )
 
-await db.users.insert_one(user_dict)
+    user_dict["password_hash"] = hash_password(req.password)
 
-access_token = create_access_token(data={"sub": user.id, "session_id": new_session_id})
+    await db.users.insert_one(user_dict)
 
-user_response = user.model_dump()
-return TokenResponse(
-    access_token=access_token,
-    token_type="bearer",
-    user=user_response
-)
+    access_token = create_access_token(data={"sub": user.id, "session_id": new_session_id})
+
+    user_response = user.model_dump()
+    return TokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        user=user_response
+    )
 
 @api_router.post("/auth/login", response_model=TokenResponse)
 async def login(req: LoginRequest):
