@@ -21,6 +21,8 @@ from reportlab.lib.units import mm
 from io import BytesIO
 from openpyxl import Workbook
 import math
+import smtplib
+from email.message import EmailMessage
 
 DEVICE_LOCK_HOURS = 24
 KICKOUT_HOURS = 3
@@ -40,6 +42,14 @@ security = HTTPBearer()
 SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'your-secret-key-change-in-production')
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24
+
+SMTP_HOST = os.environ.get("SMTP_HOST", "")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USERNAME = os.environ.get("SMTP_USERNAME", "")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+SMTP_FROM_EMAIL = os.environ.get("SMTP_FROM_EMAIL", "")
+ROGER_ALERT_EMAIL = os.environ.get("ROGER_ALERT_EMAIL", "")
+SMTP_USE_TLS = os.environ.get("SMTP_USE_TLS", "true").lower() == "true"
 
 app = FastAPI()
 
@@ -126,6 +136,12 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
     device_id: str
+
+class SupportRequest(BaseModel):
+    email: EmailStr
+    reason: str
+    device_id: str
+    message: Optional[str] = None
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -580,6 +596,23 @@ async def can_edit_materials(user: dict = Depends(get_current_user)) -> dict:
         raise HTTPException(status_code=403, detail="Edit access denied")
     return user
 
+def send_email_alert(subject: str, body: str, to_email: str):
+    if not SMTP_HOST or not SMTP_USERNAME or not SMTP_PASSWORD or not SMTP_FROM_EMAIL or not to_email:
+        print("Email alert skipped: SMTP settings incomplete")
+        return
+
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = SMTP_FROM_EMAIL
+    msg["To"] = to_email
+    msg.set_content(body)
+
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+        if SMTP_USE_TLS:
+            server.starttls()
+        server.login(SMTP_USERNAME, SMTP_PASSWORD)
+        server.send_message(msg)
+
 # ===== AUTH ROUTES =====
 
 @api_router.post("/auth/register", response_model=TokenResponse)
@@ -721,6 +754,22 @@ async def login(req: LoginRequest):
         status_code=403,
         detail="Another device attempted to use this seat. Account locked for 3 hours."
     )
+
+@api_router.post("/auth/contact-support")
+async def contact_support(req: SupportRequest):
+    support_doc = {
+        "id": str(uuid.uuid4()),
+        "email": req.email,
+        "reason": req.reason,
+        "device_id": req.device_id,
+        "message": req.message,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "status": "OPEN"
+    }
+
+    await db.support_requests.insert_one(support_doc)
+    return {"message": "Support request submitted successfully."}
+
 @api_router.get("/auth/me", response_model=User)
 async def get_me(user: dict = Depends(get_current_user)):
     return User(**user)
