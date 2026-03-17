@@ -17,10 +17,18 @@ export default function LoginPage() {
   const [role, setRole] = useState('MANAGER');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-
+  const [showSupportButton, setShowSupportButton] = useState(false);
+  const [supportSubmitting, setSupportSubmitting] = useState(false);
   const { login, register } = useAuth();
   const navigate = useNavigate();
-
+  const getDeviceId = () => {
+    let id = localStorage.getItem('device_id');
+    if (!id) {
+      id = (crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`).toString();
+      localStorage.setItem('device_id', id);
+    }
+    return id;
+  };
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -40,7 +48,32 @@ export default function LoginPage() {
       }
       navigate('/');
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Authentication failed');
+      const msg = error?.message;
+      const status = error?.response?.status;
+      const detail = error?.response?.data?.detail || '';
+
+      setShowSupportButton(false);
+
+      if (
+        status === 403 &&
+        detail.toLowerCase().includes('locked')
+      ) {
+        setShowSupportButton(true);
+      }
+
+      if (msg === 'INCORRECT_CREDENTIALS') {
+        toast.error('Incorrect email or password');
+      } else if (msg === 'SERVER_UNAVAILABLE') {
+        toast.error('Server unavailable. Please try again in a moment.');
+      } else if (msg === 'LOGIN_FAILED') {
+        toast.error('Login failed. Please try again.');
+      } else if (status === 401 || status === 403) {
+        toast.error(detail || 'Authentication failed');
+      } else if (!error?.response || status === 502 || status === 503 || status === 504) {
+        toast.error('Server unavailable. Please try again in a moment.');
+      } else {
+        toast.error(detail || 'Authentication failed');
+      }
     } finally {
       setLoading(false);
     }
