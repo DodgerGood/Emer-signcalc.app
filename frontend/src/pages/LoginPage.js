@@ -85,11 +85,18 @@ const handleContactSupport = async () => {
 
     const deviceId = localStorage.getItem('device_id') || '';
 
-    await api.post('/auth/contact-support', {
+    await api.post('/auth/contact-support',  {
       email,
       reason: 'DEVICE_KICKOUT',
       device_id: deviceId,
-      message: 'Need approval to use a new device.'
+      message: 'Need approval to use a new device.',
+      full_name: null,
+      company_id: null,
+      company_name: null,
+      role: null,
+      current_device_id: null,
+      current_lockout_until: null,
+      current_device_lock_until: null
     });
 
     toast.success('Support request submitted successfully.');
