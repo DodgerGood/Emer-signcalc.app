@@ -150,6 +150,30 @@ class SupportRequest(BaseModel):
     current_lockout_until: Optional[str] = None
     current_device_lock_until: Optional[str] = None
 
+class AdminSupportActionRequest(BaseModel):
+    action: str
+    resolved_by: Optional[str] = None
+
+class SupportRequestRecord(BaseModel):
+    id: str
+    support_case_id: str
+    email: EmailStr
+    full_name: Optional[str] = None
+    company_id: Optional[str] = None
+    company_name: Optional[str] = None
+    role: Optional[str] = None
+    reason: str
+    requested_device_id: Optional[str] = None
+    current_device_id: Optional[str] = None
+    current_lockout_until: Optional[str] = None
+    current_device_lock_until: Optional[str] = None
+    message: Optional[str] = None
+    created_at: str
+    status: str
+    resolved_at: Optional[str] = None
+    resolution_action: Optional[str] = None
+    resolved_by: Optional[str] = None
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str
@@ -836,6 +860,101 @@ async def contact_support(req: SupportRequest):
         print(f"Failed to send support email: {e}")
 
     return {"message": "Support request submitted successfully."}
+
+@api_router.get("/admin/support-requests", response_model=List[SupportRequestRecord])
+async def list_support_requests():
+    requests = await db.support_requests.find({}, {"_id": 0}).to_list(1000)
+    requests.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    return [SupportRequestRecord(**r) for r in requests]
+
+
+@api_router.get("/admin/support-requests/{case_id}", response_model=SupportRequestRecord)
+async def get_support_request(case_id: str):
+    support_request = await db.support_requests.find_one(
+        {"support_case_id": case_id},
+        {"_id": 0}
+    )
+
+    if not support_request:
+        raise HTTPException(status_code=404, detail="Support request not found")
+
+    return SupportRequestRecord(**support_request)
+
+@api_router.post("/admin/support-requests/{case_id}/action")
+async def action_support_request(case_id: str, req: AdminSupportActionRequest):
+    support_request = await db.support_requests.find_one(
+        {"support_case_id": case_id},
+        {"_id": 0}
+    )
+
+    if not support_request:
+        raise HTTPException(status_code=404, detail="Support request not found")
+
+    user = await db.users.find_one({"email": support_request["email"]}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    action = req.action.strip().upper()
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    if action == "CLEAR_LOCKOUT":
+        await db.users.update_one(
+            {"id": user["id"]},
+            {"$set": {"lockout_until": None}}
+        )
+
+    elif action == "APPROVE_NEW_DEVICE":
+        new_device_id = support_request.get("requested_device_id")
+        if not new_device_id:
+            raise HTTPException(status_code=400, detail="No requested device ID found on support request")
+
+        new_device_lock_until = (datetime.now(timezone.utc) + timedelta(hours=DEVICE_LOCK_HOURS)).isoformat()
+
+        await db.users.update_one(
+            {"id": user["id"]},
+            {"$set": {
+                "device_id": new_device_id,
+                "device_lock_until": new_device_lock_until,
+                "lockout_until": None,
+                "session_id": None
+            }}
+        )
+
+    elif action == "FULL_RESET":
+        await db.users.update_one(
+            {"id": user["id"]},
+            {"$set": {
+                "device_id": None,
+                "device_lock_until": None,
+                "lockout_until": None,
+                "session_id": None
+            }}
+        )
+
+    else:
+        raise HTTPException(status_code=400, detail="Invalid action")
+
+    await db.support_requests.update_one(
+        {"support_case_id": case_id},
+        {"$set": {
+            "status": "COMPLETED",
+            "resolved_at": now_iso,
+            "resolution_action": action,
+            "resolved_by": req.resolved_by or "SYSTEM"
+        }}
+    )
+
+    return {
+        "message": "Support request action completed successfully.",
+        "case_id": case_id,
+        "action": action
+    }
+
+@api_router.get("/admin/support-requests", response_model=List[SupportRequestRecord])
+async def list_support_requests():
+    requests = await db.support_requests.find({}, {"_id": 0}).to_list(1000)
+    requests.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    return [SupportRequestRecord(**r) for r in requests]
 
 @api_router.get("/auth/me", response_model=User)
 async def get_me(user: dict = Depends(get_current_user)):
