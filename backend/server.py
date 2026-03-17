@@ -608,11 +608,11 @@ def send_email_alert(subject: str, body: str, to_email: str):
     msg.set_content(body)
 
     if SMTP_PORT == 465:
-        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10) as server:
             server.login(SMTP_USERNAME, SMTP_PASSWORD)
             server.send_message(msg)
     else:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
             if SMTP_USE_TLS:
                 server.starttls()
             server.login(SMTP_USERNAME, SMTP_PASSWORD)
