@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Layout } from '../components/Layout';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
@@ -49,26 +49,30 @@ export default function QuoteDetailPage() {
     accommodation: ''
   });
 
-  useEffect(() => { loadData(); }, [id]);
+const loadData = useCallback(async () => {
+  try {
+    const [quoteRes, recipesRes, labourRes, installRes] = await Promise.all([
+      api.get(`/quotes/${id}`),
+      api.get('/recipes'),
+      api.get('/labour-types'),
+      api.get('/install-types'),
+    ]);
 
-  const loadData = async () => {
-    try {
-      const [quoteRes, recipesRes, labourRes, installRes] = await Promise.all([
-        api.get(`/quotes/${id}`),
-        api.get('/recipes'),
-        api.get('/labour-types'),
-        api.get('/install-types')
-      ]);
-      setQuote(quoteRes.data);
-      setRecipes(recipesRes.data);
-      setLabourTypes(labourRes.data);
-      setInstallTypes(installRes.data);
-    } catch (error) {
-      toast.error('Failed to load quote');
-    } finally {
-      setLoading(false);
-    }
-  };
+    setQuote(quoteRes.data);
+    setRecipes(recipesRes.data);
+    setLabourTypes(labourRes.data);
+    setInstallTypes(installRes.data);
+
+  } catch (error) {
+    toast.error('Failed to load quote data');
+  } finally {
+    setLoading(false);
+  }
+}, [id]);
+
+useEffect(() => {
+  loadData();
+}, [loadData]);
 
   const handleAddLine = async (e) => {
     e.preventDefault();

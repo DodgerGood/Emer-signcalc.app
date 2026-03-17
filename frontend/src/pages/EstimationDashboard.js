@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
@@ -24,12 +24,10 @@ export default function EstimationDashboard() {
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
   
-  // Dropdown data
   const [recipes, setRecipes] = useState([]);
   const [labourTypes, setLabourTypes] = useState([]);
   const [installTypes, setInstallTypes] = useState([]);
   
-  // Sign form
   const [signForm, setSignForm] = useState({
     sign_name: '',
     width_mm: '',
@@ -44,11 +42,9 @@ export default function EstimationDashboard() {
     custom_items: []
   });
   
-  // Preview
   const [signPreview, setSignPreview] = useState(null);
   const [showCosts, setShowCosts] = useState(true);
   
-  // Custom item form
   const [customItem, setCustomItem] = useState({
     description: '',
     quantity: '1',
@@ -59,11 +55,8 @@ export default function EstimationDashboard() {
 
   const canEdit = user?.role === 'QUOTING_STAFF' && (!quote || quote.created_by === user?.id);
 
-  useEffect(() => {
-    loadData();
-  }, [quoteId]);
-
-  const loadData = async () => {
+  // ✅ FIXED: wrap in useCallback
+  const loadData = useCallback(async () => {
     try {
       const [recipesRes, labourRes, installRes] = await Promise.all([
         api.get('/recipes'),
@@ -85,8 +78,12 @@ export default function EstimationDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [quoteId]);
 
+  // ✅ FIXED: depend on loadData
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
   const calculatePreview = async () => {
     if (!signForm.width_mm || !signForm.height_mm || !signForm.recipe_id) {
       toast.error('Please fill in width, height, and sign type');

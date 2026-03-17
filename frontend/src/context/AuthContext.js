@@ -31,16 +31,32 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = async (email, password) => {
+ const login = async (email, password) => {
+  try {
     const response = await api.post('/auth/login', { email, password });
     const { access_token, user: userData } = response.data;
-    
+
     localStorage.setItem('token', access_token);
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
-    
+
     return userData;
-  };
+  } catch (error) {
+    const status = error?.response?.status;
+
+    // Only these mean credentials are wrong
+    if (status === 401 || status === 403) {
+      throw new Error('INCORRECT_CREDENTIALS');
+    }
+
+    // Backend/network unavailable (sleep/cold start, gateway errors, timeout, etc.)
+    if (!error?.response || status === 502 || status === 503 || status === 504) {
+      throw new Error('SERVER_UNAVAILABLE');
+    }
+
+    throw new Error('LOGIN_FAILED');
+  }
+};
 
   const register = async (email, password, company_name, full_name, role = 'MANAGER') => {
     const response = await api.post('/auth/register', {
