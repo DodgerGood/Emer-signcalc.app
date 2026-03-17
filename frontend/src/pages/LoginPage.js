@@ -7,6 +7,7 @@ import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
+import api from '../lib/api';
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -78,6 +79,27 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+const handleContactSupport = async () => {
+  try {
+    setSupportSubmitting(true);
+
+    const deviceId = localStorage.getItem('device_id') || '';
+
+    await api.post('/auth/contact-support', {
+      email,
+      reason: 'DEVICE_KICKOUT',
+      device_id: deviceId,
+      message: 'Need approval to use a new device.'
+    });
+
+    toast.success('Support request submitted successfully.');
+    setShowSupportButton(false);
+  } catch (error) {
+    toast.error(error?.response?.data?.detail || 'Failed to submit support request.');
+  } finally {
+    setSupportSubmitting(false);
+  }
+};
 
   return (
     <div className="min-h-screen flex">
@@ -188,6 +210,17 @@ export default function LoginPage() {
             >
               {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
             </Button>
+
+            {showSupportButton && (
+              <Button
+                type="button"
+                onClick={handleContactSupport}
+                disabled={supportSubmitting}
+                className="w-full h-10 mt-3 bg-slate-200 hover:bg-slate-300 text-slate-900"
+              >
+                  {supportSubmitting ? 'Submitting...' : 'Contact Support'}
+              </Button>
+            )}
           </form>
 
           <div className="text-center">
