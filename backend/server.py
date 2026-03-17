@@ -23,6 +23,7 @@ from openpyxl import Workbook
 import math
 import smtplib
 from email.message import EmailMessage
+import aiosmtplib
 
 DEVICE_LOCK_HOURS = 24
 KICKOUT_HOURS = 3
@@ -44,10 +45,10 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24
 
 SMTP_HOST = os.environ.get("SMTP_HOST", "")
-SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
-SMTP_USERNAME = os.environ.get("SMTP_USERNAME", "")
-SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
-SMTP_FROM_EMAIL = os.environ.get("SMTP_FROM_EMAIL", "")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "465"))
+SMTP_USERNAME = os.environ.get("SMTP_USER", "")
+SMTP_PASSWORD = os.environ.get("SMTP_PASS", "")
+SMTP_FROM_EMAIL = os.environ.get("SMTP_FROM", "")
 ROGER_ALERT_EMAIL = os.environ.get("ROGER_ALERT_EMAIL", "")
 SMTP_USE_TLS = os.environ.get("SMTP_USE_TLS", "true").lower() == "true"
 
@@ -607,11 +608,16 @@ def send_email_alert(subject: str, body: str, to_email: str):
     msg["To"] = to_email
     msg.set_content(body)
 
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-        if SMTP_USE_TLS:
-            server.starttls()
-        server.login(SMTP_USERNAME, SMTP_PASSWORD)
-        server.send_message(msg)
+    if SMTP_PORT == 465:
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:
+            server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            server.send_message(msg)
+    else:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            if SMTP_USE_TLS:
+                server.starttls()
+            server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            server.send_message(msg)
 
 # ===== AUTH ROUTES =====
 
@@ -768,6 +774,24 @@ async def contact_support(req: SupportRequest):
     }
 
     await db.support_requests.insert_one(support_doc)
+
+    try:
+        send_email_alert(
+            subject="New Signomics support request",
+            body=f"""A new support request has been submitted.
+
+Email: {req.email}
+Reason: {req.reason}
+Device ID: {req.device_id}
+Message: {req.message or ""}
+
+Status: OPEN
+""",
+            to_email=SMTP_FROM_EMAIL
+        )
+    except Exception as e:
+        print(f"Failed to send support email: {e}")
+
     return {"message": "Support request submitted successfully."}
 
 @api_router.get("/auth/me", response_model=User)
