@@ -142,6 +142,13 @@ class SupportRequest(BaseModel):
     reason: str
     device_id: str
     message: Optional[str] = None
+    full_name: Optional[str] = None
+    company_id: Optional[str] = None
+    company_name: Optional[str] = None
+    role: Optional[str] = None
+    current_device_id: Optional[str] = None
+    current_lockout_until: Optional[str] = None
+    current_device_lock_until: Optional[str] = None
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -779,30 +786,52 @@ async def login(req: LoginRequest):
 async def contact_support(req: SupportRequest):
     support_doc = {
         "id": str(uuid.uuid4()),
+        "support_case_id": f"SUP-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}",
         "email": req.email,
+        "full_name": req.full_name,
+        "company_id": req.company_id,
+        "company_name": req.company_name,
+        "role": req.role,
         "reason": req.reason,
-        "device_id": req.device_id,
+        "requested_device_id": req.device_id,
+        "current_device_id": req.current_device_id,
+        "current_lockout_until": req.current_lockout_until,
+        "current_device_lock_until": req.current_device_lock_until,
         "message": req.message,
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "status": "OPEN"
+        "status": "OPEN",
+        "resolved_at": None,
+        "resolution_action": None,
+        "resolved_by": None
     }
 
     await db.support_requests.insert_one(support_doc)
 
     try:
         send_email_alert(
-            subject="New Signomics support request",
-            body=f"""A new support request has been submitted.
+                    subject=f"[Signomics Support] {support_doc['support_case_id']} | {req.company_name or 'Unknown Company'} | {req.role or 'Unknown Role'} | Device Lock Request",
+                    body=f"""A new support request has been submitted.
 
-Email: {req.email}
-Reason: {req.reason}
-Device ID: {req.device_id}
-Message: {req.message or ""}
+        Support Case ID: {support_doc['support_case_id']}
+        Status: {support_doc['status']}
 
-Status: OPEN
-""",
-            to_email=SMTP_FROM_EMAIL
-        )
+        User Email: {req.email}
+        Full Name: {req.full_name or 'Not provided'}
+        Company ID: {req.company_id or 'Not provided'}
+        Company Name: {req.company_name or 'Not provided'}
+        Role: {req.role or 'Not provided'}
+
+        Reason: {req.reason}
+        Requested Device ID: {req.device_id}
+        Current Device ID: {req.current_device_id or 'Not provided'}
+        Current Lockout Until: {req.current_lockout_until or 'Not provided'}
+        Current Device Lock Until: {req.current_device_lock_until or 'Not provided'}
+
+        Message:
+        {req.message or 'No message provided'}
+        """,
+                    to_email=SMTP_FROM_EMAIL
+                )
     except Exception as e:
         print(f"Failed to send support email: {e}")
 
