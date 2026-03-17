@@ -23,7 +23,6 @@ from openpyxl import Workbook
 import math
 import smtplib
 from email.message import EmailMessage
-import aiosmtplib
 
 DEVICE_LOCK_HOURS = 24
 KICKOUT_HOURS = 3
