@@ -17,6 +17,7 @@ import QuoteDetailPage from './pages/QuoteDetailPage';
 import ApprovalsPage from './pages/ApprovalsPage';
 import SettingsPage from './pages/SettingsPage';
 import EstimationDashboard from './pages/EstimationDashboard';
+import AdminSupportPage from './pages/AdminSupportPage';
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -131,7 +132,16 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
-    </Routes>
+
+      <Route
+        path="/platform-admin/support"
+        element={
+          <ProtectedRoute>
+            <AdminSupportPage /> 
+          </ProtectedRoute>
+          }
+        /> 
+      </Routes>
   );
 };
 
