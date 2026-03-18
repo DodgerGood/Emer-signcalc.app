@@ -23,6 +23,25 @@ export default function AdminCompaniesPage() {
     loadCompanies();
   }, []);
 
+  const handleDownloadAllCsv = async () => {
+    try {
+      const response = await api.get('/admin/companies/export', {
+        responseType: 'blob',
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'companies_export.csv');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || 'Failed to download CSV.');
+    }
+  };
+
   return (
     <PlatformAdminLayout>
       <div className="space-y-8 fade-in">
@@ -41,13 +60,23 @@ export default function AdminCompaniesPage() {
               Company Summary
             </h2>
 
-            <button
-              type="button"
-              onClick={loadCompanies}
-              className="px-3 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-900 text-sm"
-            >
-              Refresh
-            </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleDownloadAllCsv}
+            className="px-3 py-1 rounded bg-[#2563EB] hover:bg-[#1e40af] text-white text-sm"
+          >
+            Download All CSV
+          </button>
+
+          <button
+            type="button"
+            onClick={loadCompanies}
+            className="px-3 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-900 text-sm"
+          >
+            Refresh
+          </button>
+        </div>
           </div>
 
           {loading ? (
