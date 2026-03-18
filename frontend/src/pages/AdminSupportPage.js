@@ -100,7 +100,7 @@ return (
                             toast.error(err?.response?.data?.detail || 'Action failed');
                           }
                         }}
-                        className="px-2 py-1 bg-green-500 text-white rounded text-xs"
+                        className="inline-flex w-20 justify-center px-2 py-1 bg-green-500 text-white rounded text-xs"
                       >
                         Approve
                       </button>
@@ -121,7 +121,7 @@ return (
                             toast.error(err?.response?.data?.detail || 'Action failed');
                           }
                         }}
-                        className="px-2 py-1 bg-yellow-500 text-white rounded text-xs"
+                        className="inline-flex w-20 justify-center px-2 py-1 bg-yellow-500 text-white rounded text-xs"
                       >
                         Clear
                       </button>
@@ -142,7 +142,7 @@ return (
                             toast.error(err?.response?.data?.detail || 'Action failed');
                           }
                         }}
-                        className="px-2 py-1 bg-red-500 text-white rounded text-xs"
+                        className="inline-flex w-20 justify-center px-2 py-1 bg-red-500 text-white rounded text-xs"
                       >
                         Reset
                       </button>

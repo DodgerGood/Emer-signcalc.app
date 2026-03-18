@@ -714,14 +714,17 @@ async def login(req: LoginRequest):
         else:
             # Lockout has expired, so clear the previous device claim and reopen the seat
             await db.users.update_one(
-                {"id": user["id"]},
-                {"$set": {
-                    "lockout_until": None,
-                    "session_id": None,
-                    "device_id": None,
-                    "device_lock_until": None
-                }}
-            )
+                    {"id": user["id"]},
+                    {
+                        "$set": {
+                            "session_id": None,
+                            "lockout_until": new_lockout_until
+                        },
+                        "$inc": {
+                            "lockout_count": 1
+                        }
+                    }
+                )
             user["lockout_until"] = None
             user["session_id"] = None
             user["device_id"] = None

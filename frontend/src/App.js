@@ -18,6 +18,9 @@ import ApprovalsPage from './pages/ApprovalsPage';
 import SettingsPage from './pages/SettingsPage';
 import EstimationDashboard from './pages/EstimationDashboard';
 import AdminSupportPage from './pages/AdminSupportPage';
+import AdminCompaniesPage from './pages/AdminCompaniesPage';
+import AdminCommissioningPage from './pages/AdminCommissioningPage';
+import AdminSeatManagementPage from './pages/AdminSeatManagementPage';
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -141,6 +144,32 @@ const AppRoutes = () => {
           </ProtectedRoute>
           }
         /> 
+      <Route
+        path="/platform-admin/companies"
+        element={
+          <ProtectedRoute>
+            <AdminCompaniesPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/platform-admin/commissioning"
+        element={
+          <ProtectedRoute>
+            <AdminCommissioningPage />
+        </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/platform-admin/seats"
+        element={
+          <ProtectedRoute>
+            <AdminSeatManagementPage />
+          </ProtectedRoute>
+        }
+      />
       </Routes>
   );
 };
