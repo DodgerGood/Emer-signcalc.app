@@ -41,6 +41,27 @@ export default function AdminCompaniesPage() {
       toast.error(error?.response?.data?.detail || 'Failed to download CSV.');
     }
   };
+  const handleDownloadCompanyCsv = async (companyId, companyName) => {
+    try {
+      const response = await api.get(`/admin/companies/${companyId}/export`, {
+        responseType: 'blob',
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute(
+        'download',
+        `${(companyName || 'company').replace(/\s+/g, '_').toLowerCase()}_export.csv`
+      );
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || 'Failed to download company CSV.');
+    }
+  };
 
   return (
     <PlatformAdminLayout>
@@ -106,12 +127,22 @@ export default function AdminCompaniesPage() {
                       <td className="px-4 py-3">{company.user_count}</td>
                       <td className="px-4 py-3">{company.total_lockout_count}</td>
                       <td className="px-4 py-3">
+                        <div className="flex flex-col gap-2 items-start">
                           <a
                             href={`/platform-admin/companies/${company.company_id}`}
-                            className="inline-flex w-20 justify-center px-2 py-1 bg-slate-200 text-slate-900 rounded text-xs"
+                            className="inline-flex w-28 justify-center px-2 py-1 bg-slate-200 text-slate-900 rounded text-xs"
                           >
                             Open
                           </a>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadCompanyCsv(company.company_id, company.company_name)}
+                            className="inline-flex w-28 justify-center px-2 py-1 bg-[#2563EB] text-white rounded text-xs"
+                          >
+                            Download CSV
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
