@@ -1061,6 +1061,58 @@ async def export_all_companies_csv():
         },
     )
 
+@api_router.get("/admin/companies/{company_id}/export")
+async def export_company_csv(company_id: str):
+    company = await db.companies.find_one({"id": company_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    users = await db.users.find({"company_id": company_id}, {"_id": 0}).to_list(10000)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        "company_name",
+        "company_id",
+        "user_id",
+        "full_name",
+        "email",
+        "role",
+        "status",
+        "device_id",
+        "device_lock_until",
+        "lockout_until",
+        "lockout_count",
+    ])
+
+    for user in users:
+        writer.writerow([
+            company.get("name", "Unknown Company"),
+            company.get("id"),
+            user.get("id"),
+            user.get("full_name"),
+            user.get("email"),
+            user.get("role"),
+            user.get("status", "ACTIVE"),
+            user.get("device_id"),
+            user.get("device_lock_until"),
+            user.get("lockout_until"),
+            user.get("lockout_count", 0),
+        ])
+
+    output.seek(0)
+
+    safe_name = company.get("name", "company").replace(" ", "_").lower()
+
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename={safe_name}_export.csv"
+        },
+    )
+
 @api_router.get("/admin/companies/{company_id}", response_model=AdminCompanyDetail)
 async def get_admin_company_detail(company_id: str):
     company = await db.companies.find_one({"id": company_id}, {"_id": 0})
