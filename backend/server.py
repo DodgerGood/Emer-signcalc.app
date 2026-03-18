@@ -190,6 +190,13 @@ class User(BaseModel):
     session_id: Optional[str] = None  # Current active session
     lockout_until: Optional[str] = None  # Account lockout timestamp
 
+class AdminCompanySummary(BaseModel):
+    company_id: str
+    company_name: str
+    status: str = "ACTIVE"
+    user_count: int = 0
+    total_lockout_count: int = 0
+
 # Company Models
 class Company(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -958,6 +965,30 @@ async def list_support_requests():
     requests = await db.support_requests.find({}, {"_id": 0}).to_list(1000)
     requests.sort(key=lambda x: x.get("created_at", ""), reverse=True)
     return [SupportRequestRecord(**r) for r in requests]
+
+@api_router.get("/admin/companies", response_model=List[AdminCompanySummary])
+async def list_admin_companies():
+    companies = await db.companies.find({}, {"_id": 0}).to_list(1000)
+    users = await db.users.find({}, {"_id": 0}).to_list(1000)
+
+    summaries = []
+
+    for company in companies:
+        company_id = company.get("id")
+        company_users = [u for u in users if u.get("company_id") == company_id]
+
+        summaries.append(
+            AdminCompanySummary(
+                company_id=company_id,
+                company_name=company.get("name", "Unknown Company"),
+                status=company.get("status", "ACTIVE"),
+                user_count=len(company_users),
+                total_lockout_count=sum(u.get("lockout_count", 0) for u in company_users),
+            )
+        )
+
+    summaries.sort(key=lambda x: x.company_name.lower())
+    return summaries
 
 @api_router.get("/auth/me", response_model=User)
 async def get_me(user: dict = Depends(get_current_user)):
