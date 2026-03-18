@@ -156,7 +156,7 @@ class AdminSupportActionRequest(BaseModel):
 
 class SupportRequestRecord(BaseModel):
     id: str
-    support_case_id: str
+    support_case_id: Optional[str] = None
     email: EmailStr
     full_name: Optional[str] = None
     company_id: Optional[str] = None
