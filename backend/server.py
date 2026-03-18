@@ -23,6 +23,9 @@ from openpyxl import Workbook
 import math
 import smtplib
 from email.message import EmailMessage
+from fastapi.responses import StreamingResponse
+import io
+import csv
 
 DEVICE_LOCK_HOURS = 24
 KICKOUT_HOURS = 3
@@ -1039,6 +1042,55 @@ async def get_admin_company_detail(company_id: str):
         user_count=len(user_records),
         total_lockout_count=sum(u.lockout_count for u in user_records),
         users=user_records,
+    )
+
+@api_router.get("/admin/companies/export")
+async def export_all_companies_csv():
+    users = await db.users.find({}, {"_id": 0}).to_list(10000)
+    companies = await db.companies.find({}, {"_id": 0}).to_list(1000)
+
+    company_map = {c["id"]: c.get("name", "Unknown Company") for c in companies if c.get("id")}
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        "company_name",
+        "company_id",
+        "user_id",
+        "full_name",
+        "email",
+        "role",
+        "status",
+        "device_id",
+        "device_lock_until",
+        "lockout_until",
+        "lockout_count",
+    ])
+
+    for user in users:
+        writer.writerow([
+            company_map.get(user.get("company_id"), "Unassigned"),
+            user.get("company_id"),
+            user.get("id"),
+            user.get("full_name"),
+            user.get("email"),
+            user.get("role"),
+            user.get("status", "ACTIVE"),
+            user.get("device_id"),
+            user.get("device_lock_until"),
+            user.get("lockout_until"),
+            user.get("lockout_count", 0),
+        ])
+
+    output.seek(0)
+
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=companies_export.csv"
+        },
     )
 
 @api_router.get("/auth/me", response_model=User)
