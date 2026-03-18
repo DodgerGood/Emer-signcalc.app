@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../lib/api';
 import { toast } from 'sonner';
@@ -9,7 +9,7 @@ export default function AdminCompanyDetailPage() {
   const [company, setCompany] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const loadCompany = async () => {
+  const loadCompany = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get(`/admin/companies/${companyId}`);
@@ -19,11 +19,11 @@ export default function AdminCompanyDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [companyId]);
 
   useEffect(() => {
     loadCompany();
-  }, [companyId]);
+  }, [loadCompany]);
 
   return (
     <PlatformAdminLayout>
