@@ -1012,45 +1012,13 @@ async def list_admin_companies():
     summaries.sort(key=lambda x: x.company_name.lower())
     return summaries
 
-@api_router.get("/admin/companies/{company_id}", response_model=AdminCompanyDetail)
-async def get_admin_company_detail(company_id: str):
-    company = await db.companies.find_one({"id": company_id}, {"_id": 0})
-    if not company:
-        raise HTTPException(status_code=404, detail="Company not found")
-
-    users = await db.users.find({"company_id": company_id}, {"_id": 0}).to_list(1000)
-
-    user_records = [
-        AdminCompanyUserRecord(
-            user_id=user["id"],
-            email=user["email"],
-            full_name=user.get("full_name"),
-            role=user.get("role"),
-            status=user.get("status", "ACTIVE"),
-            device_id=user.get("device_id"),
-            device_lock_until=user.get("device_lock_until"),
-            lockout_until=user.get("lockout_until"),
-            lockout_count=user.get("lockout_count", 0),
-        )
-        for user in users
-    ]
-
-    return AdminCompanyDetail(
-        company_id=company["id"],
-        company_name=company.get("name", "Unknown Company"),
-        status=company.get("status", "ACTIVE"),
-        user_count=len(user_records),
-        total_lockout_count=sum(u.lockout_count for u in user_records),
-        users=user_records,
-    )
-
 @api_router.get("/admin/companies/export")
 async def export_all_companies_csv():
     users = await db.users.find({}, {"_id": 0}).to_list(10000)
     companies = await db.companies.find({}, {"_id": 0}).to_list(1000)
 
     company_map = {c["id"]: c.get("name", "Unknown Company") for c in companies if c.get("id")}
-
+   
     output = io.StringIO()
     writer = csv.writer(output)
 
@@ -1091,6 +1059,38 @@ async def export_all_companies_csv():
         headers={
             "Content-Disposition": "attachment; filename=companies_export.csv"
         },
+    )
+
+@api_router.get("/admin/companies/{company_id}", response_model=AdminCompanyDetail)
+async def get_admin_company_detail(company_id: str):
+    company = await db.companies.find_one({"id": company_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    users = await db.users.find({"company_id": company_id}, {"_id": 0}).to_list(1000)
+
+    user_records = [
+        AdminCompanyUserRecord(
+            user_id=user["id"],
+            email=user["email"],
+            full_name=user.get("full_name"),
+            role=user.get("role"),
+            status=user.get("status", "ACTIVE"),
+            device_id=user.get("device_id"),
+            device_lock_until=user.get("device_lock_until"),
+            lockout_until=user.get("lockout_until"),
+            lockout_count=user.get("lockout_count", 0),
+        )
+        for user in users
+    ]
+
+    return AdminCompanyDetail(
+        company_id=company["id"],
+        company_name=company.get("name", "Unknown Company"),
+        status=company.get("status", "ACTIVE"),
+        user_count=len(user_records),
+        total_lockout_count=sum(u.lockout_count for u in user_records),
+        users=user_records,
     )
 
 @api_router.get("/auth/me", response_model=User)
