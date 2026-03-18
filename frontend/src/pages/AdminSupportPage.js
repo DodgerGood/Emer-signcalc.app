@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../lib/api';
 import { toast } from 'sonner';
-import { Layout } from '../components/Layout';
+import { PlatformAdminLayout } from '../components/PlatformAdminLayout';
 
 export default function AdminSupportPage() {
   const [requests, setRequests] = useState([]);
@@ -24,7 +24,7 @@ export default function AdminSupportPage() {
   }, []);
 
 return (
-  <Layout>
+    <PlatformAdminLayout>
     <div className="space-y-8 fade-in">
       
       <div>
@@ -155,6 +155,6 @@ return (
         )}
       </div>
     </div>
-  </Layout>
+ </PlatformAdminLayout>
 );
 }
