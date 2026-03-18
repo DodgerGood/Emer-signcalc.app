@@ -83,7 +83,8 @@ return (
                     <td className="px-4 py-3">{request.status}</td>
                     <td className="px-4 py-3">{request.created_at}</td>
 
-                    <td className="px-4 py-3 space-x-2">
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-2 items-start">
                       <button
                         onClick={async () => {
                           try {
@@ -146,6 +147,7 @@ return (
                       >
                         Reset
                       </button>
+                    </div>
                     </td>
                   </tr>
                 ))}

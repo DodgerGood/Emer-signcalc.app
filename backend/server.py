@@ -197,6 +197,25 @@ class AdminCompanySummary(BaseModel):
     user_count: int = 0
     total_lockout_count: int = 0
 
+class AdminCompanyUserRecord(BaseModel):
+    user_id: str
+    email: EmailStr
+    full_name: Optional[str] = None
+    role: Optional[str] = None
+    status: str = "ACTIVE"
+    device_id: Optional[str] = None
+    device_lock_until: Optional[str] = None
+    lockout_until: Optional[str] = None
+    lockout_count: int = 0
+
+class AdminCompanyDetail(BaseModel):
+    company_id: str
+    company_name: str
+    status: str = "ACTIVE"
+    user_count: int = 0
+    total_lockout_count: int = 0
+    users: List[AdminCompanyUserRecord]
+
 # Company Models
 class Company(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -989,6 +1008,38 @@ async def list_admin_companies():
 
     summaries.sort(key=lambda x: x.company_name.lower())
     return summaries
+
+@api_router.get("/admin/companies/{company_id}", response_model=AdminCompanyDetail)
+async def get_admin_company_detail(company_id: str):
+    company = await db.companies.find_one({"id": company_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    users = await db.users.find({"company_id": company_id}, {"_id": 0}).to_list(1000)
+
+    user_records = [
+        AdminCompanyUserRecord(
+            user_id=user["id"],
+            email=user["email"],
+            full_name=user.get("full_name"),
+            role=user.get("role"),
+            status=user.get("status", "ACTIVE"),
+            device_id=user.get("device_id"),
+            device_lock_until=user.get("device_lock_until"),
+            lockout_until=user.get("lockout_until"),
+            lockout_count=user.get("lockout_count", 0),
+        )
+        for user in users
+    ]
+
+    return AdminCompanyDetail(
+        company_id=company["id"],
+        company_name=company.get("name", "Unknown Company"),
+        status=company.get("status", "ACTIVE"),
+        user_count=len(user_records),
+        total_lockout_count=sum(u.lockout_count for u in user_records),
+        users=user_records,
+    )
 
 @api_router.get("/auth/me", response_model=User)
 async def get_me(user: dict = Depends(get_current_user)):
