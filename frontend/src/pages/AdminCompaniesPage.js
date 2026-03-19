@@ -93,6 +93,37 @@ const handleUploadCompanyCsv = async (companyId, file) => {
     }
   };
 
+const handleBulkUploadCsv = async (file) => {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await api.post(
+      '/admin/companies/import',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+
+    const result = response.data;
+
+    toast.success(
+      `Bulk upload complete: ${result.created} created, ${result.updated} updated, ${result.skipped} skipped`
+    );
+
+    if (result.errors?.length) {
+      console.error('Bulk CSV upload errors:', result.errors);
+    }
+
+    loadCompanies();
+  } catch (error) {
+    toast.error(error?.response?.data?.detail || 'Failed to bulk upload CSV.');
+  }
+};
+
   return (
     <PlatformAdminLayout>
       <div className="space-y-8 fade-in">
@@ -119,6 +150,22 @@ const handleUploadCompanyCsv = async (companyId, file) => {
           >
             Download All CSV
           </button>
+
+          <label className="px-3 py-1 rounded bg-slate-700 hover:bg-slate-800 text-white text-sm cursor-pointer">
+            Bulk Upload CSV
+            <input
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  handleBulkUploadCsv(file);
+                }
+                e.target.value = '';
+              }}
+            />
+          </label>
 
           <button
             type="button"
