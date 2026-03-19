@@ -25,6 +25,17 @@ import AdminCompanyDetailPage from './pages/AdminCompanyDetailPage';
 import PlatformAdminLoginPage from './pages/PlatformAdminLoginPage';
 
 const ProtectedRoute = ({ children }) => {
+const PlatformAdminProtectedRoute = ({ children }) => {
+  const isPlatformAdminAuthenticated =
+    localStorage.getItem('platform_admin_auth') === 'true';
+
+  if (!isPlatformAdminAuthenticated) {
+    return <Navigate to="/platform-admin/login" replace />;
+  }
+
+  return children;
+};
+
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
@@ -144,42 +155,42 @@ const AppRoutes = () => {
       <Route
         path="/platform-admin/support"
         element={
-          <ProtectedRoute>
+          <PlatformAdminProtectedRoute>
             <AdminSupportPage /> 
-          </ProtectedRoute>
+          </PlatformAdminProtectedRoute>
           }
         /> 
       <Route
         path="/platform-admin/companies"
         element={
-          <ProtectedRoute>
+          <PlatformAdminProtectedRoute>
             <AdminCompaniesPage />
-          </ProtectedRoute>
+          </PlatformAdminProtectedRoute>
         }
       />
       <Route
         path="/platform-admin/companies/:companyId"
         element={
-          <ProtectedRoute>
+          <PlatformAdminProtectedRoute>
             <AdminCompanyDetailPage />
-          </ProtectedRoute>
+          </PlatformAdminProtectedRoute>
         }
       />
       <Route
         path="/platform-admin/commissioning"
         element={
-          <ProtectedRoute>
+          <PlatformAdminProtectedRoute>
             <AdminCommissioningPage />
-        </ProtectedRoute>
+          </PlatformAdminProtectedRoute>
         }
       />
 
       <Route
         path="/platform-admin/seats"
         element={
-          <ProtectedRoute>
+          <PlatformAdminProtectedRoute>
             <AdminSeatManagementPage />
-          </ProtectedRoute>
+          </PlatformAdminProtectedRoute>
         }
       />
       </Routes>
