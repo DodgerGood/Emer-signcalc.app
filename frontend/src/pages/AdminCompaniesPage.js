@@ -124,6 +124,16 @@ const handleBulkUploadCsv = async (file) => {
   }
 };
 
+const handleRestoreCompany = async (companyId) => {
+    try {
+      await api.post(`/admin/companies/${companyId}/restore`);
+      toast.success('Company restored successfully.');
+      loadCompanies();
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || 'Failed to restore company.');
+    }
+  };
+
   return (
     <PlatformAdminLayout>
       <div className="space-y-8 fade-in">
@@ -258,6 +268,16 @@ const handleBulkUploadCsv = async (file) => {
                             }}
                           />
                         </label>
+                        {company.status === 'DELETED' && (
+                          <button
+                            type="button"
+                            onClick={() => handleRestoreCompany(company.company_id)}
+                            className="inline-flex w-28 justify-center px-2 py-1 bg-green-600 text-white rounded text-xs"
+                          >
+                            Restore
+                          </button>
+                        )}
+
                         </div>
                       </td>
                     </tr>
