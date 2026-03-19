@@ -1385,6 +1385,51 @@ async def get_admin_company_detail(company_id: str):
         users=user_records,
     )
 
+@api_router.post("/admin/companies/{company_id}/suspend")
+async def suspend_company(company_id: str):
+    company = await db.companies.find_one({"id": company_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    await db.companies.update_one(
+        {"id": company_id},
+        {"$set": {"status": "SUSPENDED"}}
+    )
+
+    await db.users.update_many(
+        {"company_id": company_id},
+        {"$set": {"status": "SUSPENDED"}}
+    )
+
+    return {
+        "message": "Company suspended successfully.",
+        "company_id": company_id,
+        "status": "SUSPENDED"
+    }
+
+@api_router.post("/admin/companies/{company_id}/delete")
+async def soft_delete_company(company_id: str):
+    company = await db.companies.find_one({"id": company_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    await db.companies.update_one(
+        {"id": company_id},
+        {"$set": {"status": "DELETED"}}
+    )
+
+    await db.users.update_many(
+        {"company_id": company_id},
+        {"$set": {"status": "SUSPENDED"}}
+    )
+
+    return {
+        "message": "Company soft deleted successfully.",
+        "company_id": company_id,
+        "status": "DELETED"
+    }
+
+
 @api_router.get("/auth/me", response_model=User)
 async def get_me(user: dict = Depends(get_current_user)):
     return User(**user)
