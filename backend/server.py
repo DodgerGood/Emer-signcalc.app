@@ -26,6 +26,8 @@ from email.message import EmailMessage
 from fastapi.responses import StreamingResponse
 import io
 import csv
+from typing import Optional, List
+
 
 DEVICE_LOCK_HOURS = 24
 KICKOUT_HOURS = 3
@@ -222,6 +224,25 @@ class AdminCompanyDetail(BaseModel):
     user_count: int = 0
     total_lockout_count: int = 0
     users: List[AdminCompanyUserRecord]
+
+class CsvUserRow(BaseModel):
+    company_id: Optional[str] = None
+    company_name: Optional[str] = None
+    user_id: Optional[str] = None
+    full_name: Optional[str] = None
+    email: EmailStr
+    role: Optional[str] = None
+    status: Optional[str] = "ACTIVE"
+    device_id: Optional[str] = None
+    device_lock_until: Optional[str] = None
+    lockout_until: Optional[str] = None
+    lockout_count: Optional[int] = None
+
+class CsvImportResult(BaseModel):
+    created: int = 0
+    updated: int = 0
+    skipped: int = 0
+    errors: List[str] = []
 
 # Company Models
 class Company(BaseModel):
@@ -1142,6 +1163,93 @@ async def export_company_csv(company_id: str):
             "Content-Disposition": f"attachment; filename={safe_name}_export.csv"
         },
     )
+
+@api_router.post("/admin/companies/{company_id}/import", response_model=CsvImportResult)
+async def import_company_csv(company_id: str, file: UploadFile = File(...)):
+    company = await db.companies.find_one({"id": company_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Only CSV files are supported")
+
+    content = await file.read()
+    text = content.decode("utf-8-sig")
+    reader = csv.DictReader(io.StringIO(text))
+
+    result = CsvImportResult()
+    allowed_roles = {"CEO", "MANAGER", "PROCUREMENT", "QUOTING_STAFF"}
+    allowed_statuses = {"ACTIVE", "SUSPENDED"}
+
+    for index, row in enumerate(reader, start=2):
+        try:
+            parsed = CsvUserRow(
+                company_id=row.get("company_id"),
+                company_name=row.get("company_name"),
+                user_id=row.get("user_id"),
+                full_name=row.get("full_name"),
+                email=row.get("email"),
+                role=row.get("role"),
+                status=row.get("status") or "ACTIVE",
+                device_id=row.get("device_id"),
+                device_lock_until=row.get("device_lock_until"),
+                lockout_until=row.get("lockout_until"),
+                lockout_count=int(row["lockout_count"]) if row.get("lockout_count") not in (None, "") else None,
+            )
+        except Exception as e:
+            result.errors.append(f"Row {index}: invalid data - {e}")
+            result.skipped += 1
+            continue
+
+        role = (parsed.role or "").strip().upper()
+        status = (parsed.status or "ACTIVE").strip().upper()
+
+        if role not in allowed_roles:
+            result.errors.append(f"Row {index}: invalid role '{parsed.role}'")
+            result.skipped += 1
+            continue
+
+        if status not in allowed_statuses:
+            result.errors.append(f"Row {index}: invalid status '{parsed.status}'")
+            result.skipped += 1
+            continue
+
+        existing_user = await db.users.find_one(
+            {"company_id": company_id, "email": parsed.email},
+            {"_id": 0}
+        )
+
+        if existing_user:
+            await db.users.update_one(
+                {"id": existing_user["id"]},
+                {"$set": {
+                    "full_name": parsed.full_name or existing_user.get("full_name"),
+                    "role": role,
+                    "status": status
+                }}
+            )
+            result.updated += 1
+        else:
+            temp_password = "ChangeMe123!"
+            new_user = User(
+                email=parsed.email,
+                full_name=parsed.full_name or "",
+                role=role,
+                company_id=company_id,
+                session_id=None,
+                lockout_until=None
+            )
+            user_dict = new_user.model_dump()
+            user_dict["status"] = status
+            user_dict["password_hash"] = hash_password(temp_password)
+            user_dict["device_id"] = None
+            user_dict["device_lock_until"] = None
+            user_dict["lockout_count"] = 0
+
+            await db.users.insert_one(user_dict)
+            result.created += 1
+
+    return result
 
 @api_router.get("/admin/companies/{company_id}", response_model=AdminCompanyDetail)
 async def get_admin_company_detail(company_id: str):
