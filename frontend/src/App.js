@@ -25,17 +25,6 @@ import AdminCompanyDetailPage from './pages/AdminCompanyDetailPage';
 import PlatformAdminLoginPage from './pages/PlatformAdminLoginPage';
 
 const ProtectedRoute = ({ children }) => {
-const PlatformAdminProtectedRoute = ({ children }) => {
-  const isPlatformAdminAuthenticated =
-    localStorage.getItem('platform_admin_auth') === 'true';
-
-  if (!isPlatformAdminAuthenticated) {
-    return <Navigate to="/platform-admin/login" replace />;
-  }
-
-  return children;
-};
-
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
@@ -56,10 +45,23 @@ const PlatformAdminProtectedRoute = ({ children }) => {
   return children;
 };
 
+const PlatformAdminProtectedRoute = ({ children }) => {
+  const isPlatformAdminAuthenticated =
+    localStorage.getItem('platform_admin_auth') === 'true';
+
+  if (!isPlatformAdminAuthenticated) {
+    return <Navigate to="/platform-admin/login" replace />;
+  }
+
+  return children;
+};
+
 const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/platform-admin/login" element={<PlatformAdminLoginPage />} />
+
       <Route
         path="/"
         element={
@@ -68,8 +70,6 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
-      
-      <Route path="/platform-admin/login" element={<PlatformAdminLoginPage />} />
 
       <Route
         path="/materials"
@@ -79,6 +79,7 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+
       <Route
         path="/ink-profiles"
         element={
@@ -87,6 +88,7 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+
       <Route
         path="/labour-types"
         element={
@@ -95,6 +97,7 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+
       <Route
         path="/install-types"
         element={
@@ -103,6 +106,7 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+
       <Route
         path="/recipes"
         element={
@@ -111,6 +115,7 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+
       <Route
         path="/quotes"
         element={
@@ -119,6 +124,7 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+
       <Route
         path="/quotes/:id"
         element={
@@ -127,6 +133,7 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+
       <Route
         path="/approvals"
         element={
@@ -135,6 +142,7 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+
       <Route
         path="/settings"
         element={
@@ -143,6 +151,7 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+
       <Route
         path="/estimation/:id"
         element={
@@ -156,10 +165,11 @@ const AppRoutes = () => {
         path="/platform-admin/support"
         element={
           <PlatformAdminProtectedRoute>
-            <AdminSupportPage /> 
+            <AdminSupportPage />
           </PlatformAdminProtectedRoute>
-          }
-        /> 
+        }
+      />
+
       <Route
         path="/platform-admin/companies"
         element={
@@ -168,6 +178,7 @@ const AppRoutes = () => {
           </PlatformAdminProtectedRoute>
         }
       />
+
       <Route
         path="/platform-admin/companies/:companyId"
         element={
@@ -176,6 +187,7 @@ const AppRoutes = () => {
           </PlatformAdminProtectedRoute>
         }
       />
+
       <Route
         path="/platform-admin/commissioning"
         element={
@@ -193,7 +205,7 @@ const AppRoutes = () => {
           </PlatformAdminProtectedRoute>
         }
       />
-      </Routes>
+    </Routes>
   );
 };
 
