@@ -21,16 +21,16 @@ export const Layout = ({ children }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
 
-  const role = user?.role;
-   
-  const isPlatformAdmin = PLATFORM_ADMIN_EMAILS.includes(
-    (user?.email || '').trim().toLowerCase()
-  );
+const role = user?.role;
 
   const PLATFORM_ADMIN_EMAILS = [
     'signomics@rayline.co.za',
     'rogercameroncook@yahoo.com'
   ];
+
+  const isPlatformAdmin = PLATFORM_ADMIN_EMAILS.includes(
+    (user?.email || '').trim().toLowerCase()
+  );
 
   // Role-based navigation
   const getLinks = () => {
