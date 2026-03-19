@@ -140,6 +140,10 @@ class LoginRequest(BaseModel):
     password: str
     device_id: str
 
+class PlatformAdminLoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
 class SupportRequest(BaseModel):
     email: EmailStr
     reason: str
@@ -720,6 +724,32 @@ async def register(req: RegisterRequest):
         token_type="bearer",
         user=user_response
     )
+
+@api_router.post("/platform-admin/login")
+async def platform_admin_login(req: PlatformAdminLoginRequest):
+    allowed_emails_raw = os.environ.get("PLATFORM_ADMIN_EMAILS", "")
+    allowed_emails = [
+        email.strip().lower()
+        for email in allowed_emails_raw.split(",")
+        if email.strip()
+    ]
+
+    admin_password = os.environ.get("PLATFORM_ADMIN_PASSWORD", "")
+
+    if not allowed_emails or not admin_password:
+        raise HTTPException(status_code=500, detail="Platform admin login is not configured")
+
+    if req.email.strip().lower() not in allowed_emails:
+        raise HTTPException(status_code=403, detail="Not authorized for platform admin")
+
+    if req.password != admin_password:
+        raise HTTPException(status_code=401, detail="Invalid admin credentials")
+
+    return {
+        "message": "Platform admin login successful",
+        "email": req.email,
+        "is_platform_admin": True
+    }
 
 @api_router.post("/auth/login", response_model=TokenResponse)
 async def login(req: LoginRequest):
