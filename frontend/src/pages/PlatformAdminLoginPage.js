@@ -4,16 +4,11 @@ import { toast } from 'sonner';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Button } from '../components/ui/button';
-import { useAuth } from '../context/AuthContext';
+import api from '../lib/api';
 
-const PLATFORM_ADMIN_EMAILS = [
-  'signomics@rayline.co.za',
-  'rogercameroncook@yahoo.com'
-];
 
 export default function PlatformAdminLoginPage() {
   const navigate = useNavigate();
-  const { login } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,11 +19,12 @@ export default function PlatformAdminLoginPage() {
     setLoading(true);
 
     try {
-      await login(email, password);
+      const response = await api.post('/platform-admin/login', {
+        email,
+        password,
+      });
 
-        const normalizedEmail = email.trim().toLowerCase();
-
-        if (!PLATFORM_ADMIN_EMAILS.includes(normalizedEmail)) {
+      if (!response?.data?.is_platform_admin) {
         localStorage.removeItem('platform_admin_auth');
         toast.error('This account is not authorized for platform admin.');
         setLoading(false);
@@ -36,6 +32,7 @@ export default function PlatformAdminLoginPage() {
       }
 
       localStorage.setItem('platform_admin_auth', 'true');
+      localStorage.setItem('platform_admin_email', email.trim().toLowerCase());
       toast.success('Platform admin access granted.');
       navigate('/platform-admin/support');
     } catch (error) {
