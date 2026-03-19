@@ -25,6 +25,26 @@ export default function AdminCompanyDetailPage() {
     loadCompany();
   }, [loadCompany]);
 
+const handleSuspendCompany = async () => {
+    try {
+      await api.post(`/admin/companies/${companyId}/suspend`);
+      toast.success('Company suspended successfully.');
+      loadCompany();
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || 'Failed to suspend company.');
+    }
+  };
+
+  const handleDeleteCompany = async () => {
+    try {
+      await api.post(`/admin/companies/${companyId}/delete`);
+      toast.success('Company soft deleted successfully.');
+      loadCompany();
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || 'Failed to delete company.');
+    }
+  };
+
   return (
     <PlatformAdminLayout>
       <div className="space-y-8 fade-in">
@@ -44,7 +64,33 @@ export default function AdminCompanyDetailPage() {
         ) : (
           <>
             <div className="card-technical p-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="flex items-start justify-between gap-4 mb-6">
+                <div>
+                  <h2 className="text-sm font-medium text-slate-600 uppercase tracking-wide">
+                    Company Overview
+                  </h2>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSuspendCompany}
+                    className="inline-flex justify-center px-3 py-2 bg-yellow-500 text-white rounded text-sm"
+                  >
+                    Suspend Company
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleDeleteCompany}
+                    className="inline-flex justify-center px-3 py-2 bg-red-600 text-white rounded text-sm"
+                  >
+                    Delete Company
+                  </button>
+                </div>
+              </div>
+
+  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div>
                   <div className="text-sm uppercase tracking-wide text-slate-500">Company</div>
                   <div className="text-xl font-bold text-slate-900 mt-1">{company.company_name}</div>
