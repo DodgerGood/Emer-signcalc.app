@@ -1430,6 +1430,28 @@ async def soft_delete_company(company_id: str):
     }
 
 
+@api_router.post("/admin/companies/{company_id}/restore")
+async def restore_company(company_id: str):
+    company = await db.companies.find_one({"id": company_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    await db.companies.update_one(
+        {"id": company_id},
+        {"$set": {"status": "ACTIVE"}}
+    )
+
+    await db.users.update_many(
+        {"company_id": company_id},
+        {"$set": {"status": "ACTIVE"}}
+    )
+
+    return {
+        "message": "Company restored successfully.",
+        "company_id": company_id,
+        "status": "ACTIVE"
+    }
+
 @api_router.get("/auth/me", response_model=User)
 async def get_me(user: dict = Depends(get_current_user)):
     return User(**user)
