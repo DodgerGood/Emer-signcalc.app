@@ -45,6 +45,16 @@ const handleSuspendCompany = async () => {
     }
   };
 
+const handleRestoreCompany = async () => {
+    try {
+      await api.post(`/admin/companies/${companyId}/restore`);
+      toast.success('Company restored successfully.');
+      loadCompany();
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || 'Failed to restore company.');
+    }
+  };
+
   return (
     <PlatformAdminLayout>
       <div className="space-y-8 fade-in">
@@ -72,22 +82,56 @@ const handleSuspendCompany = async () => {
                 </div>
 
                 <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleSuspendCompany}
-                    className="inline-flex justify-center px-3 py-2 bg-yellow-500 text-white rounded text-sm"
-                  >
-                    Suspend Company
-                  </button>
+                      {company?.status === 'ACTIVE' && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={handleSuspendCompany}
+                            className="inline-flex justify-center px-3 py-2 bg-yellow-500 text-white rounded text-sm"
+                          >
+                            Suspend Company
+                          </button>
 
-                  <button
-                    type="button"
-                    onClick={handleDeleteCompany}
-                    className="inline-flex justify-center px-3 py-2 bg-red-600 text-white rounded text-sm"
-                  >
-                    Delete Company
-                  </button>
-                </div>
+                          <button
+                            type="button"
+                            onClick={handleDeleteCompany}
+                            className="inline-flex justify-center px-3 py-2 bg-red-600 text-white rounded text-sm"
+                          >
+                            Delete Company
+                          </button>
+                        </>
+                      )}
+
+                      {company?.status === 'SUSPENDED' && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handleRestoreCompany}
+                          className="inline-flex justify-center px-3 py-2 bg-green-600 text-white rounded text-sm"
+                        >
+                          Reactivate Company
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleDeleteCompany}
+                          className="inline-flex justify-center px-3 py-2 bg-red-600 text-white rounded text-sm"
+                        >
+                          Delete Company
+                        </button>
+                      </>
+                    )}
+
+                    {company?.status === 'DELETED' && (
+                      <button
+                        type="button"
+                        onClick={handleRestoreCompany}
+                        className="inline-flex justify-center px-3 py-2 bg-green-600 text-white rounded text-sm"
+                      >
+                        Restore Company
+                      </button>
+                    )}
+                  </div>
               </div>
 
   <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
