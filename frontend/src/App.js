@@ -22,6 +22,7 @@ import AdminCompaniesPage from './pages/AdminCompaniesPage';
 import AdminCommissioningPage from './pages/AdminCommissioningPage';
 import AdminSeatManagementPage from './pages/AdminSeatManagementPage';
 import AdminCompanyDetailPage from './pages/AdminCompanyDetailPage';
+import PlatformAdminLoginPage from './pages/PlatformAdminLoginPage';
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -56,6 +57,9 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+      
+      <Route path="/platform-admin/login" element={<PlatformAdminLoginPage />} />
+
       <Route
         path="/materials"
         element={

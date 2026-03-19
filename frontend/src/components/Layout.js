@@ -13,6 +13,7 @@ import {
   LogOut,
   Settings,
   Calculator,
+  Headset,
 } from 'lucide-react';
 import { Button } from './ui/button';
 
@@ -21,6 +22,15 @@ export const Layout = ({ children }) => {
   const location = useLocation();
 
   const role = user?.role;
+   
+  const isPlatformAdmin = PLATFORM_ADMIN_EMAILS.includes(
+    (user?.email || '').trim().toLowerCase()
+  );
+
+  const PLATFORM_ADMIN_EMAILS = [
+    'signomics@rayline.co.za',
+    'rogercameroncook@yahoo.com'
+  ];
 
   // Role-based navigation
   const getLinks = () => {
@@ -96,6 +106,21 @@ export const Layout = ({ children }) => {
         </nav>
 
         <div className="p-4 border-t border-slate-700 space-y-1">
+
+          {isPlatformAdmin && (
+            <Link
+              to="/platform-admin/login"
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-md transition-colors ${
+                location.pathname.startsWith('/platform-admin')
+                  ? 'bg-[#2563EB] text-white'
+                  : 'text-slate-300 hover:bg-slate-800'
+              }`}
+            >
+              <Headset size={18} strokeWidth={1.5} />
+              <span className="text-sm font-medium">Platform Support</span>
+            </Link>
+          )}
+
           <Link
             to="/settings"
             data-testid="nav-settings"
@@ -103,21 +128,23 @@ export const Layout = ({ children }) => {
               location.pathname === '/settings'
                 ? 'bg-[#2563EB] text-white'
                 : 'text-slate-300 hover:bg-slate-800'
-            }`}
-          >
-            <Settings size={18} strokeWidth={1.5} />
-            <span className="text-sm font-medium">Settings</span>
-          </Link>
-          <Button
-            variant="ghost"
-            onClick={logout}
-            data-testid="logout-btn"
-            className="w-full justify-start text-slate-300 hover:bg-slate-800 hover:text-white"
-          >
-            <LogOut size={18} strokeWidth={1.5} className="mr-3" />
-            Logout
-          </Button>
-        </div>
+              }`}
+            >
+              <Settings size={18} strokeWidth={1.5} />
+              <span className="text-sm font-medium">Settings</span>
+            </Link>
+
+            <Button
+              variant="ghost"
+              onClick={logout}
+              data-testid="logout-btn"
+              className="w-full justify-start text-slate-300 hover:bg-slate-800 hover:text-white"
+            >
+              <LogOut size={18} strokeWidth={1.5} className="mr-3" />
+              Logout
+            </Button>
+
+          </div>
       </aside>
 
       {/* Main content */}
