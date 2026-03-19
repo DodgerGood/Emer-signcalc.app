@@ -1,5 +1,5 @@
 from fastapi import HTTPException
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Response
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Response, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -27,7 +27,6 @@ from fastapi.responses import StreamingResponse
 import io
 import csv
 from typing import Optional, List
-
 
 DEVICE_LOCK_HOURS = 24
 KICKOUT_HOURS = 3
