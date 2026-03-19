@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
 import api from '../lib/api';
+import { Link } from 'react-router-dom';
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -241,6 +242,15 @@ const handleContactSupport = async () => {
                 ? "Don't have an account? Sign up"
                 : 'Already have an account? Sign in'}
             </button>
+          </div>
+          
+          <div className="text-center mt-4">
+            <Link
+              to="/platform-admin/login"
+              className="text-xs text-slate-400 hover:text-slate-600 transition"
+            >
+              Platform Support
+            </Link>
           </div>
 
           {/* Demo credentials hint */}
