@@ -1353,7 +1353,7 @@ async def import_all_companies_csv(file: UploadFile = File(...)):
 
     return result
 
-@api_router.get("/admin/companies/{company_id}/export")
+@api_router.get("/admin/companies/{company_id}", response_model=AdminCompanyDetail)
 async def get_admin_company_detail(company_id: str):
     company = await db.companies.find_one({"id": company_id}, {"_id": 0})
     if not company:
