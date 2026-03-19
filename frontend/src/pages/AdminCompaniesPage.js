@@ -63,6 +63,36 @@ export default function AdminCompaniesPage() {
     }
   };
 
+const handleUploadCompanyCsv = async (companyId, file) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await api.post(
+        `/admin/companies/${companyId}/import`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+
+      const result = response.data;
+      toast.success(
+        `Upload complete: ${result.created} created, ${result.updated} updated, ${result.skipped} skipped`
+      );
+
+      if (result.errors?.length) {
+        console.error('CSV upload errors:', result.errors);
+      }
+
+      loadCompanies();
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || 'Failed to upload company CSV.');
+    }
+  };
+
   return (
     <PlatformAdminLayout>
       <div className="space-y-8 fade-in">
@@ -142,6 +172,21 @@ export default function AdminCompaniesPage() {
                           >
                             Download CSV
                           </button>
+                        <label className="inline-flex w-28 justify-center px-2 py-1 bg-slate-700 text-white rounded text-xs cursor-pointer hover:bg-slate-800">
+                          Upload CSV
+                          <input
+                            type="file"
+                            accept=".csv"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleUploadCompanyCsv(company.company_id, file);
+                              }
+                              e.target.value = '';
+                            }}
+                          />
+                        </label>
                         </div>
                       </td>
                     </tr>
