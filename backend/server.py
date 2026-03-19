@@ -1250,7 +1250,110 @@ async def import_company_csv(company_id: str, file: UploadFile = File(...)):
 
     return result
 
-@api_router.get("/admin/companies/{company_id}", response_model=AdminCompanyDetail)
+@api_router.post("/admin/companies/import", response_model=CsvImportResult)
+async def import_all_companies_csv(file: UploadFile = File(...)):
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Only CSV files are supported")
+
+    content = await file.read()
+    text = content.decode("utf-8-sig")
+    reader = csv.DictReader(io.StringIO(text))
+
+    result = CsvImportResult()
+    allowed_roles = {"CEO", "MANAGER", "PROCUREMENT", "QUOTING_STAFF"}
+    allowed_statuses = {"ACTIVE", "SUSPENDED"}
+
+    for index, row in enumerate(reader, start=2):
+        try:
+            parsed = CsvUserRow(
+                company_id=row.get("company_id"),
+                company_name=row.get("company_name"),
+                user_id=row.get("user_id"),
+                full_name=row.get("full_name"),
+                email=row.get("email"),
+                role=row.get("role"),
+                status=row.get("status") or "ACTIVE",
+                device_id=row.get("device_id"),
+                device_lock_until=row.get("device_lock_until"),
+                lockout_until=row.get("lockout_until"),
+                lockout_count=int(row["lockout_count"]) if row.get("lockout_count") not in (None, "") else None,
+            )
+        except Exception as e:
+            result.errors.append(f"Row {index}: invalid data - {e}")
+            result.skipped += 1
+            continue
+
+        role = (parsed.role or "").strip().upper()
+        status = (parsed.status or "ACTIVE").strip().upper()
+
+        if role not in allowed_roles:
+            result.errors.append(f"Row {index}: invalid role '{parsed.role}'")
+            result.skipped += 1
+            continue
+
+        if status not in allowed_statuses:
+            result.errors.append(f"Row {index}: invalid status '{parsed.status}'")
+            result.skipped += 1
+            continue
+
+        target_company = None
+
+        if parsed.company_id:
+            target_company = await db.companies.find_one({"id": parsed.company_id}, {"_id": 0})
+
+        if not target_company and parsed.company_name:
+            target_company = await db.companies.find_one({"name": parsed.company_name}, {"_id": 0})
+
+        if not target_company:
+            if not parsed.company_name:
+                result.errors.append(f"Row {index}: missing company_id/company_name")
+                result.skipped += 1
+                continue
+
+            new_company = Company(name=parsed.company_name)
+            await db.companies.insert_one(new_company.model_dump())
+            target_company = new_company.model_dump()
+
+        company_id = target_company["id"]
+
+        existing_user = await db.users.find_one(
+            {"company_id": company_id, "email": parsed.email},
+            {"_id": 0}
+        )
+
+        if existing_user:
+            await db.users.update_one(
+                {"id": existing_user["id"]},
+                {"$set": {
+                    "full_name": parsed.full_name or existing_user.get("full_name"),
+                    "role": role,
+                    "status": status
+                }}
+            )
+            result.updated += 1
+        else:
+            temp_password = "ChangeMe123!"
+            new_user = User(
+                email=parsed.email,
+                full_name=parsed.full_name or "",
+                role=role,
+                company_id=company_id,
+                session_id=None,
+                lockout_until=None
+            )
+            user_dict = new_user.model_dump()
+            user_dict["status"] = status
+            user_dict["password_hash"] = hash_password(temp_password)
+            user_dict["device_id"] = None
+            user_dict["device_lock_until"] = None
+            user_dict["lockout_count"] = 0
+
+            await db.users.insert_one(user_dict)
+            result.created += 1
+
+    return result
+
+@api_router.get("/admin/companies/{company_id}/export")
 async def get_admin_company_detail(company_id: str):
     company = await db.companies.find_one({"id": company_id}, {"_id": 0})
     if not company:
