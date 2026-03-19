@@ -197,21 +197,45 @@ const handleBulkUploadCsv = async (file) => {
 
                 <tbody>
                   {companies.map((company) => (
-                    <tr key={company.company_id} className="border-t border-slate-200">
+                    <tr
+                      key={company.company_id}
+                        className={`border-t border-slate-200 ${
+                          company.status === 'DELETED' ? 'opacity-60' : ''
+                        }`}
+                      >
                       <td className="px-4 py-3">{company.company_name}</td>
                       <td className="px-4 py-3">{company.company_id}</td>
-                      <td className="px-4 py-3">{company.status}</td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex px-2 py-1 rounded text-xs font-medium ${
+                            company.status === 'ACTIVE'
+                              ? 'bg-green-100 text-green-700'
+                              : company.status === 'SUSPENDED'
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : company.status === 'DELETED'
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-slate-100 text-slate-700'
+                          }`}
+                        >
+                          {company.status}
+                        </span>
+                      </td>
                       <td className="px-4 py-3">{company.user_count}</td>
                       <td className="px-4 py-3">{company.total_lockout_count}</td>
                       <td className="px-4 py-3">
                         <div className="flex flex-col gap-2 items-start">
-                          <a
-                            href={`/platform-admin/companies/${company.company_id}`}
-                            className="inline-flex w-28 justify-center px-2 py-1 bg-slate-200 text-slate-900 rounded text-xs"
-                          >
-                            Open
-                          </a>
-
+                          {company.status === 'DELETED' ? (
+                            <span className="inline-flex w-28 justify-center px-2 py-1 bg-slate-100 text-slate-400 rounded text-xs cursor-not-allowed">
+                              Open
+                            </span>
+                          ) : (
+                            <a
+                              href={`/platform-admin/companies/${company.company_id}`}
+                              className="inline-flex w-28 justify-center px-2 py-1 bg-slate-200 text-slate-900 rounded text-xs"
+                            >
+                              Open
+                            </a>
+                          )}
                           <button
                             type="button"
                             onClick={() => handleDownloadCompanyCsv(company.company_id, company.company_name)}
