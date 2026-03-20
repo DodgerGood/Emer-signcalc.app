@@ -278,7 +278,7 @@ const handleCancelEditUser = () => {
                                 onChange={(e) =>
                                   setEditForm((prev) => ({ ...prev, full_name: e.target.value }))
                                 }
-                                className="w-full px-2 py-1 border border-slate-300 rounded text-sm"
+                                className="w-full min-w-[220px] px-3 py-2 border border-slate-300 rounded text-sm"
                               />
                             ) : (
                               user.full_name || '—'
@@ -293,7 +293,7 @@ const handleCancelEditUser = () => {
                                 onChange={(e) =>
                                   setEditForm((prev) => ({ ...prev, email: e.target.value }))
                                 }
-                                className="w-full px-2 py-1 border border-slate-300 rounded text-sm"
+                                className="w-full min-w-[220px] px-3 py-2 border border-slate-300 rounded text-sm"
                               />
                             ) : (
                               user.email
@@ -307,7 +307,7 @@ const handleCancelEditUser = () => {
                                  onChange={(e) =>
                                    setEditForm((prev) => ({ ...prev, role: e.target.value }))
                                  }
-                                 className="w-full px-2 py-1 border border-slate-300 rounded text-sm"
+                                 className="w-full min-w-[220px] px-3 py-2 border border-slate-300 rounded text-sm"
                                >
                                  <option value="CEO">CEO</option>
                                  <option value="MANAGER">Manager</option>
@@ -326,7 +326,7 @@ const handleCancelEditUser = () => {
                                  onChange={(e) =>
                                    setEditForm((prev) => ({ ...prev, status: e.target.value }))
                                  }
-                                 className="w-full px-2 py-1 border border-slate-300 rounded text-sm"
+                                 className="w-full min-w-[220px] px-3 py-2 border border-slate-300 rounded text-sm"
                                >
                                  <option value="ACTIVE">ACTIVE</option>
                                  <option value="SUSPENDED">SUSPENDED</option>

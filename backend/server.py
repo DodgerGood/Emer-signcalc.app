@@ -1208,6 +1208,8 @@ async def update_user(user_id: str, req: AdminUserUpdateRequest):
     if not update_fields:
         raise HTTPException(status_code=400, detail="No valid fields provided")
 
+    password_setup_email_failed = False
+
     if email_changed:
         setup_token = str(uuid.uuid4())
         setup_expires_at = (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat()
@@ -1218,12 +1220,6 @@ async def update_user(user_id: str, req: AdminUserUpdateRequest):
         frontend_url = os.environ.get("FRONTEND_URL", "").rstrip("/")
         setup_link = f"{frontend_url}/set-password?token={setup_token}"
 
-        send_password_setup_email(
-            to_email=update_fields["email"],
-            full_name=update_fields.get("full_name") or user.get("full_name") or "User",
-            setup_link=setup_link
-        )
-
     await db.users.update_one(
         {"id": user_id},
         {"$set": update_fields}
@@ -1231,9 +1227,21 @@ async def update_user(user_id: str, req: AdminUserUpdateRequest):
 
     updated_user = await db.users.find_one({"id": user_id}, {"_id": 0})
 
+    if email_changed:
+        try:
+            send_password_setup_email(
+                to_email=update_fields["email"],
+                full_name=update_fields.get("full_name") or user.get("full_name") or "User",
+                setup_link=setup_link
+            )
+        except Exception as e:
+            password_setup_email_failed = True
+            print(f"Password setup email failed for {update_fields['email']}: {e}")
+
     return {
         "message": "User updated successfully.",
-        "user": updated_user
+        "user": updated_user,
+        "password_setup_email_failed": password_setup_email_failed
     }
 
 @api_router.post("/admin/companies/{company_id}/users/create")
