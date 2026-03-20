@@ -224,6 +224,12 @@ class AdminCompanyDetail(BaseModel):
     total_lockout_count: int = 0
     users: List[AdminCompanyUserRecord]
 
+class AdminUserUpdateRequest(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    role: Optional[str] = None
+    status: Optional[str] = None
+
 class CsvUserRow(BaseModel):
     company_id: Optional[str] = None
     company_name: Optional[str] = None
@@ -242,6 +248,12 @@ class CsvImportResult(BaseModel):
     updated: int = 0
     skipped: int = 0
     errors: List[str] = []
+
+class AdminCreateUserRequest(BaseModel):
+    full_name: str
+    email: EmailStr
+    role: str
+    status: Optional[str] = "ACTIVE"
 
 # Company Models
 class Company(BaseModel):
@@ -1061,6 +1073,170 @@ async def list_admin_companies():
 
     summaries.sort(key=lambda x: x.company_name.lower())
     return summaries
+
+@api_router.post("/admin/users/{user_id}/suspend")
+async def suspend_user(user_id: str):
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"status": "SUSPENDED"}}
+    )
+
+    return {
+        "message": "User suspended successfully.",
+        "user_id": user_id,
+        "status": "SUSPENDED"
+    }
+
+@api_router.post("/admin/users/{user_id}/restore")
+async def restore_user(user_id: str):
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"status": "ACTIVE"}}
+    )
+
+    return {
+        "message": "User restored successfully.",
+        "user_id": user_id,
+        "status": "ACTIVE"
+    }
+
+@api_router.post("/admin/users/{user_id}/delete")
+async def soft_delete_user(user_id: str):
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"status": "DELETED"}}
+    )
+
+    return {
+        "message": "User soft deleted successfully.",
+        "user_id": user_id,
+        "status": "DELETED"
+    }
+
+@api_router.post("/admin/users/{user_id}/hard-delete")
+async def hard_delete_user(user_id: str):
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    await db.users.delete_one({"id": user_id})
+
+    return {
+        "message": "User permanently deleted successfully.",
+        "user_id": user_id,
+        "status": "HARD_DELETED"
+    }
+
+@api_router.post("/admin/users/{user_id}/update")
+async def update_user(user_id: str, req: AdminUserUpdateRequest):
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    update_fields = {}
+    allowed_roles = {"CEO", "MANAGER", "PROCUREMENT", "QUOTING_STAFF"}
+    allowed_statuses = {"ACTIVE", "SUSPENDED", "DELETED"}
+
+    if req.full_name is not None:
+        update_fields["full_name"] = req.full_name
+
+    if req.email is not None:
+        existing_email_user = await db.users.find_one(
+            {"email": req.email, "id": {"$ne": user_id}},
+            {"_id": 0}
+        )
+        if existing_email_user:
+            raise HTTPException(status_code=400, detail="Email already in use")
+        update_fields["email"] = req.email
+
+    if req.role is not None:
+        role = req.role.strip().upper()
+        if role not in allowed_roles:
+            raise HTTPException(status_code=400, detail="Invalid role")
+        update_fields["role"] = role
+
+    if req.status is not None:
+        status = req.status.strip().upper()
+        if status not in allowed_statuses:
+            raise HTTPException(status_code=400, detail="Invalid status")
+        update_fields["status"] = status
+
+    if not update_fields:
+        raise HTTPException(status_code=400, detail="No valid fields provided")
+
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": update_fields}
+    )
+
+    updated_user = await db.users.find_one({"id": user_id}, {"_id": 0})
+
+    return {
+        "message": "User updated successfully.",
+        "user": updated_user
+    }
+
+@api_router.post("/admin/companies/{company_id}/users/create")
+async def create_company_user(company_id: str, req: AdminCreateUserRequest):
+    company = await db.companies.find_one({"id": company_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    existing_user = await db.users.find_one(
+        {"company_id": company_id, "email": req.email},
+        {"_id": 0}
+    )
+    if existing_user:
+        raise HTTPException(status_code=400, detail="User with this email already exists in this company")
+
+    allowed_roles = {"CEO", "MANAGER", "PROCUREMENT", "QUOTING_STAFF"}
+    allowed_statuses = {"ACTIVE", "SUSPENDED", "DELETED"}
+
+    role = req.role.strip().upper()
+    status = (req.status or "ACTIVE").strip().upper()
+
+    if role not in allowed_roles:
+        raise HTTPException(status_code=400, detail="Invalid role")
+
+    if status not in allowed_statuses:
+        raise HTTPException(status_code=400, detail="Invalid status")
+
+    temp_password = "ChangeMe123!"
+
+    new_user = User(
+        email=req.email,
+        full_name=req.full_name,
+        role=role,
+        company_id=company_id,
+        session_id=None,
+        lockout_until=None
+    )
+
+    user_dict = new_user.model_dump()
+    user_dict["status"] = status
+    user_dict["password_hash"] = hash_password(temp_password)
+    user_dict["device_id"] = None
+    user_dict["device_lock_until"] = None
+    user_dict["lockout_count"] = 0
+
+    await db.users.insert_one(user_dict)
+
+    return {
+        "message": "User created successfully.",
+        "user": user_dict
+    }
 
 @api_router.get("/admin/companies/export")
 async def export_all_companies_csv():
