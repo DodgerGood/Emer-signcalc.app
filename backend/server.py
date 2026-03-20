@@ -96,11 +96,18 @@ class User(BaseModel):
 
     session_id: Optional[str] = None
     lockout_until: Optional[str] = None  # keep if you already use it
-
+    
     # NEW: device lock + kickout
     device_id: Optional[str] = None
     device_locked_until: Optional[str] = None
     kickout_until: Optional[str] = None
+    status: Optional[str] = "ACTIVE"
+    lockout_count: Optional[int] = 0
+
+    password_hash: Optional[str] = None
+
+    password_setup_token: Optional[str] = None
+    password_setup_expires_at: Optional[str] = None
 
 class UserRole(str):
     MANAGER = "MANAGER"
@@ -714,6 +721,23 @@ def send_email_alert(subject: str, body: str, to_email: str):
             server.login(SMTP_USERNAME, SMTP_PASSWORD)
             server.send_message(msg)
 
+def send_password_setup_email(to_email: str, full_name: str, setup_link: str):
+    subject = "Set up your Signomics password"
+    body = f"""Hello {full_name or "User"},
+
+Your seat details were updated in Signomics.
+
+Please use the link below to set your password for future login:
+
+{setup_link}
+
+If you were not expecting this email, please contact support.
+
+Regards,
+Signomics Support
+"""
+    send_email_alert(subject=subject, body=body, to_email=to_email)
+
 # ===== AUTH ROUTES =====
 
 @api_router.post("/auth/register", response_model=TokenResponse)
@@ -1146,6 +1170,8 @@ async def update_user(user_id: str, req: AdminUserUpdateRequest):
         raise HTTPException(status_code=404, detail="User not found")
 
     update_fields = {}
+    original_email = user.get("email")
+    email_changed = False
     allowed_roles = {"CEO", "MANAGER", "PROCUREMENT", "QUOTING_STAFF"}
     allowed_statuses = {"ACTIVE", "SUSPENDED", "DELETED"}
 
@@ -1153,13 +1179,19 @@ async def update_user(user_id: str, req: AdminUserUpdateRequest):
         update_fields["full_name"] = req.full_name
 
     if req.email is not None:
+        new_email = req.email.strip().lower()
+
         existing_email_user = await db.users.find_one(
-            {"email": req.email, "id": {"$ne": user_id}},
+            {"email": new_email, "id": {"$ne": user_id}},
             {"_id": 0}
         )
         if existing_email_user:
             raise HTTPException(status_code=400, detail="Email already in use")
-        update_fields["email"] = req.email
+
+        update_fields["email"] = new_email
+
+        if new_email != (original_email or "").strip().lower():
+            email_changed = True
 
     if req.role is not None:
         role = req.role.strip().upper()
@@ -1175,6 +1207,22 @@ async def update_user(user_id: str, req: AdminUserUpdateRequest):
 
     if not update_fields:
         raise HTTPException(status_code=400, detail="No valid fields provided")
+
+    if email_changed:
+        setup_token = str(uuid.uuid4())
+        setup_expires_at = (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat()
+
+        update_fields["password_setup_token"] = setup_token
+        update_fields["password_setup_expires_at"] = setup_expires_at
+
+        frontend_url = os.environ.get("FRONTEND_URL", "").rstrip("/")
+        setup_link = f"{frontend_url}/set-password?token={setup_token}"
+
+        send_password_setup_email(
+            to_email=update_fields["email"],
+            full_name=update_fields.get("full_name") or user.get("full_name") or "User",
+            setup_link=setup_link
+        )
 
     await db.users.update_one(
         {"id": user_id},

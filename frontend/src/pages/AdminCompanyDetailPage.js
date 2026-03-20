@@ -9,6 +9,14 @@ export default function AdminCompanyDetailPage() {
   const [company, setCompany] = useState(null);
   const [loading, setLoading] = useState(true);
 
+const [editingUserId, setEditingUserId] = useState(null);
+  const [editForm, setEditForm] = useState({
+    full_name: '',
+    email: '',
+    role: '',
+    status: 'ACTIVE',
+  });
+
   const loadCompany = useCallback(async () => {
     try {
       setLoading(true);
@@ -93,6 +101,37 @@ const handleSoftDeleteUser = async (userId) => {
     } catch (error) {
       toast.error(error?.response?.data?.detail || 'Failed to hard delete seat.');
     }
+  };
+
+const handleStartEditUser = (user) => {
+    setEditingUserId(user.user_id);
+    setEditForm({
+      full_name: user.full_name || '',
+      email: user.email || '',
+      role: user.role || '',
+      status: user.status || 'ACTIVE',
+    });
+  };
+
+const handleSaveEditUser = async (userId) => {
+    try {
+      await api.post(`/admin/users/${userId}/update`, editForm);
+      toast.success('Seat updated successfully.');
+      setEditingUserId(null);
+      loadCompany();
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || 'Failed to update seat.');
+    }
+  };
+
+const handleCancelEditUser = () => {
+    setEditingUserId(null);
+    setEditForm({
+      full_name: '',
+      email: '',
+      role: '',
+      status: 'ACTIVE',
+    });
   };
 
   return (
@@ -231,59 +270,144 @@ const handleSoftDeleteUser = async (userId) => {
                     <tbody>
                       {company.users.map((user) => (
                         <tr key={user.user_id} className="border-t border-slate-200">
-                          <td className="px-4 py-3">{user.full_name || '—'}</td>
-                          <td className="px-4 py-3">{user.email}</td>
-                          <td className="px-4 py-3">{user.role || '—'}</td>
-                          <td className="px-4 py-3">{user.status}</td>
+                          <td className="px-4 py-3">
+                            {editingUserId === user.user_id ? (
+                              <input
+                                type="text"
+                                value={editForm.full_name}
+                                onChange={(e) =>
+                                  setEditForm((prev) => ({ ...prev, full_name: e.target.value }))
+                                }
+                                className="w-full px-2 py-1 border border-slate-300 rounded text-sm"
+                              />
+                            ) : (
+                              user.full_name || '—'
+                            )}
+                          </td>
+
+                          <td className="px-4 py-3">
+                            {editingUserId === user.user_id ? (
+                              <input
+                                type="email"
+                                value={editForm.email}
+                                onChange={(e) =>
+                                  setEditForm((prev) => ({ ...prev, email: e.target.value }))
+                                }
+                                className="w-full px-2 py-1 border border-slate-300 rounded text-sm"
+                              />
+                            ) : (
+                              user.email
+                            )}
+                          </td>
+
+                          <td className="px-4 py-3">
+                            {editingUserId === user.user_id ? (
+                               <select
+                                 value={editForm.role}
+                                 onChange={(e) =>
+                                   setEditForm((prev) => ({ ...prev, role: e.target.value }))
+                                 }
+                                 className="w-full px-2 py-1 border border-slate-300 rounded text-sm"
+                               >
+                                 <option value="CEO">CEO</option>
+                                 <option value="MANAGER">Manager</option>
+                                 <option value="PROCUREMENT">Procurement</option>
+                                 <option value="QUOTING_STAFF">Quoting Staff</option>
+                               </select>
+                             ) : (
+                               user.role || '—'
+                             )}
+                           </td>
+
+                           <td className="px-4 py-3">
+                             {editingUserId === user.user_id ? (
+                               <select
+                                 value={editForm.status}
+                                 onChange={(e) =>
+                                   setEditForm((prev) => ({ ...prev, status: e.target.value }))
+                                 }
+                                 className="w-full px-2 py-1 border border-slate-300 rounded text-sm"
+                               >
+                                 <option value="ACTIVE">ACTIVE</option>
+                                 <option value="SUSPENDED">SUSPENDED</option>
+                                 <option value="DELETED">DELETED</option>
+                               </select>
+                             ) : (
+                               user.status
+                             )}
+                           </td>
                           <td className="px-4 py-3">{user.device_id || '—'}</td>
                           <td className="px-4 py-3">{user.device_lock_until || '—'}</td>
                           <td className="px-4 py-3">{user.lockout_until || '—'}</td>
                           <td className="px-4 py-3">{user.lockout_count}</td>
                           <td className="px-4 py-3">
                             <div className="flex flex-col gap-2 items-start">
-                              {user.status === 'SUSPENDED' ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleRestoreUser(user.user_id)}
-                                  className="inline-flex w-24 justify-center px-2 py-1 bg-green-600 text-white rounded text-xs"
-                                >
-                                  Reactivate
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => handleSuspendUser(user.user_id)}
-                                  className="inline-flex w-24 justify-center px-2 py-1 bg-yellow-500 text-white rounded text-xs"
-                                >
-                                  Suspend
-                                </button>
-                              )}
+                              {editingUserId === user.user_id ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSaveEditUser(user.user_id)}
+                                    className="inline-flex w-24 justify-center px-2 py-1 bg-blue-600 text-white rounded text-xs"
+                                  >
+                                    Save
+                                  </button>
 
-                              <button
-                                type="button"
-                                className="inline-flex w-24 justify-center px-2 py-1 bg-slate-500 text-white rounded text-xs"
-                              >
-                                Edit
-                              </button>
-
-                              {user.status === 'DELETED' ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleHardDeleteUser(user.user_id)}
-                                  className="inline-flex w-24 justify-center px-2 py-1 bg-red-700 text-white rounded text-xs"
-                                >
-                                  Hard Delete
-                                </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleCancelEditUser}
+                                    className="inline-flex w-24 justify-center px-2 py-1 bg-slate-500 text-white rounded text-xs"
+                                  >
+                                    Cancel
+                                  </button>
+                                </> 
                               ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => handleSoftDeleteUser(user.user_id)}
-                                  className="inline-flex w-24 justify-center px-2 py-1 bg-red-500 text-white rounded text-xs"
-                                >
-                                  Delete
-                                </button>
+                                <>
+                                  {user.status === 'SUSPENDED' ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRestoreUser(user.user_id)}
+                                      className="inline-flex w-24 justify-center px-2 py-1 bg-green-600 text-white rounded text-xs"
+                                    >
+                                      Reactivate
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSuspendUser(user.user_id)}
+                                      className="inline-flex w-24 justify-center px-2 py-1 bg-yellow-500 text-white rounded text-xs"
+                                    >
+                                      Suspend
+                                    </button>
+                                  )}
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStartEditUser(user)}
+                                    className="inline-flex w-24 justify-center px-2 py-1 bg-slate-500 text-white rounded text-xs"
+                                  >
+                                    Edit
+                                  </button>
+
+                                  {user.status === 'DELETED' ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleHardDeleteUser(user.user_id)}
+                                      className="inline-flex w-24 justify-center px-2 py-1 bg-red-700 text-white rounded text-xs"
+                                    >
+                                      Hard Delete
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSoftDeleteUser(user.user_id)}
+                                      className="inline-flex w-24 justify-center px-2 py-1 bg-red-500 text-white rounded text-xs"
+                                    >
+                                      Delete
+                                    </button>
+                                  )}
+                                </>
                               )}
-                            </div>
+                            </div> 
                           </td>
                         </tr>
                       ))}
