@@ -55,6 +55,46 @@ const handleRestoreCompany = async () => {
     }
   };
 
+const handleSuspendUser = async (userId) => {
+    try {
+      await api.post(`/admin/users/${userId}/suspend`);
+      toast.success('Seat suspended successfully.');
+      loadCompany();
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || 'Failed to suspend seat.');
+    }
+  };
+
+  const handleRestoreUser = async (userId) => {
+    try {
+      await api.post(`/admin/users/${userId}/restore`);
+      toast.success('Seat reactivated successfully.');
+      loadCompany();
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || 'Failed to reactivate seat.');
+    }
+  };
+
+const handleSoftDeleteUser = async (userId) => {
+    try {
+      await api.post(`/admin/users/${userId}/delete`);
+      toast.success('Seat soft deleted successfully.');
+      loadCompany();
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || 'Failed to delete seat.');
+    }
+  };
+
+  const handleHardDeleteUser = async (userId) => {
+    try {
+      await api.post(`/admin/users/${userId}/hard-delete`);
+      toast.success('Seat permanently deleted.');
+      loadCompany();
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || 'Failed to hard delete seat.');
+    }
+  };
+
   return (
     <PlatformAdminLayout>
       <div className="space-y-8 fade-in">
@@ -201,24 +241,48 @@ const handleRestoreCompany = async () => {
                           <td className="px-4 py-3">{user.lockout_count}</td>
                           <td className="px-4 py-3">
                             <div className="flex flex-col gap-2 items-start">
-                              <button
-                                type="button"
-                                className="inline-flex w-24 justify-center px-2 py-1 bg-yellow-500 text-white rounded text-xs"
-                              >
-                                Suspend
-                              </button>
+                              {user.status === 'SUSPENDED' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRestoreUser(user.user_id)}
+                                  className="inline-flex w-24 justify-center px-2 py-1 bg-green-600 text-white rounded text-xs"
+                                >
+                                  Reactivate
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSuspendUser(user.user_id)}
+                                  className="inline-flex w-24 justify-center px-2 py-1 bg-yellow-500 text-white rounded text-xs"
+                                >
+                                  Suspend
+                                </button>
+                              )}
+
                               <button
                                 type="button"
                                 className="inline-flex w-24 justify-center px-2 py-1 bg-slate-500 text-white rounded text-xs"
                               >
                                 Edit
                               </button>
-                              <button
-                                type="button"
-                                className="inline-flex w-24 justify-center px-2 py-1 bg-red-500 text-white rounded text-xs"
-                              >
-                                Delete
-                              </button>
+
+                              {user.status === 'DELETED' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleHardDeleteUser(user.user_id)}
+                                  className="inline-flex w-24 justify-center px-2 py-1 bg-red-700 text-white rounded text-xs"
+                                >
+                                  Hard Delete
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSoftDeleteUser(user.user_id)}
+                                  className="inline-flex w-24 justify-center px-2 py-1 bg-red-500 text-white rounded text-xs"
+                                >
+                                  Delete
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
