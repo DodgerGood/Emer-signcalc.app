@@ -134,6 +134,29 @@ const handleCancelEditUser = () => {
     });
   };
 
+const handleCreateSeat = async () => {
+    try {
+      await api.post(
+        `/admin/companies/${company.company_id}/users/create`,
+        newSeatForm
+      );
+
+      toast.success('Seat created successfully.');
+
+      setShowAddSeatForm(false);
+      setNewSeatForm({
+        full_name: '',
+        email: '',
+        role: 'QUOTING_STAFF',
+        status: 'ACTIVE',
+      });
+
+      loadCompany();
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || 'Failed to create seat.');
+    }
+  };
+
   return (
     <PlatformAdminLayout>
       <div className="space-y-8 fade-in">
@@ -159,59 +182,157 @@ const handleCancelEditUser = () => {
                     Company Overview
                   </h2>
                 </div>
-
                 <div className="flex gap-2">
-                      {company?.status === 'ACTIVE' && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={handleSuspendCompany}
-                            className="inline-flex justify-center px-3 py-2 bg-yellow-500 text-white rounded text-sm"
-                          >
-                            Suspend Company
-                          </button>
+                  {company?.status === 'ACTIVE' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleSuspendCompany}
+                        className="inline-flex justify-center px-3 py-2 bg-yellow-500 text-white rounded text-sm"
+                      >
+                        Suspend Company
+                      </button>
 
-                          <button
-                            type="button"
-                            onClick={handleDeleteCompany}
-                            className="inline-flex justify-center px-3 py-2 bg-red-600 text-white rounded text-sm"
-                          >
-                            Delete Company
-                          </button>
-                        </>
-                      )}
+                      <button
+                        type="button"
+                        onClick={handleDeleteCompany}
+                        className="inline-flex justify-center px-3 py-2 bg-red-600 text-white rounded text-sm"
+                      >
+                        Delete Company
+                      </button>
+                    </>
+                  )}
 
-                      {company?.status === 'SUSPENDED' && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={handleRestoreCompany}
-                          className="inline-flex justify-center px-3 py-2 bg-green-600 text-white rounded text-sm"
-                        >
-                          Reactivate Company
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={handleDeleteCompany}
-                          className="inline-flex justify-center px-3 py-2 bg-red-600 text-white rounded text-sm"
-                        >
-                          Delete Company
-                        </button>
-                      </>
-                    )}
-
-                    {company?.status === 'DELETED' && (
+                  {company?.status === 'SUSPENDED' && (
+                    <>
                       <button
                         type="button"
                         onClick={handleRestoreCompany}
                         className="inline-flex justify-center px-3 py-2 bg-green-600 text-white rounded text-sm"
                       >
-                        Restore Company
+                        Reactivate Company
                       </button>
-                    )}
-                  </div>
+
+                      <button
+                        type="button"
+                        onClick={handleDeleteCompany}
+                        className="inline-flex justify-center px-3 py-2 bg-red-600 text-white rounded text-sm"
+                      >
+                        Delete Company
+                      </button>
+                    </>
+                  )}
+
+                  {company?.status === 'DELETED' && (
+                    <button
+                      type="button"
+                      onClick={handleRestoreCompany}
+                      className="inline-flex justify-center px-3 py-2 bg-green-600 text-white rounded text-sm"
+                    >
+                      Restore Company
+                    </button>
+                  )}
+
+                  {/* ALWAYS VISIBLE */}
+                  <button
+                    type="button"
+                    onClick={() => setShowAddSeatForm(!showAddSeatForm)}
+                    className="inline-flex justify-center px-3 py-2 bg-[#2563EB] text-white rounded text-sm"
+                  >
+                    {showAddSeatForm ? 'Cancel New Seat' : 'Add New Seat'}
+                  </button>
+                </div>
               </div>
+
+                {showAddSeatForm && (
+                  <div className="mt-6 p-4 border border-slate-200 rounded-lg bg-slate-50">
+                    <h3 className="text-sm font-medium text-slate-600 uppercase tracking-wide mb-4">
+                      Add New Seat
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div>
+                        <label className="block text-sm text-slate-600 mb-1">Full Name</label>
+                        <input
+                          type="text"
+                          value={newSeatForm.full_name}
+                          onChange={(e) =>
+                            setNewSeatForm((prev) => ({ ...prev, full_name: e.target.value }))
+                          }
+                          className="w-full min-w-[220px] px-3 py-2 border border-slate-300 rounded text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm text-slate-600 mb-1">Email</label>
+                        <input
+                          type="email"
+                          value={newSeatForm.email}
+                          onChange={(e) =>
+                            setNewSeatForm((prev) => ({ ...prev, email: e.target.value }))
+                          }
+                          className="w-full min-w-[220px] px-3 py-2 border border-slate-300 rounded text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm text-slate-600 mb-1">Role</label>
+                      <select
+                        value={newSeatForm.role}
+                        onChange={(e) =>
+                          setNewSeatForm((prev) => ({ ...prev, role: e.target.value }))
+                        }
+                        className="w-full min-w-[220px] px-3 py-2 border border-slate-300 rounded text-sm"
+                      >
+                        <option value="CEO">CEO</option>
+                        <option value="MANAGER">Manager</option>
+                        <option value="PROCUREMENT">Procurement</option>
+                        <option value="QUOTING_STAFF">Quoting Staff</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm text-slate-600 mb-1">Status</label>
+                      <select
+                        value={newSeatForm.status}
+                        onChange={(e) =>
+                          setNewSeatForm((prev) => ({ ...prev, status: e.target.value }))
+                        }
+                        className="w-full min-w-[220px] px-3 py-2 border border-slate-300 rounded text-sm"
+                      >
+                        <option value="ACTIVE">ACTIVE</option>
+                        <option value="SUSPENDED">SUSPENDED</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCreateSeat}
+                    className="inline-flex justify-center px-4 py-2 bg-[#2563EB] text-white rounded text-sm"
+                  >
+                    Add
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddSeatForm(false);
+                      setNewSeatForm({
+                        full_name: '',
+                        email: '',
+                        role: 'QUOTING_STAFF',
+                        status: 'ACTIVE',
+                      });
+                    }}
+                    className="inline-flex justify-center px-4 py-2 bg-slate-500 text-white rounded text-sm"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
 
   <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div>
