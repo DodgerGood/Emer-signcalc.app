@@ -8,8 +8,15 @@ export default function AdminCompanyDetailPage() {
   const { companyId } = useParams();
   const [company, setCompany] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showAddSeatForm, setShowAddSeatForm] = useState(false);
+  const [newSeatForm, setNewSeatForm] = useState({
+    full_name: '',
+    email: '',
+    role: 'QUOTING_STAFF',
+    status: 'ACTIVE',
+  });
 
-const [editingUserId, setEditingUserId] = useState(null);
+  const [editingUserId, setEditingUserId] = useState(null);
   const [editForm, setEditForm] = useState({
     full_name: '',
     email: '',
