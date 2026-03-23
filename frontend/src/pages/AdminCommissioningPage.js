@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import { toast } from 'sonner';
 import { PlatformAdminLayout } from '../components/PlatformAdminLayout';
@@ -11,6 +12,7 @@ const emptySeat = () => ({
 });
 
 export default function AdminCommissioningPage() {
+  const navigate = useNavigate();
   const [companyForm, setCompanyForm] = useState({
     name: '',
     phone_number: '',
@@ -47,18 +49,19 @@ export default function AdminCommissioningPage() {
       };
 
       const response = await api.post('/admin/companies/setup', payload);
-
       toast.success(
-        `Company created. ${response.data.users_created} seat(s) added.`
-      );
+              `Company created. ${response.data.users_created} seat(s) added.`
+            );
 
-      setCompanyForm({
-        name: '',
-        phone_number: '',
-        vat_number: '',
-        address: '',
-      });
-      setSeats([emptySeat()]);
+            setCompanyForm({
+              name: '',
+              phone_number: '',
+              vat_number: '',
+              address: '',
+            });
+            setSeats([emptySeat()]);
+
+            navigate('/platform-admin/companies');
     } catch (error) {
       toast.error(error?.response?.data?.detail || 'Failed to set up company.');
     } finally {
