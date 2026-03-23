@@ -177,9 +177,14 @@ return (
                             <button
                               onClick={async () => {
                                 try {
-                                  await api.delete(
-                                    `/admin/support-requests/${request.support_case_id}`
-                                  );
+                                  const caseId = request.support_case_id;
+
+                                  if (!caseId) {
+                                    toast.error('Cannot delete legacy record (no case ID)');
+                                    return;
+                                  }
+
+                                  await api.delete(`/admin/support-requests/${caseId}`);
                                   toast.success('Moved to deleted');
                                   loadRequests();
                                 } catch (err) {
