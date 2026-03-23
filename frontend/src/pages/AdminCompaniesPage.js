@@ -293,7 +293,23 @@ const filteredCompanies = companies.filter((company) => {
                             Restore
                           </button>
                         )}
-
+                        {company.status === 'DELETED' && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await api.delete(`/admin/companies/${company.company_id}/hard-delete`);
+                                toast.success('Company permanently deleted.');
+                                loadCompanies();
+                              } catch (error) {
+                                toast.error(error?.response?.data?.detail || 'Hard delete failed.');
+                              }
+                            }}
+                            className="inline-flex w-28 justify-center px-2 py-1 bg-black text-white rounded text-xs"
+                          >
+                            Permanent Delete
+                          </button>
+                        )}
                         </div>
                       </td>
                     </tr>
