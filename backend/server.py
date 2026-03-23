@@ -1068,6 +1068,30 @@ async def action_support_request(case_id: str, req: AdminSupportActionRequest):
         "action": action
     }
 
+@api_router.delete("/admin/support-requests/{case_id}")
+async def delete_support_request(case_id: str):
+    support_request = await db.support_requests.find_one(
+        {"support_case_id": case_id},
+        {"_id": 0}
+    )
+
+    if not support_request:
+        raise HTTPException(status_code=404, detail="Support request not found")
+
+    await db.support_requests.update_one(
+        {"support_case_id": case_id},
+        {"$set": {
+            "status": "DELETED",
+            "resolved_at": datetime.now(timezone.utc).isoformat(),
+            "resolution_action": "DELETED"
+        }}
+    )
+
+    return {
+        "message": "Support request moved to deleted.",
+        "case_id": case_id
+    }
+
 @api_router.get("/admin/support-requests", response_model=List[SupportRequestRecord])
 async def list_support_requests():
     requests = await db.support_requests.find({}, {"_id": 0}).to_list(1000)
