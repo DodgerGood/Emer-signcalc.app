@@ -26,9 +26,12 @@ export default function AdminSupportPage() {
   }, []);
 
 const filteredRequests = requests.filter((request) => {
-  if (requestFilter === 'OPEN') return request.status === 'OPEN';
-  if (requestFilter === 'COMPLETED') return request.status === 'RESOLVED';
-  if (requestFilter === 'DELETED') return request.status === 'DELETED';
+  const status = (request.status || '').toUpperCase().trim();
+
+  if (requestFilter === 'OPEN') return status === 'OPEN';
+  if (requestFilter === 'COMPLETED') return status === 'COMPLETED' || status === 'RESOLVED';
+  if (requestFilter === 'DELETED') return status === 'DELETED';
+
   return true;
 });
 
@@ -105,7 +108,6 @@ return (
 
                       <td className="px-4 py-3">
                         <div className="flex flex-col gap-2 items-start">
-                        <>
                           {request.status === 'OPEN' && (
                             <>
                               <button
@@ -173,30 +175,53 @@ return (
                             </>
                           )}
 
-                          {request.status !== 'DELETED' && (
-                            <button
-                              onClick={async () => {
-                                try {
-                                  const caseId = request.support_case_id;
+                            {request.status !== 'DELETED' && (
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const caseId = request.support_case_id;
 
-                                  if (!caseId) {
-                                    toast.error('Cannot delete legacy record (no case ID)');
-                                    return;
+                                    if (!caseId) {
+                                      toast.error('Cannot delete legacy record (no case ID)');
+                                      return;
+                                    }
+
+                                    await api.delete(`/admin/support-requests/${caseId}`);
+                                    toast.success('Moved to deleted');
+                                    loadRequests();
+                                  } catch (err) {
+                                    toast.error(err?.response?.data?.detail || 'Delete failed');
                                   }
+                                }}
+                                className="inline-flex w-24 justify-center px-2 py-1 bg-red-700 text-white rounded text-xs"
+                              >
+                                Delete
+                              </button>
+                            )}
 
-                                  await api.delete(`/admin/support-requests/${caseId}`);
-                                  toast.success('Moved to deleted');
-                                  loadRequests();
-                                } catch (err) {
-                                  toast.error(err?.response?.data?.detail || 'Delete failed');
-                                }
-                              }}
-                              className="inline-flex w-24 justify-center px-2 py-1 bg-red-700 text-white rounded text-xs"
-                            >
-                              Delete
-                            </button>
-                          )}
-                        </>
+                            {request.status === 'DELETED' && (
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const caseId = request.support_case_id;
+
+                                    if (!caseId) {
+                                      toast.error('Cannot hard delete legacy record');
+                                      return;
+                                    }
+
+                                    await api.delete(`/admin/support-requests/${caseId}/hard-delete`);
+                                    toast.success('Permanently deleted');
+                                    loadRequests();
+                                  } catch (err) {
+                                    toast.error(err?.response?.data?.detail || 'Hard delete failed');
+                                  }
+                                }}
+                                className="inline-flex w-28 justify-center px-2 py-1 bg-black text-white rounded text-xs"
+                              >
+                                Permanent Delete
+                              </button>
+                            )}
                         </div>
                       </td>
                     </tr>
