@@ -267,6 +267,10 @@ class Company(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
+    phone_number: Optional[str] = None
+    vat_number: Optional[str] = None
+    address: Optional[str] = None
+    status: str = "ACTIVE"
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 # Material Models
@@ -1115,7 +1119,80 @@ async def list_support_requests():
     requests.sort(key=lambda x: x.get("created_at", ""), reverse=True)
     return [SupportRequestRecord(**r) for r in requests]
 
+class NewCompanySetupRequest(BaseModel):
+    name: str
+    phone_number: Optional[str] = None
+    vat_number: Optional[str] = None
+    address: Optional[str] = None
+    seats: List[AdminCreateUserRequest]
 
+@api_router.post("/admin/companies/setup")
+async def setup_new_company(req: NewCompanySetupRequest):
+
+    company = Company(
+        name=req.name,
+        phone_number=req.phone_number,
+        vat_number=req.vat_number,
+        address=req.address
+    )
+
+    company_dict = company.model_dump()
+    await db.companies.insert_one(company_dict)
+
+    created_users = []
+    email_failures = []
+
+    for seat in req.seats:
+        try:
+            role = seat.role.strip().upper()
+            status = (seat.status or "ACTIVE").strip().upper()
+
+            temp_password = "ChangeMe123!"
+
+            new_user = User(
+                email=seat.email,
+                full_name=seat.full_name,
+                role=role,
+                company_id=company.id
+            )
+
+            user_dict = new_user.model_dump()
+            user_dict["status"] = status
+            user_dict["password_hash"] = hash_password(temp_password)
+
+            setup_token = str(uuid.uuid4())
+            setup_expires_at = (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat()
+
+            user_dict["password_setup_token"] = setup_token
+            user_dict["password_setup_expires_at"] = setup_expires_at
+
+            await db.users.insert_one(user_dict)
+            created_users.append(user_dict)
+
+            try:
+                frontend_url = os.environ.get("FRONTEND_URL", "").rstrip("/")
+                setup_link = f"{frontend_url}/set-password?token={setup_token}"
+
+                send_password_setup_email(
+                    to_email=seat.email,
+                    full_name=seat.full_name,
+                    setup_link=setup_link
+                )
+            except Exception as e:
+                email_failures.append({
+                    "email": seat.email,
+                    "error": str(e)
+                })
+
+        except Exception as e:
+            print(f"Seat creation failed: {e}")
+
+    return {
+        "message": "Company setup complete",
+        "company": company_dict,
+        "users_created": len(created_users),
+        "email_failures": email_failures
+    }
 
 @api_router.get("/admin/companies", response_model=List[AdminCompanySummary])
 async def list_admin_companies():
