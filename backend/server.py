@@ -1219,7 +1219,19 @@ async def list_admin_companies():
     summaries.sort(key=lambda x: x.company_name.lower())
     return summaries
 
+@api_router.delete("/admin/companies/{company_id}/hard-delete")
+async def hard_delete_company(company_id: str):
+    company = await db.companies.find_one({"id": company_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
 
+    await db.users.delete_many({"company_id": company_id})
+    await db.companies.delete_one({"id": company_id})
+
+    return {
+        "message": "Company permanently deleted.",
+        "company_id": company_id
+    }
 
 @api_router.post("/admin/users/{user_id}/suspend")
 async def suspend_user(user_id: str):
