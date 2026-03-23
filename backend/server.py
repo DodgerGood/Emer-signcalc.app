@@ -1098,6 +1098,23 @@ async def list_admin_companies():
     summaries.sort(key=lambda x: x.company_name.lower())
     return summaries
 
+@api_router.delete("/admin/support-requests/{case_id}")
+async def delete_support_request(case_id: str):
+    support_request = await db.support_requests.find_one(
+        {"support_case_id": case_id},
+        {"_id": 0}
+    )
+
+    if not support_request:
+        raise HTTPException(status_code=404, detail="Support request not found")
+
+    await db.support_requests.delete_one({"support_case_id": case_id})
+
+    return {
+        "message": "Support request deleted successfully.",
+        "case_id": case_id
+    }
+
 @api_router.post("/admin/users/{user_id}/suspend")
 async def suspend_user(user_id: str):
     user = await db.users.find_one({"id": user_id}, {"_id": 0})
