@@ -25,11 +25,12 @@ export default function AdminSupportPage() {
     loadRequests();
   }, []);
 
-const filteredRequests = requests.filter((request) =>
-    requestFilter === 'OPEN'
-      ? request.status === 'OPEN'
-      : request.status !== 'OPEN'
-  );
+const filteredRequests = requests.filter((request) => {
+  if (requestFilter === 'OPEN') return request.status === 'OPEN';
+  if (requestFilter === 'COMPLETED') return request.status === 'RESOLVED';
+  if (requestFilter === 'DELETED') return request.status === 'DELETED';
+  return true;
+});
 
 return (
     <PlatformAdminLayout>
@@ -57,6 +58,7 @@ return (
               >
                 <option value="OPEN">Open</option>
                 <option value="COMPLETED">Completed</option>
+                <option value="DELETED">Deleted</option>
               </select>
 
               <button
@@ -103,7 +105,8 @@ return (
 
                       <td className="px-4 py-3">
                         <div className="flex flex-col gap-2 items-start">
-                          {request.status === 'OPEN' ? (
+                        <>
+                          {request.status === 'OPEN' && (
                             <>
                               <button
                                 onClick={async () => {
@@ -168,14 +171,16 @@ return (
                                 Reset
                               </button>
                             </>
-                          ) : (
+                          )}
+
+                          {request.status !== 'DELETED' && (
                             <button
                               onClick={async () => {
                                 try {
                                   await api.delete(
                                     `/admin/support-requests/${request.support_case_id}`
                                   );
-                                  toast.success('Support request deleted');
+                                  toast.success('Moved to deleted');
                                   loadRequests();
                                 } catch (err) {
                                   toast.error(err?.response?.data?.detail || 'Delete failed');
@@ -183,9 +188,10 @@ return (
                               }}
                               className="inline-flex w-24 justify-center px-2 py-1 bg-red-700 text-white rounded text-xs"
                             >
-                              Delete Request
+                              Delete
                             </button>
                           )}
+                        </>
                         </div>
                       </td>
                     </tr>
