@@ -6,7 +6,7 @@ import { PlatformAdminLayout } from '../components/PlatformAdminLayout';
 export default function AdminCompaniesPage() {
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
-
+  const [companyFilter, setCompanyFilter] = useState('ACTIVE');
   const loadCompanies = async () => {
     try {
       setLoading(true);
@@ -134,6 +134,15 @@ const handleRestoreCompany = async (companyId) => {
     }
   };
 
+const filteredCompanies = companies.filter((company) => {
+    const status = (company.status || '').toUpperCase().trim();
+
+    if (companyFilter === 'ACTIVE') return status !== 'DELETED';
+    if (companyFilter === 'DELETED') return status === 'DELETED';
+
+    return true;
+  });
+
   return (
     <PlatformAdminLayout>
       <div className="space-y-8 fade-in">
@@ -176,7 +185,14 @@ const handleRestoreCompany = async (companyId) => {
               }}
             />
           </label>
-
+          <select
+            value={companyFilter}
+            onChange={(e) => setCompanyFilter(e.target.value)}
+            className="px-3 py-1 rounded border border-slate-300 bg-white text-slate-900 text-sm"
+          >
+            <option value="ACTIVE">Active</option>
+            <option value="DELETED">Deleted</option>
+          </select>
           <button
             type="button"
             onClick={loadCompanies}
@@ -189,7 +205,7 @@ const handleRestoreCompany = async (companyId) => {
 
           {loading ? (
             <div className="p-6 text-slate-600">Loading companies...</div>
-          ) : companies.length === 0 ? (
+              ) : filteredCompanies.length === 0 ? (
             <div className="p-6 text-slate-600">No companies found.</div>
           ) : (
             <div className="overflow-x-auto">
@@ -206,7 +222,7 @@ const handleRestoreCompany = async (companyId) => {
                 </thead>
 
                 <tbody>
-                  {companies.map((company) => (
+                  {filteredCompanies.map((company) => (
                     <tr
                       key={company.company_id}
                         className={`border-t border-slate-200 ${
