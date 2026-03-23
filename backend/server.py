@@ -1189,7 +1189,8 @@ async def setup_new_company(req: NewCompanySetupRequest):
 
     return {
         "message": "Company setup complete",
-        "company": company_dict,
+        "company_id": company.id,
+        "company_name": company.name,
         "users_created": len(created_users),
         "email_failures": email_failures
     }
