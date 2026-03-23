@@ -1288,10 +1288,11 @@ async def create_company_user(company_id: str, req: AdminCreateUserRequest):
     user_dict["lockout_count"] = 0
 
     await db.users.insert_one(user_dict)
+    safe_user = {k: v for k, v in user_dict.items() if k != "_id"}
 
     return {
         "message": "User created successfully.",
-        "user": user_dict
+        "user": safe_user
     }
 
 @api_router.get("/admin/companies/export")
