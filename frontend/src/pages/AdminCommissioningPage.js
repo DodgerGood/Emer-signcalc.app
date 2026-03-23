@@ -42,7 +42,33 @@ export default function AdminCommissioningPage() {
   const handleSubmit = async () => {
     try {
       setSubmitting(true);
+      if (!companyForm.name.trim()) {
+              toast.error('Company name is required.');
+              setSubmitting(false);
+              return;
+            }
 
+            for (let i = 0; i < seats.length; i++) {
+              const seat = seats[i];
+
+              if (!seat.full_name.trim()) {
+                toast.error(`Seat ${i + 1}: full name is required.`);
+                setSubmitting(false);
+                return;
+              }
+
+              if (!seat.email.trim()) {
+                toast.error(`Seat ${i + 1}: email is required.`);
+                setSubmitting(false);
+                return;
+              }
+
+              if (!seat.role.trim()) {
+                toast.error(`Seat ${i + 1}: role is required.`);
+                setSubmitting(false);
+                return;
+              }
+            }
       const payload = {
         ...companyForm,
         seats,
