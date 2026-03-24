@@ -184,12 +184,12 @@ const filteredCompanies = companies.filter((company) => {
           <button
             type="button"
             onClick={handleDownloadAllCsv}
-            className="h-10 px-4 rounded bg-[#2563EB] hover:bg-[#1e40af] text-white text-sm"
+            className="h-10 px-4 rounded bg-slate-700 hover:bg-slate-800 text-white text-sm flex items-center cursor-pointer"
           >
             Download All CSV
           </button>
 
-          <label className="h-10 px-4 rounded bg-slate-700 hover:bg-slate-800 text-white text-sm flex items-center cursor-pointer">
+          <label  className="h-10 px-4 rounded bg-slate-700 hover:bg-slate-800 text-white text-sm flex items-center cursor-pointer whitespace-nowrap" >
             Bulk Upload CSV
             <input
               type="file"
