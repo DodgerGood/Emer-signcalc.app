@@ -7,7 +7,7 @@ export default function AdminSupportPage() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [requestFilter, setRequestFilter] = useState('OPEN');
-
+  const [supportSearch, setSupportSearch] = useState('');
 
   const loadRequests = async () => {
     try {
@@ -28,11 +28,35 @@ export default function AdminSupportPage() {
 const filteredRequests = requests.filter((request) => {
   const status = (request.status || '').toUpperCase().trim();
 
-  if (requestFilter === 'OPEN') return status === 'OPEN';
-  if (requestFilter === 'COMPLETED') return status === 'COMPLETED' || status === 'RESOLVED';
-  if (requestFilter === 'DELETED') return status === 'DELETED';
+  const matchesFilter =
+    requestFilter === 'OPEN'
+      ? status === 'OPEN'
+      : requestFilter === 'COMPLETED'
+      ? status === 'COMPLETED' || status === 'RESOLVED'
+      : requestFilter === 'DELETED'
+      ? status === 'DELETED'
+      : true;
 
-  return true;
+  const searchValue = supportSearch.trim().toLowerCase();
+
+  const matchesSearch =
+    !searchValue ||
+    [
+      request.support_case_id,
+      request.email,
+      request.company_name,
+      request.role,
+      request.reason,
+      request.status,
+      request.created_at,
+      request.full_name,
+      request.message,
+    ]
+      .join(' ')
+      .toLowerCase()
+      .includes(searchValue);
+
+  return matchesFilter && matchesSearch;
 });
 
 return (
@@ -63,6 +87,14 @@ return (
                 <option value="COMPLETED">Completed</option>
                 <option value="DELETED">Deleted</option>
               </select>
+
+              <input
+                type="text"
+                value={supportSearch}
+                onChange={(e) => setSupportSearch(e.target.value)}
+                placeholder="Search support requests..."
+                className="h-10 px-3 rounded border border-slate-300 bg-white text-slate-900 text-sm"
+              />
 
               <button
                 onClick={loadRequests}
