@@ -184,12 +184,12 @@ const filteredCompanies = companies.filter((company) => {
           <button
             type="button"
             onClick={handleDownloadAllCsv}
-            className="px-3 py-1 rounded bg-[#2563EB] hover:bg-[#1e40af] text-white text-sm"
+            className="h-10 px-4 rounded bg-[#2563EB] hover:bg-[#1e40af] text-white text-sm"
           >
             Download All CSV
           </button>
 
-          <label className="px-3 py-1 rounded bg-slate-700 hover:bg-slate-800 text-white text-sm cursor-pointer">
+          <label className="h-10 px-4 rounded bg-slate-700 hover:bg-slate-800 text-white text-sm flex items-center cursor-pointer">
             Bulk Upload CSV
             <input
               type="file"
@@ -204,10 +204,11 @@ const filteredCompanies = companies.filter((company) => {
               }}
             />
           </label>
+
           <select
             value={companyFilter}
             onChange={(e) => setCompanyFilter(e.target.value)}
-            className="px-3 py-1 rounded border border-slate-300 bg-white text-slate-900 text-sm"
+            className="h-10 px-3 rounded border border-slate-300 bg-white text-slate-900 text-sm"
           >
             <option value="ACTIVE">Active</option>
             <option value="DELETED">Deleted</option>
@@ -218,13 +219,13 @@ const filteredCompanies = companies.filter((company) => {
             value={companySearch}
             onChange={(e) => setCompanySearch(e.target.value)}
             placeholder="Search companies..."
-            className="px-3 py-1 rounded border border-slate-300 bg-white text-slate-900 text-sm"
+            className="h-10 px-3 rounded border border-slate-300 bg-white text-slate-900 text-sm"
           />
 
           <button
             type="button"
             onClick={loadCompanies}
-            className="px-3 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-900 text-sm"
+            className="h-10 px-4 rounded bg-slate-100 hover:bg-slate-200 text-slate-900 text-sm"
           >
             Refresh
           </button>
