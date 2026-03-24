@@ -830,20 +830,19 @@ async def login(req: LoginRequest):
                 status_code=403,
                 detail=f"Account locked. Try again in {hours}h {minutes}m."
             )
-        else:
+    else:
             # Lockout has expired, so clear the previous device claim and reopen the seat
             await db.users.update_one(
-                    {"id": user["id"]},
-                    {
-                        "$set": {
-                            "session_id": None,
-                            "lockout_until": new_lockout_until
-                        },
-                        "$inc": {
-                            "lockout_count": 1
-                        }
+                {"id": user["id"]},
+                {
+                    "$set": {
+                        "session_id": None,
+                        "device_id": None,
+                        "device_lock_until": None,
+                        "lockout_until": None
                     }
-                )
+                }
+            )
             user["lockout_until"] = None
             user["session_id"] = None
             user["device_id"] = None
@@ -867,12 +866,14 @@ async def login(req: LoginRequest):
 
         await db.users.update_one(
             {"id": user["id"]},
-            {"$set": {
-                "session_id": new_session_id,
-                "device_id": incoming_device_id,
-                "device_lock_until": new_device_lock_until,
-                "lockout_until": None
-            }}
+            {
+                "$set": {
+                    "session_id": new_session_id,
+                    "device_id": incoming_device_id,
+                    "device_lock_until": new_device_lock_until,
+                    "lockout_until": None
+                }
+            }
         )
 
         updated_user = await db.users.find_one({"id": user["id"]}, {"_id": 0})
