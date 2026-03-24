@@ -866,16 +866,13 @@ async def login(req: LoginRequest):
         new_device_lock_until = (now + timedelta(hours=DEVICE_LOCK_HOURS)).isoformat()
 
         await db.users.update_one(
-                {"id": user["id"]},
-                {
-                    "$set": {
-                        "session_id": None,
-                        "lockout_until": new_lockout_until
-                    },
-                    "$inc": {
-                        "lockout_count": 1
-                    }
-                }
+            {"id": user["id"]},
+            {"$set": {
+                "session_id": new_session_id,
+                "device_id": incoming_device_id,
+                "device_lock_until": new_device_lock_until,
+                "lockout_until": None
+            }}
         )
 
         updated_user = await db.users.find_one({"id": user["id"]}, {"_id": 0})
@@ -896,12 +893,17 @@ async def login(req: LoginRequest):
         new_session_id = str(uuid.uuid4())
 
         await db.users.update_one(
-            {"id": user["id"]},
-            {"$set": {
-                "session_id": new_session_id,
-                "lockout_until": None
-            }}
-        )
+                {"id": user["id"]},
+                {
+                    "$set": {
+                        "session_id": None,
+                        "lockout_until": new_lockout_until
+                    },
+                    "$inc": {
+                        "lockout_count": 1
+                    }
+                }
+            )
 
         updated_user = await db.users.find_one({"id": user["id"]}, {"_id": 0})
 
