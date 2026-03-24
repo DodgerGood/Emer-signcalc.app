@@ -81,7 +81,7 @@ return (
               <select
                 value={requestFilter}
                 onChange={(e) => setRequestFilter(e.target.value)}
-                className="px-3 py-1 rounded border border-slate-300 bg-white text-slate-900 text-sm"
+                className="h-10 px-3 rounded border border-slate-300 bg-white text-slate-900 text-sm"
               >
                 <option value="OPEN">Open</option>
                 <option value="COMPLETED">Completed</option>
@@ -98,7 +98,7 @@ return (
 
               <button
                 onClick={loadRequests}
-                className="px-3 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-900 text-sm"
+                className="h-10 px-4 rounded bg-slate-100 hover:bg-slate-200 text-slate-900 text-sm"
               >
                 Refresh
               </button>
