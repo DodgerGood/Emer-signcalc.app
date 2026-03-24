@@ -8,6 +8,9 @@ export default function AdminCompaniesPage() {
   const [loading, setLoading] = useState(true);
   const [companyFilter, setCompanyFilter] = useState('ACTIVE');
   const [companySearch, setCompanySearch] = useState('');
+  const [companyPage, setCompanyPage] = useState(1);
+  const companiesPerPage = 10;
+
   const loadCompanies = async () => {
     try {
       setLoading(true);
@@ -23,6 +26,10 @@ export default function AdminCompaniesPage() {
   useEffect(() => {
     loadCompanies();
   }, []);
+  useEffect(() => {
+    setCompanyPage(1);
+  }, [companyFilter, companySearch]);
+
 
   const handleDownloadAllCsv = async () => {
     try {
@@ -162,6 +169,15 @@ const filteredCompanies = companies.filter((company) => {
 
   return matchesFilter && matchesSearch;
 });
+  const totalCompanyPages = Math.max(
+    1,
+    Math.ceil(filteredCompanies.length / companiesPerPage)
+  );
+
+  const paginatedCompanies = filteredCompanies.slice(
+    (companyPage - 1) * companiesPerPage,
+    companyPage * companiesPerPage
+  );
   return (
     <PlatformAdminLayout>
       <div className="space-y-8 fade-in">
@@ -251,7 +267,7 @@ const filteredCompanies = companies.filter((company) => {
                 </thead>
 
                 <tbody>
-                  {filteredCompanies.map((company) => (
+                  {paginatedCompanies.map((company) => (
                     <tr
                       key={company.company_id}
                         className={`border-t border-slate-200 ${
@@ -345,6 +361,29 @@ const filteredCompanies = companies.filter((company) => {
                   ))}
                 </tbody>
               </table>
+              <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setCompanyPage((prev) => Math.max(1, prev - 1))}
+                  disabled={companyPage === 1}
+                  className="px-3 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-900 text-sm disabled:opacity-50"
+                >
+                  Previous
+                </button>
+
+                <span className="text-sm text-slate-600">
+                  Page {companyPage} of {totalCompanyPages}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => setCompanyPage((prev) => Math.min(totalCompanyPages, prev + 1))}
+                  disabled={companyPage === totalCompanyPages}
+                  className="px-3 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-900 text-sm disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           )}
         </div>
