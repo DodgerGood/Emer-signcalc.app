@@ -19,6 +19,7 @@ export default function AdminCommissioningPage() {
     vat_number: '',
     address: '',
     billing_email: '',
+    billing_start_date: '',
   });
 
   const [seats, setSeats] = useState([emptySeat()]);
@@ -86,6 +87,7 @@ export default function AdminCommissioningPage() {
               vat_number: '',
               address: '',
               billing_email: '',
+              billing_start_date: '',
             });
             setSeats([emptySeat()]);
 
@@ -195,6 +197,22 @@ export default function AdminCommissioningPage() {
                 className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
               />
             </div>
+            <div>
+              <label className="block text-sm text-slate-600 mb-1">
+                Billing Start Date
+              </label>
+              <input
+                type="date"
+                value={companyForm.billing_start_date}
+                onChange={(e) =>
+                  setCompanyForm((prev) => ({
+                    ...prev,
+                    billing_start_date: e.target.value,
+                  }))
+                }
+                className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
+              />
+          </div>
           </div>
         </div>
 
