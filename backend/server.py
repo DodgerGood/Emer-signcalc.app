@@ -930,14 +930,19 @@ async def login(req: LoginRequest):
 
 @api_router.post("/auth/contact-support")
 async def contact_support(req: SupportRequest):
+    user = await db.users.find_one({"email": req.email}, {"_id": 0})
+    company = None
+
+    if user and user.get("company_id"):
+        company = await db.companies.find_one({"id": user.get("company_id")}, {"_id": 0})
     support_doc = {
         "id": str(uuid.uuid4()),
         "support_case_id": f"SUP-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}",
         "email": req.email,
-        "full_name": req.full_name,
-        "company_id": req.company_id,
-        "company_name": req.company_name,
-        "role": req.role,
+        "full_name": req.full_name or (user.get("full_name") if user else None),
+        "company_id": req.company_id or (user.get("company_id") if user else None),
+        "company_name": req.company_name or (company.get("name") if company else None),
+        "role": req.role or (user.get("role") if user else None),
         "reason": req.reason,
         "requested_device_id": req.device_id,
         "current_device_id": req.current_device_id,
