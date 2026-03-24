@@ -271,6 +271,7 @@ class Company(BaseModel):
     vat_number: Optional[str] = None
     address: Optional[str] = None
     billing_email: Optional[EmailStr] = None
+    billing_start_date: Optional[str] = None
     status: str = "ACTIVE"
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
@@ -1139,6 +1140,7 @@ class NewCompanySetupRequest(BaseModel):
     vat_number: Optional[str] = None
     address: Optional[str] = None
     billing_email: Optional[EmailStr] = None
+    billing_start_date: Optional[str] = None
     seats: List[AdminCreateUserRequest]
 
 @api_router.post("/admin/companies/setup")
@@ -1149,8 +1151,9 @@ async def setup_new_company(req: NewCompanySetupRequest):
         phone_number=req.phone_number,
         vat_number=req.vat_number,
         address=req.address,
-        billing_email=req.billing_email
-    )
+        billing_email=req.billing_email,
+        billing_start_date=req.billing_start_date 
+   )
 
     company_dict = company.model_dump()
     await db.companies.insert_one(company_dict)
