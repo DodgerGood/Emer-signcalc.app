@@ -18,6 +18,7 @@ export default function AdminCommissioningPage() {
     phone_number: '',
     vat_number: '',
     address: '',
+    billing_email: '',
   });
 
   const [seats, setSeats] = useState([emptySeat()]);
@@ -84,6 +85,7 @@ export default function AdminCommissioningPage() {
               phone_number: '',
               vat_number: '',
               address: '',
+              billing_email: '',
             });
             setSeats([emptySeat()]);
 
@@ -172,6 +174,22 @@ export default function AdminCommissioningPage() {
                   setCompanyForm((prev) => ({
                     ...prev,
                     address: e.target.value,
+                  }))
+                }
+                className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-slate-600 mb-1">
+                Billing Email
+              </label>
+              <input
+                type="email"
+                value={companyForm.billing_email}
+                onChange={(e) =>
+                  setCompanyForm((prev) => ({
+                    ...prev,
+                    billing_email: e.target.value,
                   }))
                 }
                 className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
