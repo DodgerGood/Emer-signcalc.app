@@ -8,6 +8,8 @@ export default function AdminSupportPage() {
   const [loading, setLoading] = useState(true);
   const [requestFilter, setRequestFilter] = useState('OPEN');
   const [supportSearch, setSupportSearch] = useState('');
+  const [supportPage, setSupportPage] = useState(1);
+  const supportPerPage = 10;
 
   const loadRequests = async () => {
     try {
@@ -58,6 +60,16 @@ const filteredRequests = requests.filter((request) => {
 
   return matchesFilter && matchesSearch;
 });
+
+const totalSupportPages = Math.max(
+    1,
+    Math.ceil(filteredRequests.length / supportPerPage)
+  );
+
+  const paginatedRequests = filteredRequests.slice(
+    (supportPage - 1) * supportPerPage,
+    supportPage * supportPerPage
+  );
 
 return (
     <PlatformAdminLayout>
@@ -110,85 +122,86 @@ return (
           ) : filteredRequests.length === 0 ? (
             <div className="p-6 text-slate-600">No support requests found.</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-100 text-slate-700">
-                  <tr>
-                    <th className="text-left px-4 py-3">Case ID</th>
-                    <th className="text-left px-4 py-3">Email</th>
-                    <th className="text-left px-4 py-3">Company</th>
-                    <th className="text-left px-4 py-3">Role</th>
-                    <th className="text-left px-4 py-3">Reason</th>
-                    <th className="text-left px-4 py-3">Status</th>
-                    <th className="text-left px-4 py-3">Created</th>
-                    <th className="text-left px-4 py-3">Actions</th>
-                  </tr>
-                </thead>
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-100 text-slate-700">
+                    <tr>
+                      <th className="text-left px-4 py-3">Case ID</th>
+                      <th className="text-left px-4 py-3">Email</th>
+                      <th className="text-left px-4 py-3">Company</th>
+                      <th className="text-left px-4 py-3">Role</th>
+                      <th className="text-left px-4 py-3">Reason</th>
+                      <th className="text-left px-4 py-3">Status</th>
+                      <th className="text-left px-4 py-3">Created</th>
+                      <th className="text-left px-4 py-3">Actions</th>
+                    </tr>
+                  </thead>
 
-                <tbody>
-                  {filteredRequests.map((request) => (
-                    <tr key={request.id} className="border-t border-slate-200">
-                      <td className="px-4 py-3">
-                        {request.support_case_id || 'Legacy record'}
-                      </td>
-                      <td className="px-4 py-3">{request.email}</td>
-                      <td className="px-4 py-3">{request.company_name || '—'}</td>
-                      <td className="px-4 py-3">{request.role || '—'}</td>
-                      <td className="px-4 py-3">{request.reason}</td>
-                      <td className="px-4 py-3">{request.status}</td>
-                      <td className="px-4 py-3">{request.created_at}</td>
+                  <tbody>
+                    {paginatedRequests.map((request) => (
+                      <tr key={request.id} className="border-t border-slate-200">
+                        <td className="px-4 py-3">
+                          {request.support_case_id || 'Legacy record'}
+                        </td>
+                        <td className="px-4 py-3">{request.email}</td>
+                        <td className="px-4 py-3">{request.company_name || '—'}</td>
+                        <td className="px-4 py-3">{request.role || '—'}</td>
+                        <td className="px-4 py-3">{request.reason}</td>
+                        <td className="px-4 py-3">{request.status}</td>
+                        <td className="px-4 py-3">{request.created_at}</td>
 
-                      <td className="px-4 py-3">
-                        <div className="flex flex-col gap-2 items-start">
-                          {request.status === 'OPEN' && (
-                            <>
-                              <button
-                                onClick={async () => {
-                                  try {
-                                    await api.post(
-                                      `/admin/support-requests/${request.support_case_id}/action`,
-                                      {
-                                        action: 'APPROVE_NEW_DEVICE',
-                                        resolved_by: 'Admin'
-                                      }
-                                    );
-                                    toast.success('Device approved');
-                                    loadRequests();
-                                  } catch (err) {
-                                    toast.error(err?.response?.data?.detail || 'Action failed');
-                                  }
-                                }}
-                                className="inline-flex w-24 justify-center px-2 py-1 bg-green-500 text-white rounded text-xs"
-                              >
-                                Approve
-                              </button>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col gap-2 items-start">
+                            {request.status === 'OPEN' && (
+                              <>
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      await api.post(
+                                        `/admin/support-requests/${request.support_case_id}/action`,
+                                        {
+                                          action: 'APPROVE_NEW_DEVICE',
+                                          resolved_by: 'Admin'
+                                        }
+                                      );
+                                      toast.success('Device approved');
+                                      loadRequests();
+                                    } catch (err) {
+                                      toast.error(err?.response?.data?.detail || 'Action failed');
+                                    }
+                                  }}
+                                  className="inline-flex w-24 justify-center px-2 py-1 bg-green-500 text-white rounded text-xs"
+                                >
+                                  Approve
+                                </button>
 
-                              <button
-                                onClick={async () => {
-                                  try {
-                                    await api.post(
-                                      `/admin/support-requests/${request.support_case_id}/action`,
-                                      {
-                                        action: 'CLEAR_LOCKOUT',
-                                        resolved_by: 'Admin'
-                                      }
-                                    );
-                                    toast.success('Lockout cleared');
-                                    loadRequests();
-                                  } catch (err) {
-                                    toast.error(err?.response?.data?.detail || 'Action failed');
-                                  }
-                                }}
-                                className="inline-flex w-24 justify-center px-2 py-1 bg-yellow-500 text-white rounded text-xs"
-                              >
-                                Clear
-                              </button>
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      await api.post(
+                                        `/admin/support-requests/${request.support_case_id}/action`,
+                                        {
+                                          action: 'CLEAR_LOCKOUT',
+                                          resolved_by: 'Admin'
+                                        }
+                                      );
+                                      toast.success('Lockout cleared');
+                                      loadRequests();
+                                    } catch (err) {
+                                      toast.error(err?.response?.data?.detail || 'Action failed');
+                                    }
+                                  }}
+                                  className="inline-flex w-24 justify-center px-2 py-1 bg-yellow-500 text-white rounded text-xs"
+                                >
+                                  Clear
+                                </button>
 
-                              <button
-                                onClick={async () => {
-                                  try {
-                                    await api.post(
-                                      `/admin/support-requests/${request.support_case_id}/action`,
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      await api.post(
+                                        `/admin/support-requests/${request.support_case_id}/action`,
                                       {
                                         action: 'FULL_RESET',
                                         resolved_by: 'Admin'
@@ -207,11 +220,11 @@ return (
                             </>
                           )}
 
-                            {request.status !== 'DELETED' && (
-                              <button
-                                onClick={async () => {
-                                  try {
-                                    const caseId = request.support_case_id;
+                          {request.status !== 'DELETED' && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const caseId = request.support_case_id;
 
                                     if (!caseId) {
                                       toast.error('Cannot delete legacy record (no case ID)');
@@ -254,13 +267,38 @@ return (
                                 Permanent Delete
                               </button>
                             )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setSupportPage((prev) => Math.max(1, prev - 1))}
+                  disabled={supportPage === 1}
+                  className="px-3 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-900 text-sm disabled:opacity-50"
+                >
+                  Previous
+                </button>
+
+                <span className="text-sm text-slate-600">
+                  Page {supportPage} of {totalSupportPages}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => setSupportPage((prev) => Math.min(totalSupportPages, prev + 1))}
+                  disabled={supportPage === totalSupportPages}
+                  className="px-3 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-900 text-sm disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            </>
           )}
         </div>
       </div>
