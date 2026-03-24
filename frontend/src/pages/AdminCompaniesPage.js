@@ -7,6 +7,7 @@ export default function AdminCompaniesPage() {
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [companyFilter, setCompanyFilter] = useState('ACTIVE');
+  const [companySearch, setCompanySearch] = useState('');
   const loadCompanies = async () => {
     try {
       setLoading(true);
@@ -135,14 +136,32 @@ const handleRestoreCompany = async (companyId) => {
   };
 
 const filteredCompanies = companies.filter((company) => {
-    const status = (company.status || '').toUpperCase().trim();
+  const status = (company.status || '').toUpperCase().trim();
 
-    if (companyFilter === 'ACTIVE') return status !== 'DELETED';
-    if (companyFilter === 'DELETED') return status === 'DELETED';
+  const matchesFilter =
+    companyFilter === 'ACTIVE'
+      ? status !== 'DELETED'
+      : companyFilter === 'DELETED'
+      ? status === 'DELETED'
+      : true;
 
-    return true;
-  });
+  const searchValue = companySearch.trim().toLowerCase();
 
+  const matchesSearch =
+    !searchValue ||
+    [
+      company.company_name,
+      company.company_id,
+      company.status,
+      String(company.user_count ?? ''),
+      String(company.total_lockout_count ?? ''),
+    ]
+      .join(' ')
+      .toLowerCase()
+      .includes(searchValue);
+
+  return matchesFilter && matchesSearch;
+});
   return (
     <PlatformAdminLayout>
       <div className="space-y-8 fade-in">
@@ -193,6 +212,15 @@ const filteredCompanies = companies.filter((company) => {
             <option value="ACTIVE">Active</option>
             <option value="DELETED">Deleted</option>
           </select>
+
+          <input
+            type="text"
+            value={companySearch}
+            onChange={(e) => setCompanySearch(e.target.value)}
+            placeholder="Search companies..."
+            className="px-3 py-1 rounded border border-slate-300 bg-white text-slate-900 text-sm"
+          />
+
           <button
             type="button"
             onClick={loadCompanies}
