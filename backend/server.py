@@ -931,6 +931,8 @@ async def login(req: LoginRequest):
 @api_router.post("/auth/contact-support")
 async def contact_support(req: SupportRequest):
     user = await db.users.find_one({"email": req.email}, {"_id": 0})
+    print(f"Support request email: {req.email}")
+    print(f"Matched user: {user}")
     company = None
 
     if user and user.get("company_id"):
@@ -955,6 +957,7 @@ async def contact_support(req: SupportRequest):
         "resolution_action": None,
         "resolved_by": None
     }
+    print(f"Matched company: {company}")
 
     await db.support_requests.insert_one(support_doc)
 
