@@ -830,8 +830,8 @@ async def login(req: LoginRequest):
                 status_code=403,
                 detail=f"Account locked. Try again in {hours}h {minutes}m."
             )
-    else:
-            # Lockout has expired, so clear the previous device claim and reopen the seat
+        else:
+            # Expired lockout: clear lockout and previous device claim
             await db.users.update_one(
                 {"id": user["id"]},
                 {
@@ -858,9 +858,8 @@ async def login(req: LoginRequest):
             user["device_lock_until"].replace("Z", "+00:00")
         )
 
-    # If no device lock yet OR device lock expired
+    # No device lock yet, or device lock expired: allow login and claim device
     if not current_device_id or not device_lock_until or now >= device_lock_until:
-
         new_session_id = str(uuid.uuid4())
         new_device_lock_until = (now + timedelta(hours=DEVICE_LOCK_HOURS)).isoformat()
 
@@ -888,23 +887,19 @@ async def login(req: LoginRequest):
             user=User(**updated_user).model_dump()
         )
 
-    # Device lock is active — same device allowed
+    # Active device lock, same device: allow login
     if current_device_id == incoming_device_id:
-
         new_session_id = str(uuid.uuid4())
 
         await db.users.update_one(
-                {"id": user["id"]},
-                {
-                    "$set": {
-                        "session_id": None,
-                        "lockout_until": new_lockout_until
-                    },
-                    "$inc": {
-                        "lockout_count": 1
-                    }
+            {"id": user["id"]},
+            {
+                "$set": {
+                    "session_id": new_session_id,
+                    "lockout_until": None
                 }
-            )
+            }
+        )
 
         updated_user = await db.users.find_one({"id": user["id"]}, {"_id": 0})
 
@@ -918,22 +913,26 @@ async def login(req: LoginRequest):
             user=User(**updated_user).model_dump()
         )
 
-    # Different device attempted login during 24h device lock
+    # Active device lock, different device: create a real lockout
     new_lockout_until = (now + timedelta(hours=SESSION_LOCKOUT_HOURS)).isoformat()
 
     await db.users.update_one(
         {"id": user["id"]},
-        {"$set": {
-            "session_id": None,
-            "lockout_until": new_lockout_until
-        }}
+        {
+            "$set": {
+                "session_id": None,
+                "lockout_until": new_lockout_until
+            },
+            "$inc": {
+                "lockout_count": 1
+            }
+        }
     )
 
     raise HTTPException(
         status_code=403,
-        detail="Another device attempted to use this seat. Account locked for 3 hours."
+        detail=f"Account locked. Try again in {SESSION_LOCKOUT_HOURS}h 0m."
     )
-
 @api_router.post("/auth/contact-support")
 async def contact_support(req: SupportRequest):
     user = await db.users.find_one({"email": req.email}, {"_id": 0})
