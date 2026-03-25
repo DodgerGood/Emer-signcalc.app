@@ -176,30 +176,34 @@ useEffect(() => {
 
         <div className="card-technical p-6">
           <div className="flex items-center gap-2 flex-wrap">
-            <select
-              value={selectedCompanyId}
-              onChange={(e) => setSelectedCompanyId(e.target.value)}
-              className="h-10 px-3 rounded border border-slate-300 bg-white text-slate-900 text-sm"
-              disabled={loadingCompanies || companies.length === 0}
-            >
-              {companies.length === 0 ? (
-                <option value="">No companies available</option>
-              ) : (
-                companies.map((company) => (
-                  <option key={company.company_id} value={company.company_id}>
-                    {company.company_name}
-                  </option>
-                ))
-              )}
-            </select>
 
             <input
               type="text"
               value={billingSearch}
               onChange={(e) => setBillingSearch(e.target.value)}
-              placeholder="Search seats..."
+              placeholder="Search company name..."
               className="h-10 px-3 rounded border border-slate-300 bg-white text-slate-900 text-sm"
             />
+
+            <button
+              type="button"
+              onClick={() => {
+                const searchValue = billingSearch.trim().toLowerCase();
+                const match = companies.find((company) =>
+                  (company.company_name || '').toLowerCase().includes(searchValue)
+                );
+
+                if (!match) {
+                  toast.error('No matching company found.');
+                  return;
+                }
+
+                setSelectedCompanyId(match.company_id);
+              }}
+              className="h-10 px-4 rounded bg-[#2563EB] text-white text-sm"
+            >
+              Load Company
+            </button>
 
             <button
               type="button"
