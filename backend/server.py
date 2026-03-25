@@ -319,19 +319,25 @@ class CompanyBillTrackingRecord(BaseModel):
     total_invoice_amount: float = 0.0
     month_1_name: str
     month_1_status: str = "UNPAID"
+    month_1_amount: float = 0.0
     month_2_name: str
     month_2_status: str = "UNPAID"
+    month_2_amount: float = 0.0
     month_3_name: str
     month_3_status: str = "UNPAID"
+    month_3_amount: float = 0.0
+    total_amount_due: float = 0.0
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-
 
 class CompanyBillTrackingUpdateRequest(BaseModel):
     company_id: str
     total_invoice_amount: float = 0.0
     month_1_status: str
+    month_1_amount: float = 0.0
     month_2_status: str
+    month_2_amount: float = 0.0
     month_3_status: str
+    month_3_amount: float = 0.0
 
 # Material Models
 class MaterialCreate(BaseModel):
@@ -2147,17 +2153,21 @@ async def list_company_bill_tracking():
             rows.append(CompanyBillTrackingRecord(**existing))
         else:
             rows.append(
-                CompanyBillTrackingRecord(
+              CompanyBillTrackingRecord(
                     company_id=company_id,
                     company_name=company.get("name", "Unknown Company"),
                     company_status=company.get("status", "ACTIVE"),
                     total_invoice_amount=0.0,
                     month_1_name=month_1_name,
                     month_1_status="UNPAID",
+                    month_1_amount=0.0,
                     month_2_name=month_2_name,
                     month_2_status="UNPAID",
+                    month_2_amount=0.0,
                     month_3_name=month_3_name,
                     month_3_status="UNPAID",
+                    month_3_amount=0.0,
+                    total_amount_due=0.0,
                 )
             )
 
@@ -2185,7 +2195,20 @@ async def upsert_company_bill_tracking(req: CompanyBillTrackingUpdateRequest):
         raise HTTPException(status_code=400, detail="Invalid month 3 status")
     if req.total_invoice_amount < 0:
         raise HTTPException(status_code=400, detail="Invoice amount cannot be negative")
+    if req.month_1_amount < 0:
+        raise HTTPException(status_code=400, detail="Month 1 amount cannot be negative")
+    if req.month_2_amount < 0:
+        raise HTTPException(status_code=400, detail="Month 2 amount cannot be negative")
+    if req.month_3_amount < 0:
+        raise HTTPException(status_code=400, detail="Month 3 amount cannot be negative")
 
+    total_amount_due = 0.0
+    if month_1_status == "UNPAID":
+        total_amount_due += float(req.month_1_amount)
+    if month_2_status == "UNPAID":
+        total_amount_due += float(req.month_2_amount)
+    if month_3_status == "UNPAID":
+        total_amount_due += float(req.month_3_amount)
     existing = await db.company_bill_tracking.find_one({"company_id": req.company_id}, {"_id": 0})
     month_1_name, month_2_name, month_3_name = get_last_3_month_names()
 
@@ -2202,7 +2225,11 @@ async def upsert_company_bill_tracking(req: CompanyBillTrackingUpdateRequest):
         month_3_name=month_3_name,
         month_3_status=month_3_status,
         updated_at=datetime.now(timezone.utc).isoformat(),
-    )
+        month_1_amount=round(float(req.month_1_amount), 2),
+        month_2_amount=round(float(req.month_2_amount), 2),
+        month_3_amount=round(float(req.month_3_amount), 2),
+        total_amount_due=round(total_amount_due, 2),
+ )
 
     await db.company_bill_tracking.update_one(
         {"company_id": req.company_id},
