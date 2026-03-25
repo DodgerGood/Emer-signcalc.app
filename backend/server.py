@@ -27,6 +27,7 @@ from fastapi.responses import StreamingResponse
 import io
 import csv
 from typing import Optional, List
+from reportlab.pdfgen import canvas
 
 DEVICE_LOCK_HOURS = 24
 KICKOUT_HOURS = 3
@@ -1976,6 +1977,72 @@ async def upsert_billing_record(req: BillingRecordUpsertRequest):
     )
 
     return record
+
+@api_router.get("/admin/billing/{company_id}/invoice-pdf")
+async def generate_billing_invoice_pdf(company_id: str):
+    record = await db.billing_records.find_one({"company_id": company_id}, {"_id": 0})
+    if not record:
+        raise HTTPException(status_code=404, detail="Billing record not found")
+
+    billing = BillingRecord(**record)
+
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+
+    y = height - 50
+
+    pdf.setFont("Helvetica-Bold", 18)
+    pdf.drawString(50, y, "Invoice")
+    y -= 30
+
+    pdf.setFont("Helvetica", 11)
+    pdf.drawString(50, y, f"Company: {billing.company_name}")
+    y -= 18
+    pdf.drawString(50, y, f"Billing Email: {billing.billing_email or '-'}")
+    y -= 18
+    pdf.drawString(50, y, f"Billing Start Date: {billing.billing_start_date or '-'}")
+    y -= 30
+
+    pdf.setFont("Helvetica-Bold", 11)
+    pdf.drawString(50, y, "Full Name")
+    pdf.drawString(220, y, "Email")
+    pdf.drawString(380, y, "Role")
+    pdf.drawString(470, y, "Price")
+    y -= 15
+
+    pdf.setFont("Helvetica", 10)
+    for line in billing.seat_lines:
+        if y < 80:
+            pdf.showPage()
+            y = height - 50
+            pdf.setFont("Helvetica", 10)
+
+        pdf.drawString(50, y, str(line.full_name or "-")[:28])
+        pdf.drawString(220, y, str(line.email or "-")[:28])
+        pdf.drawString(380, y, str(line.role or "-")[:12])
+        pdf.drawRightString(560, y, f"R {line.seat_price_ex_vat:.2f}")
+        y -= 16
+
+    y -= 20
+    pdf.setFont("Helvetica-Bold", 11)
+    pdf.drawRightString(560, y, f"Subtotal Excl. VAT: R {billing.subtotal_ex_vat:.2f}")
+    y -= 18
+    pdf.drawRightString(560, y, f"VAT 15%: R {billing.vat_amount:.2f}")
+    y -= 18
+    pdf.drawRightString(560, y, f"Total Incl. VAT: R {billing.total_incl_vat:.2f}")
+
+    pdf.showPage()
+    pdf.save()
+    buffer.seek(0)
+
+    filename = f"invoice_{billing.company_name.replace(' ', '_')}.pdf"
+
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
 
 @api_router.get("/auth/me", response_model=User)
 async def get_me(user: dict = Depends(get_current_user)):
