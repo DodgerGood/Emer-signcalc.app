@@ -2111,6 +2111,23 @@ async def generate_billing_invoice_pdf(company_id: str):
 
         return months
 
+def get_last_3_month_names():
+    now = datetime.now(timezone.utc)
+    months = []
+    year = now.year
+    month = now.month
+
+    for offset in range(2, -1, -1):
+        m = month - offset
+        y = year
+
+        while m <= 0:
+            m += 12
+            y -= 1
+
+        months.append(datetime(y, m, 1, tzinfo=timezone.utc).strftime("%b"))
+
+    return months
 
 @api_router.get("/admin/bill-tracking", response_model=List[CompanyBillTrackingRecord])
 async def list_company_bill_tracking():
