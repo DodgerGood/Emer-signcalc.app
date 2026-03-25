@@ -1981,10 +1981,38 @@ async def upsert_billing_record(req: BillingRecordUpsertRequest):
 @api_router.get("/admin/billing/{company_id}/invoice-pdf")
 async def generate_billing_invoice_pdf(company_id: str):
     record = await db.billing_records.find_one({"company_id": company_id}, {"_id": 0})
-    if not record:
-        raise HTTPException(status_code=404, detail="Billing record not found")
 
-    billing = BillingRecord(**record)
+    if record:
+        billing = BillingRecord(**record)
+    else:
+        company = await db.companies.find_one({"id": company_id}, {"_id": 0})
+        if not company:
+            raise HTTPException(status_code=404, detail="Company not found")
+
+        users = await db.users.find({"company_id": company_id}, {"_id": 0}).to_list(1000)
+
+        seat_lines = [
+            BillingSeatLine(
+                user_id=user["id"],
+                full_name=user.get("full_name"),
+                email=user.get("email"),
+                role=user.get("role"),
+                seat_price_ex_vat=0.0
+            )
+            for user in users
+        ]
+
+        billing = BillingRecord(
+            company_id=company["id"],
+            company_name=company.get("name", "Unknown Company"),
+            billing_email=company.get("billing_email"),
+            billing_start_date=company.get("billing_start_date"),
+            seat_lines=seat_lines,
+            subtotal_ex_vat=0.0,
+            vat_amount=0.0,
+            total_incl_vat=0.0,
+            status="ACTIVE"
+        )
 
     buffer = BytesIO()
     pdf = canvas.Canvas(buffer, pagesize=A4)
