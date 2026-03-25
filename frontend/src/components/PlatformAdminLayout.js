@@ -25,7 +25,7 @@ export function PlatformAdminLayout({ children }) {
       icon: ShieldCheck,
     },
     {
-      label: 'Seat Management',
+      label: 'Bill Tracking',
       href: '/platform-admin/seats',
       icon: ArrowLeftRight,
     },
