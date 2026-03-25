@@ -310,6 +310,29 @@ class BillingRecordUpsertRequest(BaseModel):
     billing_start_date: Optional[str] = None
     seat_lines: List[BillingSeatLineUpdate] = []
 
+class CompanyBillTrackingRecord(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    company_id: str
+    company_name: str
+    company_status: str = "ACTIVE"
+    total_invoice_amount: float = 0.0
+    month_1_name: str
+    month_1_status: str = "UNPAID"
+    month_2_name: str
+    month_2_status: str = "UNPAID"
+    month_3_name: str
+    month_3_status: str = "UNPAID"
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+
+class CompanyBillTrackingUpdateRequest(BaseModel):
+    company_id: str
+    total_invoice_amount: float = 0.0
+    month_1_status: str
+    month_2_status: str
+    month_3_status: str
+
 # Material Models
 class MaterialCreate(BaseModel):
     name: str
@@ -2071,6 +2094,106 @@ async def generate_billing_invoice_pdf(company_id: str):
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
+
+    def get_last_3_month_names():
+        now = datetime.now(timezone.utc)
+        months = []
+        year = now.year
+        month = now.month
+
+        for offset in range(2, -1, -1):
+            m = month - offset
+            y = year
+            while m <= 0:
+                m += 12
+                y -= 1
+            months.append(datetime(y, m, 1, tzinfo=timezone.utc).strftime("%b"))
+
+        return months
+
+
+@api_router.get("/admin/bill-tracking", response_model=List[CompanyBillTrackingRecord])
+async def list_company_bill_tracking():
+    companies = await db.companies.find({}, {"_id": 0}).to_list(1000)
+    tracking_records = await db.company_bill_tracking.find({}, {"_id": 0}).to_list(1000)
+
+    tracking_map = {record["company_id"]: record for record in tracking_records}
+    month_1_name, month_2_name, month_3_name = get_last_3_month_names()
+
+    rows = []
+
+    for company in companies:
+        company_id = company.get("id")
+        existing = tracking_map.get(company_id)
+
+        if existing:
+            rows.append(CompanyBillTrackingRecord(**existing))
+        else:
+            rows.append(
+                CompanyBillTrackingRecord(
+                    company_id=company_id,
+                    company_name=company.get("name", "Unknown Company"),
+                    company_status=company.get("status", "ACTIVE"),
+                    total_invoice_amount=0.0,
+                    month_1_name=month_1_name,
+                    month_1_status="UNPAID",
+                    month_2_name=month_2_name,
+                    month_2_status="UNPAID",
+                    month_3_name=month_3_name,
+                    month_3_status="UNPAID",
+                )
+            )
+
+    rows.sort(key=lambda x: (x.company_name or "").lower())
+    return rows
+
+
+@api_router.post("/admin/bill-tracking/upsert", response_model=CompanyBillTrackingRecord)
+async def upsert_company_bill_tracking(req: CompanyBillTrackingUpdateRequest):
+    company = await db.companies.find_one({"id": req.company_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    allowed_statuses = {"PAID", "UNPAID", "SUSPENDED"}
+
+    month_1_status = (req.month_1_status or "").strip().upper()
+    month_2_status = (req.month_2_status or "").strip().upper()
+    month_3_status = (req.month_3_status or "").strip().upper()
+
+    if month_1_status not in allowed_statuses:
+        raise HTTPException(status_code=400, detail="Invalid month 1 status")
+    if month_2_status not in allowed_statuses:
+        raise HTTPException(status_code=400, detail="Invalid month 2 status")
+    if month_3_status not in allowed_statuses:
+        raise HTTPException(status_code=400, detail="Invalid month 3 status")
+    if req.total_invoice_amount < 0:
+        raise HTTPException(status_code=400, detail="Invoice amount cannot be negative")
+
+    existing = await db.company_bill_tracking.find_one({"company_id": req.company_id}, {"_id": 0})
+    month_1_name, month_2_name, month_3_name = get_last_3_month_names()
+
+    record = CompanyBillTrackingRecord(
+        id=existing["id"] if existing else str(uuid.uuid4()),
+        company_id=company["id"],
+        company_name=company.get("name", "Unknown Company"),
+        company_status=company.get("status", "ACTIVE"),
+        total_invoice_amount=round(float(req.total_invoice_amount), 2),
+        month_1_name=month_1_name,
+        month_1_status=month_1_status,
+        month_2_name=month_2_name,
+        month_2_status=month_2_status,
+        month_3_name=month_3_name,
+        month_3_status=month_3_status,
+        updated_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+    await db.company_bill_tracking.update_one(
+        {"company_id": req.company_id},
+        {"$set": record.model_dump()},
+        upsert=True
+    )
+
+    return record
 
 @api_router.get("/auth/me", response_model=User)
 async def get_me(user: dict = Depends(get_current_user)):
