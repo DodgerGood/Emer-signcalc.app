@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../lib/api';
 import { toast } from 'sonner';
 import { PlatformAdminLayout } from '../components/PlatformAdminLayout';
@@ -15,7 +15,7 @@ export default function AdminSeatManagementPage() {
   const [saving, setSaving] = useState(false);
   const [billingSearch, setBillingSearch] = useState('');
 
-  const loadCompanies = async () => {
+const loadCompanies = useCallback(async () => {
     try {
       setLoadingCompanies(true);
       const response = await api.get('/admin/companies');
@@ -24,15 +24,15 @@ export default function AdminSeatManagementPage() {
       );
       setCompanies(activeCompanies);
 
-      if (!selectedCompanyId && activeCompanies.length > 0) {
-        setSelectedCompanyId(activeCompanies[0].company_id);
-      }
+      setSelectedCompanyId((prev) =>
+        !prev && activeCompanies.length > 0 ? activeCompanies[0].company_id : prev
+      );
     } catch (error) {
       toast.error(error?.response?.data?.detail || 'Failed to load companies.');
     } finally {
       setLoadingCompanies(false);
     }
-  };
+  }, []);
 
   const loadBillingRecord = async (companyId) => {
     if (!companyId) return;
@@ -58,9 +58,9 @@ export default function AdminSeatManagementPage() {
     }
   };
 
-  useEffect(() => {
+useEffect(() => {
     loadCompanies();
-  }, []);
+  }, [loadCompanies]);
 
   useEffect(() => {
     if (selectedCompanyId) {
