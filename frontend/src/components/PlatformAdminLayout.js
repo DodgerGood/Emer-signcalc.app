@@ -26,6 +26,11 @@ export function PlatformAdminLayout({ children }) {
     },
     {
       label: 'Bill Tracking',
+      href: '/platform-admin/billing-tracking',
+      icon: ArrowLeftRight,
+    },
+    {
+      label: 'Bill Invoicing',
       href: '/platform-admin/seats',
       icon: ArrowLeftRight,
     },

@@ -23,6 +23,7 @@ import AdminCommissioningPage from './pages/AdminCommissioningPage';
 import AdminSeatManagementPage from './pages/AdminSeatManagementPage';
 import AdminCompanyDetailPage from './pages/AdminCompanyDetailPage';
 import PlatformAdminLoginPage from './pages/PlatformAdminLoginPage';
+import AdminBillingTrackingPage from './pages/AdminBillingTrackingPage';
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -193,6 +194,15 @@ const AppRoutes = () => {
         element={
           <PlatformAdminProtectedRoute>
             <AdminCommissioningPage />
+          </PlatformAdminProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/platform-admin/billing-tracking"
+        element={
+          <PlatformAdminProtectedRoute>
+            <AdminBillingTrackingPage />
           </PlatformAdminProtectedRoute>
         }
       />
