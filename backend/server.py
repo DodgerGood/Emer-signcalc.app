@@ -275,6 +275,40 @@ class Company(BaseModel):
     status: str = "ACTIVE"
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
+class BillingSeatLine(BaseModel):
+    user_id: str
+    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    role: Optional[str] = None
+    seat_price_ex_vat: float = 0.0
+
+
+class BillingRecord(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    company_id: str
+    company_name: str
+    billing_email: Optional[EmailStr] = None
+    billing_start_date: Optional[str] = None
+    seat_lines: List[BillingSeatLine] = []
+    subtotal_ex_vat: float = 0.0
+    vat_amount: float = 0.0
+    total_incl_vat: float = 0.0
+    status: str = "ACTIVE"
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class BillingSeatLineUpdate(BaseModel):
+    user_id: str
+    seat_price_ex_vat: float = 0.0
+
+
+class BillingRecordUpsertRequest(BaseModel):
+    company_id: str
+    billing_email: Optional[EmailStr] = None
+    billing_start_date: Optional[str] = None
+    seat_lines: List[BillingSeatLineUpdate] = []
+
 # Material Models
 class MaterialCreate(BaseModel):
     name: str
@@ -1838,6 +1872,110 @@ async def restore_company(company_id: str):
         "company_id": company_id,
         "status": "ACTIVE"
     }
+
+@api_router.get("/admin/billing", response_model=List[BillingRecord])
+async def list_billing_records():
+    records = await db.billing_records.find({}, {"_id": 0}).to_list(1000)
+    records.sort(key=lambda x: x.get("company_name", "").lower())
+    return [BillingRecord(**r) for r in records]
+
+
+@api_router.get("/admin/billing/{company_id}", response_model=BillingRecord)
+async def get_billing_record(company_id: str):
+    company = await db.companies.find_one({"id": company_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    existing = await db.billing_records.find_one({"company_id": company_id}, {"_id": 0})
+    if existing:
+        return BillingRecord(**existing)
+
+    users = await db.users.find({"company_id": company_id}, {"_id": 0}).to_list(1000)
+
+    seat_lines = [
+        BillingSeatLine(
+            user_id=user["id"],
+            full_name=user.get("full_name"),
+            email=user.get("email"),
+            role=user.get("role"),
+            seat_price_ex_vat=0.0
+        )
+        for user in users
+    ]
+
+    return BillingRecord(
+        company_id=company["id"],
+        company_name=company.get("name", "Unknown Company"),
+        billing_email=company.get("billing_email"),
+        billing_start_date=company.get("billing_start_date"),
+        seat_lines=seat_lines,
+        subtotal_ex_vat=0.0,
+        vat_amount=0.0,
+        total_incl_vat=0.0,
+        status="ACTIVE"
+    )
+
+
+@api_router.post("/admin/billing/upsert", response_model=BillingRecord)
+async def upsert_billing_record(req: BillingRecordUpsertRequest):
+    company = await db.companies.find_one({"id": req.company_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    users = await db.users.find({"company_id": req.company_id}, {"_id": 0}).to_list(1000)
+    user_map = {u["id"]: u for u in users}
+
+    seat_lines = []
+    subtotal = 0.0
+
+    for line in req.seat_lines:
+        if line.user_id not in user_map:
+            continue
+
+        price = float(line.seat_price_ex_vat or 0.0)
+        if price < 0:
+            raise HTTPException(status_code=400, detail="Seat price cannot be negative")
+
+        user = user_map[line.user_id]
+
+        seat_lines.append(
+            BillingSeatLine(
+                user_id=user["id"],
+                full_name=user.get("full_name"),
+                email=user.get("email"),
+                role=user.get("role"),
+                seat_price_ex_vat=price
+            )
+        )
+        subtotal += price
+
+    vat_amount = round(subtotal * 0.15, 2)
+    total_incl_vat = round(subtotal + vat_amount, 2)
+
+    existing = await db.billing_records.find_one({"company_id": req.company_id}, {"_id": 0})
+
+    record = BillingRecord(
+        id=existing["id"] if existing else str(uuid.uuid4()),
+        company_id=company["id"],
+        company_name=company.get("name", "Unknown Company"),
+        billing_email=req.billing_email or company.get("billing_email"),
+        billing_start_date=req.billing_start_date or company.get("billing_start_date"),
+        seat_lines=seat_lines,
+        subtotal_ex_vat=round(subtotal, 2),
+        vat_amount=vat_amount,
+        total_incl_vat=total_incl_vat,
+        status="ACTIVE",
+        created_at=existing["created_at"] if existing else datetime.now(timezone.utc).isoformat(),
+        updated_at=datetime.now(timezone.utc).isoformat()
+    )
+
+    await db.billing_records.update_one(
+        {"company_id": req.company_id},
+        {"$set": record.model_dump()},
+        upsert=True
+    )
+
+    return record
 
 @api_router.get("/auth/me", response_model=User)
 async def get_me(user: dict = Depends(get_current_user)):
