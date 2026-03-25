@@ -337,15 +337,40 @@ useEffect(() => {
                   </div>
                 </div>
               </div>
-
-              <div className="mt-6">
+              <div className="mt-6 flex gap-2 flex-wrap">
                 <button
                   type="button"
                   onClick={handleSaveBilling}
                   disabled={saving}
                   className="inline-flex justify-center px-4 py-2 bg-[#2563EB] text-white rounded text-sm disabled:opacity-50"
                 >
-                  {saving ? 'Saving...' : 'Save Billing'}
+                  {saving ? 'Saving...' : 'Save Billing'} 
+                </button>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const response = await api.get(
+                        `/admin/billing/${selectedCompanyId}/invoice-pdf`,
+                        { responseType: 'blob' }
+                      );
+
+                      const url = window.URL.createObjectURL(new Blob([response.data]));
+                      const link = document.createElement('a');
+                      link.href = url;
+                      link.setAttribute('download', `invoice_${billingRecord.company_name}.pdf`);
+                      document.body.appendChild(link);
+                      link.click();
+                      link.remove();
+                      window.URL.revokeObjectURL(url);
+                    } catch (error) {
+                      toast.error(error?.response?.data?.detail || 'Failed to generate PDF invoice.');
+                    }
+                  }}
+                  className="inline-flex justify-center px-4 py-2 bg-slate-700 text-white rounded text-sm"
+                >
+                  Generate PDF
                 </button>
               </div>
             </div>
