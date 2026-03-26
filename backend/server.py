@@ -331,6 +331,7 @@ class CompanyBillTrackingRecord(BaseModel):
 
 class CompanyBillTrackingUpdateRequest(BaseModel):
     company_id: str
+    company_status: str = "ACTIVE"
     total_invoice_amount: float = 0.0
     month_1_status: str
     month_1_amount: float = 0.0
@@ -2181,17 +2182,21 @@ async def upsert_company_bill_tracking(req: CompanyBillTrackingUpdateRequest):
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
 
-    allowed_statuses = {"PAID", "UNPAID", "SUSPENDED"}
+    allowed_month_statuses = {"PAID", "UNPAID", "SUSPENDED"}
+    allowed_company_statuses = {"ACTIVE", "SUSPENDED", "DELETED"}
 
+    company_status = (req.company_status or "ACTIVE").strip().upper()
     month_1_status = (req.month_1_status or "").strip().upper()
     month_2_status = (req.month_2_status or "").strip().upper()
     month_3_status = (req.month_3_status or "").strip().upper()
 
-    if month_1_status not in allowed_statuses:
+    if company_status not in allowed_company_statuses:
+        raise HTTPException(status_code=400, detail="Invalid company status")
+    if month_1_status not in allowed_month_statuses:
         raise HTTPException(status_code=400, detail="Invalid month 1 status")
-    if month_2_status not in allowed_statuses:
+    if month_2_status not in allowed_month_statuses:
         raise HTTPException(status_code=400, detail="Invalid month 2 status")
-    if month_3_status not in allowed_statuses:
+    if month_3_status not in allowed_month_statuses:
         raise HTTPException(status_code=400, detail="Invalid month 3 status")
     if req.total_invoice_amount < 0:
         raise HTTPException(status_code=400, detail="Invoice amount cannot be negative")
@@ -2209,8 +2214,25 @@ async def upsert_company_bill_tracking(req: CompanyBillTrackingUpdateRequest):
         total_amount_due += float(req.month_2_amount)
     if month_3_status == "UNPAID":
         total_amount_due += float(req.month_3_amount)
-    existing = await db.company_bill_tracking.find_one({"company_id": req.company_id}, {"_id": 0})
+
+    existing = await db.company_bill_tracking.find_one(
+        {"company_id": req.company_id},
+        {"_id": 0}
+    )
+
     month_1_name, month_2_name, month_3_name = get_last_3_month_names()
+
+    await db.companies.update_one(
+        {"id": req.company_id},
+        {
+            "$set": {
+                "status": company_status,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+        }
+    )
+
+    company["status"] = company_status
 
     record = CompanyBillTrackingRecord(
         id=existing["id"] if existing else str(uuid.uuid4()),
@@ -2229,7 +2251,7 @@ async def upsert_company_bill_tracking(req: CompanyBillTrackingUpdateRequest):
         month_2_amount=round(float(req.month_2_amount), 2),
         month_3_amount=round(float(req.month_3_amount), 2),
         total_amount_due=round(total_amount_due, 2),
- )
+    )
 
     await db.company_bill_tracking.update_one(
         {"company_id": req.company_id},

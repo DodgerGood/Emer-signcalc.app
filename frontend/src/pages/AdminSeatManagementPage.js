@@ -167,10 +167,10 @@ useEffect(() => {
       <div className="space-y-8 fade-in">
         <div>
           <h1 className="text-4xl font-black tracking-tight leading-none">
-            Bill Tracking
+            Bill Invoicing
           </h1>
           <p className="text-slate-600 mt-2">
-            Manual per-seat billing, VAT, and company billing setup
+            Invoice generation, seat pricing, VAT, and billing setup
           </p>
         </div>
 

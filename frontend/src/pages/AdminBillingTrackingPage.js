@@ -192,6 +192,7 @@ export default function AdminBillingTrackingPage() {
   const saveRow = async (row, showToast = true) => {
     const payload = {
       company_id: row.company_id,
+      company_status: row.company_status,
       total_invoice_amount: Number(row.total_invoice_amount || 0),
       month_1_status: row.month_1_status,
       month_1_amount: Number(row.month_1_amount || 0),
@@ -330,13 +331,19 @@ export default function AdminBillingTrackingPage() {
                       </td>
 
                       <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getCompanyStatusClass(
+                        <select
+                          value={row.company_status || 'ACTIVE'}
+                          onChange={(e) =>
+                            updateRowField(row.company_id, 'company_status', e.target.value)
+                          }
+                          className={`w-full rounded-md px-2 py-1 text-sm ${getCompanyStatusClass(
                             row.company_status
                           )}`}
                         >
-                          {row.company_status || 'UNKNOWN'}
-                        </span>
+                          <option value="ACTIVE">Active</option>
+                          <option value="SUSPENDED">Suspended</option>
+                          <option value="DELETED">Deleted</option>
+                        </select>
                       </td>
 
                       <td className="px-4 py-3">

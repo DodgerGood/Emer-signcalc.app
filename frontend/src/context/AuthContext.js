@@ -75,13 +75,23 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = async (email, password, company_name, full_name, role = 'MANAGER') => {
+     
+    console.log('REGISTER PAYLOAD', {
+         email,
+         password,
+         company_name,
+         full_name,
+         role,
+         device_id: getDeviceId(),
+    });
+
     const response = await api.post('/auth/register', {
-      email,
-      password,
-      company_name,
-      full_name,
-      role,
-      device_id: getDeviceId(),
+        email,
+        password,
+        company_name,
+        full_name,
+        role,
+        device_id: getDeviceId(),
     });
 
     const { access_token, user: userData } = response.data;

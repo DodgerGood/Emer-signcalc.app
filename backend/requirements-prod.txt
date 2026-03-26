@@ -13,3 +13,4 @@ reportlab==4.4.10
 openpyxl==3.1.5
 python-multipart==0.0.22
 bcrypt==3.2.2
+aiosmtplib==3.0.2
