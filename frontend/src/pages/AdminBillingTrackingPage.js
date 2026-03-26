@@ -93,6 +93,22 @@ export default function AdminBillingTrackingPage() {
     return 'bg-slate-100 text-slate-800 border border-slate-300';
   };
 
+const getCompanyStatusClass = (status) => {
+    const value = (status || '').toUpperCase();
+
+    if (value === 'ACTIVE') {
+      return 'bg-green-100 text-green-800 border border-green-300';
+    }
+    if (value === 'SUSPENDED') {
+      return 'bg-amber-100 text-amber-800 border border-amber-300';
+    }
+    if (value === 'DELETED') {
+      return 'bg-red-100 text-red-800 border border-red-300';
+    }
+
+    return 'bg-slate-100 text-slate-800 border border-slate-300';
+  };
+
   const handleSaveRow = async (row) => {
     try {
       setSavingCompanyId(row.company_id);
@@ -155,7 +171,6 @@ export default function AdminBillingTrackingPage() {
             </button>
           </div>
         </div>
-
         {loading ? (
           <div className="card-technical p-6 text-slate-600">Loading bill tracking...</div>
         ) : filteredRows.length === 0 ? (
@@ -165,133 +180,105 @@ export default function AdminBillingTrackingPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-slate-100 text-slate-700">
-                <tr>
-                  <th className="text-left px-4 py-3">Company</th>
-                  <th className="text-left px-4 py-3">Status</th>
-                  <th className="text-left px-4 py-3">{paginatedRows[0]?.month_1_name || 'Month 1'} Status</th>
-                  <th className="text-left px-4 py-3">{paginatedRows[0]?.month_1_name || 'Month 1'} Amount</th>
-                  <th className="text-left px-4 py-3">{paginatedRows[0]?.month_2_name || 'Month 2'} Status</th>
-                  <th className="text-left px-4 py-3">{paginatedRows[0]?.month_2_name || 'Month 2'} Amount</th>
-                  <th className="text-left px-4 py-3">{paginatedRows[0]?.month_3_name || 'Month 3'} Status</th>
-                  <th className="text-left px-4 py-3">{paginatedRows[0]?.month_3_name || 'Month 3'} Amount</th>
-                  <th className="text-left px-4 py-3">Balance Due</th>
-                  <th className="text-left px-4 py-3">Save</th>
-                </tr>
+                  <tr>
+                    <th className="text-left px-4 py-3">Company</th>
+                    <th className="text-left px-4 py-3">Month 1</th>
+                    <th className="text-left px-4 py-3">Month 2</th>
+                    <th className="text-left px-4 py-3">Month 3</th>
+                    <th className="text-left px-4 py-3">Balance Due</th>
+                    <th className="text-left px-4 py-3">Save</th>
+                  </tr>
                 </thead>
 
                 <tbody>
-                  {paginatedRows.map((row) => (
-                <tr key={row.company_id}>
-                  <td className="px-4 py-3">{row.company_name}</td>
-
-                  <td className="px-4 py-3">
-                    <span className="px-2 py-1 text-xs rounded bg-slate-200">
-                      {row.company_status}
-                    </span>
-                  </td>
-
-                  {/* Jan Status */}
-                  <td className="px-4 py-3">
-                    <select
-                      value={row.month_1_status}
-                      onChange={(e) =>
-                        updateRowField(row.company_id, 'month_1_status', e.target.value)
-                      }
-                      className={`w-full px-3 py-2 rounded text-sm ${getStatusClass(row.month_1_status)}`}
+                  {paginatedRows.map((row, index) => (
+                    <tr
+                      key={row.company_id}
+                      className={`border-b border-slate-200 hover:bg-slate-50 ${
+                        index % 2 === 0 ? "bg-white" : "bg-slate-50/40"
+                      }`}
                     >
-                      <option value="PAID">Paid</option>
-                      <option value="UNPAID">Unpaid</option>
-                      <option value="SUSPENDED">Suspended</option>
-                    </select>
-                  </td>
+                      <td className="px-4 py-3 font-medium text-slate-800">
+                        {row.company_name}
+                      </td>
 
-                  {/* Jan Amount */}
-                  <td className="px-4 py-3">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={row.month_1_amount}
-                      onChange={(e) =>
-                        updateRowField(row.company_id, 'month_1_amount', e.target.value)
-                      }
-                      className="w-full max-w-[120px] px-2 py-1 border rounded"
-                    />
-                  </td>
+                      <td className="px-4 py-3">
+                        <div className="text-xs text-slate-500 mb-1">
+                          {row.month_1_name || "Month 1"}
+                        </div>
+                        <select
+                          value={row.month_1_status || ""}
+                          onChange={(e) =>
+                            updateRowField(
+                              row.company_id,
+                              "month_1_status",
+                              e.target.value
+                            )
+                          }
+                          className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-sm"
+                        >
+                          <option value="PAID">Paid</option>
+                          <option value="UNPAID">Unpaid</option>
+                          <option value="SUSPENDED">Suspended</option>
+                        </select>
+                      </td>
 
-                  {/* Feb Status */}
-                  <td className="px-4 py-3">
-                    <select
-                      value={row.month_2_status}
-                      onChange={(e) =>
-                        updateRowField(row.company_id, 'month_2_status', e.target.value)
-                      }
-                      className={`w-full px-3 py-2 rounded text-sm ${getStatusClass(row.month_2_status)}`}
-                    >
-                      <option value="PAID">Paid</option>
-                      <option value="UNPAID">Unpaid</option>
-                      <option value="SUSPENDED">Suspended</option>
-                    </select>
-                  </td>
+                      <td className="px-4 py-3">
+                        <div className="text-xs text-slate-500 mb-1">
+                          {row.month_2_name || "Month 2"}
+                        </div>
+                        <select
+                          value={row.month_2_status || ""}
+                          onChange={(e) =>
+                            updateRowField(
+                              row.company_id,
+                              "month_2_status",
+                              e.target.value
+                            )
+                          }
+                          className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-sm"
+                        >
+                          <option value="PAID">Paid</option>
+                          <option value="UNPAID">Unpaid</option>
+                          <option value="SUSPENDED">Suspended</option>
+                        </select>
+                      </td>
 
-                  {/* Feb Amount */}
-                  <td className="px-4 py-3">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={row.month_2_amount}
-                      onChange={(e) =>
-                        updateRowField(row.company_id, 'month_2_amount', e.target.value)
-                      }
-                      className="w-full max-w-[120px] px-2 py-1 border rounded"
-                    />
-                  </td>
+                      <td className="px-4 py-3">
+                        <div className="text-xs text-slate-500 mb-1">
+                          {row.month_3_name || "Month 3"}
+                        </div>
+                        <select
+                          value={row.month_3_status || ""}
+                          onChange={(e) =>
+                            updateRowField(
+                              row.company_id,
+                              "month_3_status",
+                              e.target.value
+                            )
+                          }
+                          className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-sm"
+                        >
+                          <option value="PAID">Paid</option>
+                          <option value="UNPAID">Unpaid</option>
+                          <option value="SUSPENDED">Suspended</option>
+                        </select>
+                      </td>
 
-                  {/* Mar Status */}
-                  <td className="px-4 py-3">
-                    <select
-                      value={row.month_3_status}
-                      onChange={(e) =>
-                        updateRowField(row.company_id, 'month_3_status', e.target.value)
-                      }
-                      className={`w-full px-3 py-2 rounded text-sm ${getStatusClass(row.month_3_status)}`}
-                    >
-                      <option value="PAID">Paid</option>
-                      <option value="UNPAID">Unpaid</option>
-                      <option value="SUSPENDED">Suspended</option>
-                    </select>
-                  </td>
+                      <td className="px-4 py-3 font-semibold text-right">
+                        R {Number(row.total_amount_due || 0).toFixed(2)}
+                      </td>
 
-                  {/* Mar Amount */}
-                  <td className="px-4 py-3">
-                    <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={row.month_3_amount}
-                    onChange={(e) =>
-                      updateRowField(row.company_id, 'month_3_amount', e.target.value)
-                    }
-                    className="w-full max-w-[120px] px-2 py-1 border rounded"
-                  />
-                </td>
-
-                {/* Balance Due */}
-                <td className="px-4 py-3 font-semibold">
-                  R {Number(row.total_amount_due || 0).toFixed(2)}
-                </td>
-
-                {/* Save */}
-                <td className="px-4 py-3">
-                  <button
-                    onClick={() => handleSaveRow(row)}
-                    className="px-3 py-2 bg-blue-600 text-white rounded"
-                  >
-                    Save
-                  </button>
-                </td>
-              </tr>
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => handleSaveRow(row)}
+                          className="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+                        >
+                          Save
+                        </button>
+                      </td>
+                    </tr>
                   ))}
                 </tbody>
               </table>
@@ -302,7 +289,7 @@ export default function AdminBillingTrackingPage() {
                 type="button"
                 onClick={() => setPage((prev) => Math.max(1, prev - 1))}
                 disabled={page === 1}
-                className="px-3 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-900 text-sm disabled:opacity-50"
+                className="px-3 py-1 rounded bg-slate-100 text-slate-900 hover:bg-slate-200 disabled:opacity-50"
               >
                 Previous
               </button>
@@ -315,13 +302,14 @@ export default function AdminBillingTrackingPage() {
                 type="button"
                 onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
                 disabled={page === totalPages}
-                className="px-3 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-900 text-sm disabled:opacity-50"
+                className="px-3 py-1 rounded bg-slate-100 text-slate-900 hover:bg-slate-200 disabled:opacity-50"
               >
                 Next
               </button>
             </div>
           </div>
         )}
+
       </div>
     </PlatformAdminLayout>
   );
