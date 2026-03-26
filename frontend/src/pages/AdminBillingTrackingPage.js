@@ -315,6 +315,7 @@ export default function AdminBillingTrackingPage() {
                     <th className="text-left px-4 py-3">Month 3</th>
                     <th className="text-left px-4 py-3">Balance Due</th>
                     <th className="text-left px-4 py-3">Save</th>
+                    <th className="text-left px-4 py-3">Statement</th>
                   </tr>
                 </thead>
 
@@ -483,6 +484,38 @@ export default function AdminBillingTrackingPage() {
                           {savingCompanyId === row.company_id ? 'Saving...' : 'Save'}
                         </button>
                       </td>
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const response = await api.get(
+                                `/admin/bill-tracking/${row.company_id}/statement-pdf`,
+                              { responseType: 'blob' }
+                            );
+
+                            const url = window.URL.createObjectURL(new Blob([response.data]));
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.setAttribute(
+                              'download',
+                              `statement_${(row.company_name || 'company').replace(/\s+/g, '_')}.pdf`
+                            );
+                            document.body.appendChild(link);
+                            link.click();
+                            link.remove();
+                            window.URL.revokeObjectURL(url);
+                          } catch (error) {
+                            toast.error(
+                              error?.response?.data?.detail || 'Failed to generate statement PDF.'
+                            );
+                          }
+                        }}
+                        className="px-3 py-2 rounded bg-slate-700 text-white hover:bg-slate-800"
+                      >
+                        Statement
+                      </button>
+                    </td>
                     </tr>
                   ))}
                 </tbody>
