@@ -76,17 +76,42 @@ export default function AdminBillingTrackingPage() {
       setLoading(true);
       const response = await api.get('/admin/bill-tracking');
 
-      const sorted = (response.data || [])
-        .map((row) => ({
-          ...row,
-          total_amount_due: calculateTotalAmountDue(row),
-          _dirty: false,
-        }))
-        .sort((a, b) =>
-          (a.company_name || '').localeCompare(b.company_name || '')
-        );
+      setRows((prev) => {
+        const dirtyMap = new Map(
+          prev
+            .filter((row) => row._dirty)
+            .map((row) => [row.company_id, row])
+          );
 
-      setRows(sorted);
+          const merged = (response.data || []).map((row) => {
+            const dirtyRow = dirtyMap.get(row.company_id);
+
+            if (dirtyRow) {
+              return {
+                ...row,
+                month_1_status: dirtyRow.month_1_status,
+                month_1_amount: dirtyRow.month_1_amount,
+                month_2_status: dirtyRow.month_2_status,
+                month_2_amount: dirtyRow.month_2_amount,
+                month_3_status: dirtyRow.month_3_status,
+                month_3_amount: dirtyRow.month_3_amount,
+                total_invoice_amount: dirtyRow.total_invoice_amount,
+                total_amount_due: calculateTotalAmountDue(dirtyRow),
+                _dirty: true,
+              };
+            }
+
+            return {
+              ...row,
+              total_amount_due: calculateTotalAmountDue(row),
+              _dirty: false,
+            };
+          });
+
+          return merged.sort((a, b) =>
+            (a.company_name || '').localeCompare(b.company_name || '')
+          );
+        });
     } catch (error) {
       toast.error(error?.response?.data?.detail || 'Failed to load bill tracking.');
     } finally {
@@ -96,6 +121,13 @@ export default function AdminBillingTrackingPage() {
 
   useEffect(() => {
     loadRows();
+  }, []);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadRows();
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -176,15 +208,18 @@ export default function AdminBillingTrackingPage() {
         item.company_id === row.company_id
           ? {
               ...item,
-              ...(response.data || {}),
-              total_amount_due: calculateTotalAmountDue({
-                ...item,
-                ...(response.data || {}),
-              }),
+              month_1_status: row.month_1_status,
+              month_1_amount: row.month_1_amount,
+              month_2_status: row.month_2_status,
+              month_2_amount: row.month_2_amount,
+              month_3_status: row.month_3_status,
+              month_3_amount: row.month_3_amount,
+              total_invoice_amount: Number(row.total_invoice_amount || 0),
+              total_amount_due: calculateTotalAmountDue(row),
               _dirty: false,
-            }
-          : item
-      )
+           }
+         : item
+       )
     );
 
     if (showToast) {
