@@ -165,160 +165,133 @@ export default function AdminBillingTrackingPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-slate-100 text-slate-700">
-                  <tr>
-                    <th className="text-left px-4 py-3">Company</th>
-                    <th className="text-left px-4 py-3">Status</th>
-                    <th className="text-left px-4 py-3">Total Invoice Amount</th>
-                    <th className="text-left px-4 py-3">{paginatedRows[0]?.month_1_name || 'Month 1'} Status</th>
-                    <th className="text-left px-4 py-3">{paginatedRows[0]?.month_1_name || 'Month 1'} Amount</th>  
-                    <th className="text-left px-4 py-3">{paginatedRows[0]?.month_2_name || 'Month 2'} Status</th> 
-                    <th className="text-left px-4 py-3">{paginatedRows[0]?.month_2_name || 'Month 2'} Amount</th>
-                    <th className="text-left px-4 py-3">{paginatedRows[0]?.month_3_name || 'Month 3'} Status</th>
-                    <th className="text-left px-4 py-3">{paginatedRows[0]?.month_3_name || 'Month 3'} Amount</th>
-                    <th className="text-left px-4 py-3">Total Amount Due</th>
-                    <th className="text-left px-4 py-3">Action</th>
-                  </tr>
+                <tr>
+                  <th className="text-left px-4 py-3">Company</th>
+                  <th className="text-left px-4 py-3">Status</th>
+                  <th className="text-left px-4 py-3">{paginatedRows[0]?.month_1_name || 'Month 1'} Status</th>
+                  <th className="text-left px-4 py-3">{paginatedRows[0]?.month_1_name || 'Month 1'} Amount</th>
+                  <th className="text-left px-4 py-3">{paginatedRows[0]?.month_2_name || 'Month 2'} Status</th>
+                  <th className="text-left px-4 py-3">{paginatedRows[0]?.month_2_name || 'Month 2'} Amount</th>
+                  <th className="text-left px-4 py-3">{paginatedRows[0]?.month_3_name || 'Month 3'} Status</th>
+                  <th className="text-left px-4 py-3">{paginatedRows[0]?.month_3_name || 'Month 3'} Amount</th>
+                  <th className="text-left px-4 py-3">Balance Due</th>
+                  <th className="text-left px-4 py-3">Save</th>
+                </tr>
                 </thead>
 
                 <tbody>
                   {paginatedRows.map((row) => (
-                    <tr key={row.company_id} className="border-t border-slate-200">
-                      <td className="px-4 py-3 font-medium text-slate-900">
-                        {row.company_name}
-                      </td>
+                <tr key={row.company_id}>
+                  <td className="px-4 py-3">{row.company_name}</td>
 
-                      <td className="px-4 py-3">
-                        <span className="inline-flex px-2 py-1 rounded text-xs font-medium bg-slate-100 text-slate-800 border border-slate-300">
-                          {row.company_status}
-                        </span>
-                      </td>
+                  <td className="px-4 py-3">
+                    <span className="px-2 py-1 text-xs rounded bg-slate-200">
+                      {row.company_status}
+                    </span>
+                  </td>
 
-                      <td className="px-4 py-3">
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={row.total_invoice_amount}
-                          onChange={(e) =>
-                            updateRowField(row.company_id, 'total_invoice_amount', e.target.value)
-                          }
-                          className="w-full max-w-[180px] px-3 py-2 border border-slate-300 rounded text-sm"
-                        />
-                      </td>
+                  {/* Jan Status */}
+                  <td className="px-4 py-3">
+                    <select
+                      value={row.month_1_status}
+                      onChange={(e) =>
+                        updateRowField(row.company_id, 'month_1_status', e.target.value)
+                      }
+                      className={`w-full px-3 py-2 rounded text-sm ${getStatusClass(row.month_1_status)}`}
+                    >
+                      <option value="PAID">Paid</option>
+                      <option value="UNPAID">Unpaid</option>
+                      <option value="SUSPENDED">Suspended</option>
+                    </select>
+                  </td>
 
-                      <td className="px-4 py-3">
-                        <div className="space-y-1">
-                          <div className="text-xs text-slate-500">{row.month_1_name}</div>
-                          <select
-                            value={row.month_1_status}
-                            onChange={(e) =>
-                              updateRowField(row.company_id, 'month_1_status', e.target.value)
-                            }
-                            className={`w-full px-3 py-2 rounded text-sm ${getStatusClass(row.month_1_status)}`}
-                          >
-                            <option value="PAID">Paid</option>
-                            <option value="UNPAID">Unpaid</option>
-                            <option value="SUSPENDED">Suspended</option>
-                          </select>
-                        </div>
-                      </td>
+                  {/* Jan Amount */}
+                  <td className="px-4 py-3">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={row.month_1_amount}
+                      onChange={(e) =>
+                        updateRowField(row.company_id, 'month_1_amount', e.target.value)
+                      }
+                      className="w-full max-w-[120px] px-2 py-1 border rounded"
+                    />
+                  </td>
 
-                      <td className="px-4 py-3">
-                        <select
-                          value={row.month_1_status}
-                          onChange={(e) =>
-                            updateRowField(row.company_id, 'month_1_status', e.target.value)
-                          }
-                          className={`w-full min-w-[130px] px-3 py-2 rounded text-sm ${getStatusClass(row.month_1_status)}`}
-                        >
-                          <option value="PAID">Paid</option>
-                          <option value="UNPAID">Unpaid</option>
-                          <option value="SUSPENDED">Suspended</option>
-                        </select>
-                      </td>
+                  {/* Feb Status */}
+                  <td className="px-4 py-3">
+                    <select
+                      value={row.month_2_status}
+                      onChange={(e) =>
+                        updateRowField(row.company_id, 'month_2_status', e.target.value)
+                      }
+                      className={`w-full px-3 py-2 rounded text-sm ${getStatusClass(row.month_2_status)}`}
+                    >
+                      <option value="PAID">Paid</option>
+                      <option value="UNPAID">Unpaid</option>
+                      <option value="SUSPENDED">Suspended</option>
+                    </select>
+                  </td>
 
-                      <td className="px-4 py-3">
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={row.month_1_amount}
-                          onChange={(e) =>
-                            updateRowField(row.company_id, 'month_1_amount', e.target.value)
-                          }
-                          className="w-full max-w-[150px] px-3 py-2 border border-slate-300 rounded text-sm"
-                        />
-                      </td>
+                  {/* Feb Amount */}
+                  <td className="px-4 py-3">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={row.month_2_amount}
+                      onChange={(e) =>
+                        updateRowField(row.company_id, 'month_2_amount', e.target.value)
+                      }
+                      className="w-full max-w-[120px] px-2 py-1 border rounded"
+                    />
+                  </td>
 
-                      <td className="px-4 py-3">
-                        <select
-                          value={row.month_2_status}
-                          onChange={(e) =>
-                            updateRowField(row.company_id, 'month_2_status', e.target.value)
-                          }
-                          className={`w-full min-w-[130px] px-3 py-2 rounded text-sm ${getStatusClass(row.month_2_status)}`}
-                        >
-                          <option value="PAID">Paid</option>
-                          <option value="UNPAID">Unpaid</option>
-                          <option value="SUSPENDED">Suspended</option>
-                        </select>
-                      </td>
+                  {/* Mar Status */}
+                  <td className="px-4 py-3">
+                    <select
+                      value={row.month_3_status}
+                      onChange={(e) =>
+                        updateRowField(row.company_id, 'month_3_status', e.target.value)
+                      }
+                      className={`w-full px-3 py-2 rounded text-sm ${getStatusClass(row.month_3_status)}`}
+                    >
+                      <option value="PAID">Paid</option>
+                      <option value="UNPAID">Unpaid</option>
+                      <option value="SUSPENDED">Suspended</option>
+                    </select>
+                  </td>
 
-                      <td className="px-4 py-3">
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={row.month_2_amount}
-                          onChange={(e) =>
-                            updateRowField(row.company_id, 'month_2_amount', e.target.value)
-                          }
-                          className="w-full max-w-[150px] px-3 py-2 border border-slate-300 rounded text-sm"
-                        />
-                      </td>
+                  {/* Mar Amount */}
+                  <td className="px-4 py-3">
+                    <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={row.month_3_amount}
+                    onChange={(e) =>
+                      updateRowField(row.company_id, 'month_3_amount', e.target.value)
+                    }
+                    className="w-full max-w-[120px] px-2 py-1 border rounded"
+                  />
+                </td>
 
-                      <td className="px-4 py-3">
-                        <select
-                          value={row.month_3_status}
-                          onChange={(e) =>
-                            updateRowField(row.company_id, 'month_3_status', e.target.value)
-                         }
-                         className={`w-full min-w-[130px] px-3 py-2 rounded text-sm ${getStatusClass(row.month_3_status)}`}
-                       >
-                         <option value="PAID">Paid</option>
-                         <option value="UNPAID">Unpaid</option>
-                         <option value="SUSPENDED">Suspended</option>
-                       </select>
-                     </td>
+                {/* Balance Due */}
+                <td className="px-4 py-3 font-semibold">
+                  R {Number(row.total_amount_due || 0).toFixed(2)}
+                </td>
 
-                     <td className="px-4 py-3">
-                       <input
-                         type="number"
-                         min="0"
-                         step="0.01"
-                         value={row.month_3_amount}
-                         onChange={(e) =>
-                           updateRowField(row.company_id, 'month_3_amount', e.target.value)
-                         }
-                         className="w-full max-w-[150px] px-3 py-2 border border-slate-300 rounded text-sm"
-                       />
-                     </td>
-
-                     <td className="px-4 py-3 font-semibold text-slate-900">
-                       R {Number(row.total_amount_due || 0).toFixed(2)}
-                       </td>
-
-                      <td className="px-4 py-3">
-                        <button
-                          type="button"
-                          onClick={() => handleSaveRow(row)}
-                          disabled={savingCompanyId === row.company_id}
-                          className="inline-flex justify-center px-3 py-2 bg-[#2563EB] text-white rounded text-sm disabled:opacity-50"
-                        >
-                          {savingCompanyId === row.company_id ? 'Saving...' : 'Save'}
-                        </button>
-                      </td>
-                    </tr>
+                {/* Save */}
+                <td className="px-4 py-3">
+                  <button
+                    onClick={() => handleSaveRow(row)}
+                    className="px-3 py-2 bg-blue-600 text-white rounded"
+                  >
+                    Save
+                  </button>
+                </td>
+              </tr>
                   ))}
                 </tbody>
               </table>
