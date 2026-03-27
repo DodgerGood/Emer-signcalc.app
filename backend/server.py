@@ -274,6 +274,8 @@ class Company(BaseModel):
     billing_email: Optional[EmailStr] = None
     billing_start_date: Optional[str] = None
     status: str = "ACTIVE"
+    suspension_comment: Optional[str] = None
+    suspension_date: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 class BillingSeatLine(BaseModel):
@@ -316,6 +318,8 @@ class CompanyBillTrackingRecord(BaseModel):
     company_id: str
     company_name: str
     company_status: str = "ACTIVE"
+    suspension_comment: Optional[str] = None
+    suspension_date: Optional[str] = None
     total_invoice_amount: float = 0.0
     month_1_name: str
     month_1_status: str = "UNPAID"
@@ -332,6 +336,7 @@ class CompanyBillTrackingRecord(BaseModel):
 class CompanyBillTrackingUpdateRequest(BaseModel):
     company_id: str
     company_status: str = "ACTIVE"
+    suspension_comment: Optional[str] = None
     total_invoice_amount: float = 0.0
     month_1_status: str
     month_1_amount: float = 0.0
@@ -339,6 +344,18 @@ class CompanyBillTrackingUpdateRequest(BaseModel):
     month_2_amount: float = 0.0
     month_3_status: str
     month_3_amount: float = 0.0
+
+class CompanyBillTrackingHistoryEntry(BaseModel):
+    month_name: str
+    status: str = "UNPAID"
+    amount: float = 0.0
+    updated_at: str
+
+
+class CompanyBillTrackingHistoryResponse(BaseModel):
+    company_id: str
+    company_name: str
+    months: List[CompanyBillTrackingHistoryEntry] = []
 
 # Material Models
 class MaterialCreate(BaseModel):
@@ -2154,10 +2171,12 @@ async def list_company_bill_tracking():
             rows.append(CompanyBillTrackingRecord(**existing))
         else:
             rows.append(
-              CompanyBillTrackingRecord(
+                CompanyBillTrackingRecord(
                     company_id=company_id,
                     company_name=company.get("name", "Unknown Company"),
                     company_status=company.get("status", "ACTIVE"),
+                    suspension_comment=company.get("suspension_comment"),
+                    suspension_date=company.get("suspension_date"),
                     total_invoice_amount=0.0,
                     month_1_name=month_1_name,
                     month_1_status="UNPAID",
@@ -2186,6 +2205,7 @@ async def upsert_company_bill_tracking(req: CompanyBillTrackingUpdateRequest):
     allowed_company_statuses = {"ACTIVE", "SUSPENDED", "DELETED"}
 
     company_status = (req.company_status or "ACTIVE").strip().upper()
+    suspension_comment = (req.suspension_comment or "").strip() or None
     month_1_status = (req.month_1_status or "").strip().upper()
     month_2_status = (req.month_2_status or "").strip().upper()
     month_3_status = (req.month_3_status or "").strip().upper()
@@ -2222,23 +2242,53 @@ async def upsert_company_bill_tracking(req: CompanyBillTrackingUpdateRequest):
 
     month_1_name, month_2_name, month_3_name = get_last_3_month_names()
 
+    existing_company_status = (company.get("status") or "ACTIVE").upper()
+    existing_suspension_date = company.get("suspension_date")
+
+    suspension_date = existing_suspension_date
+    if company_status == "SUSPENDED":
+        if existing_company_status != "SUSPENDED" or not existing_suspension_date:
+            suspension_date = datetime.now(timezone.utc).isoformat()
+    else:
+        suspension_date = None
+        suspension_comment = None
+
+    existing_company_status = (company.get("status") or "ACTIVE").upper()
+    existing_suspension_date = company.get("suspension_date")
+
+    suspension_date = existing_suspension_date
+    if company_status == "SUSPENDED":
+        if existing_company_status != "SUSPENDED" or not existing_suspension_date:
+            suspension_date = datetime.now(timezone.utc).isoformat()
+    else:
+        suspension_date = None
+        suspension_comment = None
+
     await db.companies.update_one(
         {"id": req.company_id},
         {
             "$set": {
                 "status": company_status,
+                "suspension_comment": suspension_comment,
+                "suspension_date": suspension_date,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
         }
     )
 
     company["status"] = company_status
+    company["suspension_comment"] = suspension_comment
+    company["suspension_date"] = suspension_date
+    company["suspension_comment"] = suspension_comment
+    company["suspension_date"] = suspension_date
 
     record = CompanyBillTrackingRecord(
         id=existing["id"] if existing else str(uuid.uuid4()),
         company_id=company["id"],
         company_name=company.get("name", "Unknown Company"),
         company_status=company.get("status", "ACTIVE"),
+        suspension_comment=company.get("suspension_comment"),
+        suspension_date=company.get("suspension_date"),
         total_invoice_amount=round(float(req.total_invoice_amount), 2),
         month_1_name=month_1_name,
         month_1_status=month_1_status,
@@ -2257,6 +2307,62 @@ async def upsert_company_bill_tracking(req: CompanyBillTrackingUpdateRequest):
         {"company_id": req.company_id},
         {"$set": record.model_dump()},
         upsert=True
+    )
+    
+    history_doc = await db.company_bill_tracking_history.find_one(
+        {"company_id": req.company_id},
+        {"_id": 0}
+    )
+
+    existing_months = history_doc.get("months", []) if history_doc else []
+
+    current_months = [
+        {
+            "month_name": month_1_name,
+            "status": month_1_status,
+            "amount": round(float(req.month_1_amount), 2),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        },
+        {
+            "month_name": month_2_name,
+            "status": month_2_status,
+            "amount": round(float(req.month_2_amount), 2),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        },
+        {
+            "month_name": month_3_name,
+            "status": month_3_status,
+            "amount": round(float(req.month_3_amount), 2),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        },
+    ]
+
+    merged_by_name = {}
+
+    for item in existing_months:
+        merged_by_name[item["month_name"]] = item
+
+    for item in current_months:
+        merged_by_name[item["month_name"]] = item
+
+    ordered_names = [item["month_name"] for item in existing_months if item["month_name"] in merged_by_name]
+    for item in current_months:
+        if item["month_name"] not in ordered_names:
+            ordered_names.append(item["month_name"])
+
+    merged_months = [merged_by_name[name] for name in ordered_names][-12:]
+
+    await db.company_bill_tracking_history.update_one(
+        {"company_id": req.company_id},
+        {
+            "$set": {
+                "company_id": company["id"],
+                "company_name": company.get("name", "Unknown Company"),
+                "months": merged_months,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+        },
+        upsert=True,
     )
 
     return record
@@ -2369,6 +2475,38 @@ async def generate_bill_tracking_statement_pdf(company_id: str):
         buffer,
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'},
+    )
+
+@api_router.get(
+    "/admin/bill-tracking/{company_id}/history",
+    response_model=CompanyBillTrackingHistoryResponse,
+)
+async def get_company_bill_tracking_history(company_id: str):
+    company = await db.companies.find_one({"id": company_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    history_doc = await db.company_bill_tracking_history.find_one(
+        {"company_id": company_id},
+        {"_id": 0}
+    )
+
+    if not history_doc:
+        return CompanyBillTrackingHistoryResponse(
+            company_id=company["id"],
+            company_name=company.get("name", "Unknown Company"),
+            months=[],
+        )
+
+    months = [
+        CompanyBillTrackingHistoryEntry(**month)
+        for month in history_doc.get("months", [])
+    ]
+
+    return CompanyBillTrackingHistoryResponse(
+        company_id=history_doc["company_id"],
+        company_name=history_doc.get("company_name", company.get("name", "Unknown Company")),
+        months=months,
     )
 
 @api_router.get("/auth/me", response_model=User)

@@ -64,6 +64,11 @@ export default function AdminBillingTrackingPage() {
   const [loading, setLoading] = useState(true);
   const [savingCompanyId, setSavingCompanyId] = useState(null);
 
+  const [historyCompanyId, setHistoryCompanyId] = useState(null);
+  const [historyCompanyName, setHistoryCompanyName] = useState('');
+  const [historyRows, setHistoryRows] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
   const rowsRef = useRef([]);
   const autoSaveBusyRef = useRef(false);
 
@@ -143,6 +148,8 @@ export default function AdminBillingTrackingPage() {
       [
         row.company_name,
         row.company_status,
+        row.suspension_comment,
+        row.suspension_date,
         String(row.total_invoice_amount ?? ''),
         row.month_1_name,
         row.month_1_status,
@@ -193,6 +200,7 @@ export default function AdminBillingTrackingPage() {
     const payload = {
       company_id: row.company_id,
       company_status: row.company_status,
+      suspension_comment: row.suspension_comment || null,
       total_invoice_amount: Number(row.total_invoice_amount || 0),
       month_1_status: row.month_1_status,
       month_1_amount: Number(row.month_1_amount || 0),
@@ -209,6 +217,12 @@ export default function AdminBillingTrackingPage() {
         item.company_id === row.company_id
           ? {
               ...item,
+              company_status: row.company_status,
+              suspension_comment: row.suspension_comment || null,
+              suspension_date:
+              row.company_status === 'SUSPENDED'
+                ? item.suspension_date || new Date().toISOString()
+                : null,
               month_1_status: row.month_1_status,
               month_1_amount: row.month_1_amount,
               month_2_status: row.month_2_status,
@@ -218,7 +232,7 @@ export default function AdminBillingTrackingPage() {
               total_invoice_amount: Number(row.total_invoice_amount || 0),
               total_amount_due: calculateTotalAmountDue(row),
               _dirty: false,
-           }
+            }
          : item
        )
     );
@@ -314,8 +328,10 @@ export default function AdminBillingTrackingPage() {
                     <th className="text-left px-4 py-3">Month 2</th>
                     <th className="text-left px-4 py-3">Month 3</th>
                     <th className="text-left px-4 py-3">Balance Due</th>
-                    <th className="text-left px-4 py-3">Save</th>
+                    <th className="text-left px-4 py-3">Suspension Note</th>
+                    <th className="text-left px-4 py-3">Save</th> 
                     <th className="text-left px-4 py-3">Statement</th>
+                    <th className="text-left px-4 py-3">History</th>
                   </tr>
                 </thead>
 
@@ -475,6 +491,30 @@ export default function AdminBillingTrackingPage() {
                       </td>
 
                       <td className="px-4 py-3">
+                        {String(row.company_status || '').toUpperCase() === 'SUSPENDED' ? (
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              value={row.suspension_comment || ''}
+                              onChange={(e) =>
+                                updateRowField(row.company_id, 'suspension_comment', e.target.value)
+                              }
+                              placeholder="Suspension comment"
+                              className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-sm text-slate-900"
+                            />
+                            <div className="text-xs text-slate-500">
+                              Suspended on:{' '}
+                                {row.suspension_date
+                                  ? new Date(row.suspension_date).toLocaleDateString()
+                                  : 'Pending save'}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 text-sm">—</span>
+                          )}
+                        </td>
+
+                      <td className="px-4 py-3">
                         <button
                           type="button"
                           onClick={() => handleSaveRow(row)}
@@ -516,7 +556,32 @@ export default function AdminBillingTrackingPage() {
                         Statement
                       </button>
                     </td>
-                    </tr>
+                    <td className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            setLoadingHistory(true);
+                            const response = await api.get(
+                              `/admin/bill-tracking/${row.company_id}/history`
+                            );
+                            setHistoryCompanyId(row.company_id);
+                            setHistoryCompanyName(row.company_name || 'Company');
+                            setHistoryRows(response.data?.months || []);
+                          } catch (error) {
+                            toast.error(
+                              error?.response?.data?.detail || 'Failed to load payment history.'
+                            );
+                          } finally {
+                            setLoadingHistory(false);
+                          }
+                        }}
+                        className="px-3 py-2 rounded bg-slate-200 text-slate-900 hover:bg-slate-300"
+                      >
+                        History
+                      </button>
+                    </td>
+                  </tr>
                   ))}
                 </tbody>
               </table>
@@ -545,6 +610,64 @@ export default function AdminBillingTrackingPage() {
                 Next
               </button>
             </div>
+            {historyCompanyId && (
+              <div className="border-t border-slate-200 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium uppercase tracking-wide text-slate-600">
+                    12-Month History — {historyCompanyName}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHistoryCompanyId(null);
+                      setHistoryCompanyName('');
+                      setHistoryRows([]);
+                    }}
+                    className="px-3 py-1 rounded bg-slate-100 text-slate-900 hover:bg-slate-200"
+                  >
+                    Close
+                  </button>
+                </div>
+
+                {loadingHistory ? (
+                  <div className="text-sm text-slate-600">Loading history...</div>
+                ) : historyRows.length === 0 ? (
+                  <div className="text-sm text-slate-600">No history available.</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-100 text-slate-700">
+                        <tr>
+                          <th className="text-left px-4 py-3">Month</th>
+                          <th className="text-left px-4 py-3">Status</th>
+                          <th className="text-right px-4 py-3">Amount</th>
+                          <th className="text-left px-4 py-3">Updated</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {historyRows.map((item, idx) => (
+                          <tr
+                            key={`${item.month_name}-${idx}`}
+                            className="border-t border-slate-200"
+                          >
+                            <td className="px-4 py-3">{item.month_name}</td>
+                            <td className="px-4 py-3">{item.status}</td>
+                            <td className="px-4 py-3 text-right">
+                              R {Number(item.amount || 0).toFixed(2)}
+                            </td>
+                            <td className="px-4 py-3">
+                              {item.updated_at
+                                ? new Date(item.updated_at).toLocaleDateString()
+                                : '—'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
           </div>
         )}
       </div>
