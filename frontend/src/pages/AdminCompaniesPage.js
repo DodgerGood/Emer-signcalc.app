@@ -11,11 +11,19 @@ export default function AdminCompaniesPage() {
   const [companyPage, setCompanyPage] = useState(1);
   const companiesPerPage = 10;
 
+  const [companySuspensionNotes, setCompanySuspensionNotes] = useState({});
+  const [savingSuspensionNoteCompanyId, setSavingSuspensionNoteCompanyId] = useState(null);
+
   const loadCompanies = async () => {
     try {
       setLoading(true);
       const response = await api.get('/admin/companies');
       setCompanies(response.data || []);
+      const nextSuspensionNotes = {};
+      (response.data || []).forEach((company) => {
+        nextSuspensionNotes[company.company_id] = company.suspension_comment || '';
+      });
+      setCompanySuspensionNotes(nextSuspensionNotes);
     } catch (error) {
       toast.error(error?.response?.data?.detail || 'Failed to load companies.');
     } finally {
@@ -142,6 +150,23 @@ const handleRestoreCompany = async (companyId) => {
     }
   };
 
+const handleSaveSuspensionNote = async (companyId) => {
+  try {
+    setSavingSuspensionNoteCompanyId(companyId);
+
+    await api.post(`/admin/companies/${companyId}/suspension-note`, {
+      suspension_comment: companySuspensionNotes[companyId] || null,
+    });
+
+    toast.success('Suspension note saved.');
+    loadCompanies();
+  } catch (error) {
+    toast.error(error?.response?.data?.detail || 'Failed to save suspension note.');
+  } finally {
+    setSavingSuspensionNoteCompanyId(null);
+  }
+};
+
 const filteredCompanies = companies.filter((company) => {
   const status = (company.status || '').toUpperCase().trim();
 
@@ -260,6 +285,7 @@ const filteredCompanies = companies.filter((company) => {
                     <th className="text-left px-4 py-3">Company</th>
                     <th className="text-left px-4 py-3">Company ID</th>
                     <th className="text-left px-4 py-3">Status</th>
+                    <th className="text-left px-4 py-3">Suspension Note</th>
                     <th className="text-left px-4 py-3">Users / Seats</th>
                     <th className="text-left px-4 py-3">Total Lockouts</th>
                     <th className="text-left px-4 py-3">Actions</th>
@@ -277,27 +303,57 @@ const filteredCompanies = companies.filter((company) => {
                       <td className="px-4 py-3">{company.company_name}</td>
                       <td className="px-4 py-3">{company.company_id}</td>
                       <td className="px-4 py-3">
-                        <div className="space-y-1">
-                          <span
-                            className={`inline-flex px-2 py-1 rounded text-xs font-medium ${
-                              company.status === 'ACTIVE'
-                                ? 'bg-green-100 text-green-700'
-                                : company.status === 'SUSPENDED'
-                                ? 'bg-yellow-100 text-yellow-700'
-                                : company.status === 'DELETED'
-                                ? 'bg-red-100 text-red-700'
-                                : 'bg-slate-100 text-slate-700'
-                              }`}
-                            >
-                              {company.status}
-                            </span>
+                        <span
+                          className={`inline-flex px-2 py-1 rounded text-xs font-medium ${
+                            company.status === 'ACTIVE'
+                              ? 'bg-green-100 text-green-700'
+                              : company.status === 'SUSPENDED'
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : company.status === 'DELETED'
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-slate-100 text-slate-700'
+                            }`}
+                          >
+                            {company.status}
+                          </span>
+                        </td>
 
-                            {company.status === 'SUSPENDED' && company.suspension_comment ? (
-                              <div className="text-xs text-slate-600 max-w-[220px] break-words">
-                                {company.suspension_comment}
+                        <td className="px-4 py-3">
+                          {company.status === 'SUSPENDED' ? (  
+                            <div className="space-y-2 min-w-[240px]">
+                              <textarea
+                                value={companySuspensionNotes[company.company_id] || ''}
+                                onChange={(e) =>
+                                  setCompanySuspensionNotes((prev) => ({
+                                    ...prev,
+                                    [company.company_id]: e.target.value,
+                                  }))
+                                }
+                                placeholder="Enter suspension reason..."
+                                rows={3}
+                                className="w-full rounded-md border border-slate-300 bg-white px-2 py-2 text-sm text-slate-900 resize-y"
+                              />
+
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveSuspensionNote(company.company_id)}
+                                  disabled={savingSuspensionNoteCompanyId === company.company_id}
+                                  className="inline-flex px-3 py-1 rounded bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-60"
+                                >
+                                  {savingSuspensionNoteCompanyId === company.company_id ? 'Saving...' : 'Save Note'}
+                                </button>
+
+                                {company.suspension_date ? (
+                                  <div className="text-xs text-slate-500">
+                                    {new Date(company.suspension_date).toLocaleDateString()}
+                                  </div>
+                                ) : null}
                               </div>
-                            ) : null}
-                          </div>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
                         </td>
                       <td className="px-4 py-3">{company.user_count}</td>
                       <td className="px-4 py-3">{company.total_lockout_count}</td>

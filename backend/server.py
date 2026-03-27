@@ -190,6 +190,9 @@ class SupportRequestRecord(BaseModel):
     resolution_action: Optional[str] = None
     resolved_by: Optional[str] = None
 
+class CompanySuspensionNoteUpdateRequest(BaseModel):
+    suspension_comment: Optional[str] = None
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str
@@ -1919,6 +1922,43 @@ async def restore_company(company_id: str):
         "message": "Company restored successfully.",
         "company_id": company_id,
         "status": "ACTIVE"
+    }
+
+@api_router.post("/admin/companies/{company_id}/suspension-note")
+async def update_company_suspension_note(
+    company_id: str,
+    req: CompanySuspensionNoteUpdateRequest
+):
+    company = await db.companies.find_one({"id": company_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    suspension_comment = (req.suspension_comment or "").strip() or None
+
+    await db.companies.update_one(
+        {"id": company_id},
+        {
+            "$set": {
+                "suspension_comment": suspension_comment,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+        }
+    )
+
+    await db.company_bill_tracking.update_one(
+        {"company_id": company_id},
+        {
+            "$set": {
+                "suspension_comment": suspension_comment,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+        }
+    )
+
+    return {
+        "message": "Suspension note updated successfully.",
+        "company_id": company_id,
+        "suspension_comment": suspension_comment,
     }
 
 @api_router.get("/admin/billing", response_model=List[BillingRecord])
