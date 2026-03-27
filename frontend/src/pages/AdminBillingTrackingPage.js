@@ -329,9 +329,7 @@ export default function AdminBillingTrackingPage() {
                     <th className="text-left px-4 py-3">Month 3</th>
                     <th className="text-left px-4 py-3">Balance Due</th>
                     <th className="text-left px-4 py-3">Suspension Note</th>
-                    <th className="text-left px-4 py-3">Save</th> 
-                    <th className="text-left px-4 py-3">Statement</th>
-                    <th className="text-left px-4 py-3">History</th>
+                    <th className="text-left px-4 py-3">Actions</th>
                   </tr>
                 </thead>
 
@@ -513,74 +511,73 @@ export default function AdminBillingTrackingPage() {
                             <span className="text-slate-400 text-sm">—</span>
                           )}
                         </td>
+                      <td className="px-4 py-3 align-top">
+                        <div className="flex flex-col gap-2 min-w-[110px]">
+                          <button
+                            type="button"
+                            onClick={() => handleSaveRow(row)}
+                            disabled={savingCompanyId === row.company_id}
+                            className="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+                          >
+                            {savingCompanyId === row.company_id ? 'Saving...' : 'Save'}
+                          </button>
 
-                      <td className="px-4 py-3">
-                        <button
-                          type="button"
-                          onClick={() => handleSaveRow(row)}
-                          disabled={savingCompanyId === row.company_id}
-                          className="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
-                        >
-                          {savingCompanyId === row.company_id ? 'Saving...' : 'Save'}
-                        </button>
-                      </td>
-                      <td className="px-4 py-3">
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            try {
-                              const response = await api.get(
-                                `/admin/bill-tracking/${row.company_id}/statement-pdf`,
-                              { responseType: 'blob' }
-                            );
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                const response = await api.get(
+                                  `/admin/bill-tracking/${row.company_id}/statement-pdf`,
+                                  { responseType: 'blob' }
+                                );
 
-                            const url = window.URL.createObjectURL(new Blob([response.data]));
-                            const link = document.createElement('a');
-                            link.href = url;
-                            link.setAttribute(
-                              'download',
-                              `statement_${(row.company_name || 'company').replace(/\s+/g, '_')}.pdf`
-                            );
-                            document.body.appendChild(link);
-                            link.click();
-                            link.remove();
-                            window.URL.revokeObjectURL(url);
-                          } catch (error) {
-                            toast.error(
-                              error?.response?.data?.detail || 'Failed to generate statement PDF.'
-                            );
-                          }
-                        }}
-                        className="px-3 py-2 rounded bg-slate-700 text-white hover:bg-slate-800"
-                      >
-                        Statement
-                      </button>
-                    </td>
-                    <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            setLoadingHistory(true);
-                            const response = await api.get(
-                              `/admin/bill-tracking/${row.company_id}/history`
-                            );
-                            setHistoryCompanyId(row.company_id);
-                            setHistoryCompanyName(row.company_name || 'Company');
-                            setHistoryRows(response.data?.months || []);
-                          } catch (error) {
-                            toast.error(
-                              error?.response?.data?.detail || 'Failed to load payment history.'
-                            );
-                          } finally {
-                            setLoadingHistory(false);
-                          }
-                        }}
-                        className="px-3 py-2 rounded bg-slate-200 text-slate-900 hover:bg-slate-300"
-                      >
-                        History
-                      </button>
-                    </td>
+                                const url = window.URL.createObjectURL(new Blob([response.data]));
+                                const link = document.createElement('a');
+                                link.href = url;
+                                link.setAttribute(
+                                  'download',
+                                  `statement_${(row.company_name || 'company').replace(/\s+/g, '_')}.pdf`
+                                );
+                                document.body.appendChild(link);
+                                link.click();
+                                link.remove();
+                                window.URL.revokeObjectURL(url);
+                              } catch (error) {
+                                toast.error(
+                                  error?.response?.data?.detail || 'Failed to generate statement PDF.'
+                                );
+                              }
+                            }}
+                            className="px-3 py-2 rounded bg-slate-700 text-white hover:bg-slate-800"
+                          >
+                            Statement
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                setLoadingHistory(true);
+                                const response = await api.get(
+                                  `/admin/bill-tracking/${row.company_id}/history`
+                                );
+                                  setHistoryCompanyId(row.company_id);
+                                  setHistoryCompanyName(row.company_name || 'Company');
+                                  setHistoryRows(response.data?.months || []);
+                                } catch (error) {
+                                  toast.error(
+                                    error?.response?.data?.detail || 'Failed to load payment history.'
+                                  );
+                                } finally {
+                                  setLoadingHistory(false);
+                                }
+                              }}
+                              className="px-3 py-2 rounded bg-slate-200 text-slate-900 hover:bg-slate-300"
+                            >
+                              History
+                            </button>
+                          </div>
+                        </td>
                   </tr>
                   ))}
                 </tbody>
