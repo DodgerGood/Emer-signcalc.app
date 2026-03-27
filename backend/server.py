@@ -2261,6 +2261,109 @@ async def upsert_company_bill_tracking(req: CompanyBillTrackingUpdateRequest):
 
     return record
 
+@api_router.get("/admin/bill-tracking/{company_id}/statement-pdf")
+async def generate_bill_tracking_statement_pdf(company_id: str):
+    company = await db.companies.find_one({"id": company_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    record = await db.company_bill_tracking.find_one({"company_id": company_id}, {"_id": 0})
+    if not record:
+        raise HTTPException(status_code=404, detail="No bill tracking record found")
+
+    tracking = CompanyBillTrackingRecord(**record)
+
+    statement_lines = []
+
+    if (tracking.month_1_status or "").upper() == "UNPAID":
+        statement_lines.append(
+            {
+                "month_name": tracking.month_1_name,
+                "status": tracking.month_1_status,
+                "amount": float(tracking.month_1_amount or 0),
+            }
+        )
+
+    if (tracking.month_2_status or "").upper() == "UNPAID":
+        statement_lines.append(
+            {
+                "month_name": tracking.month_2_name,
+                "status": tracking.month_2_status,
+                "amount": float(tracking.month_2_amount or 0),
+            }
+        )
+
+    if (tracking.month_3_status or "").upper() == "UNPAID":
+        statement_lines.append(
+            {
+                "month_name": tracking.month_3_name,
+                "status": tracking.month_3_status,
+                "amount": float(tracking.month_3_amount or 0),
+            }
+        )
+
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+
+    y = height - 50
+
+    pdf.setFont("Helvetica-Bold", 18)
+    pdf.drawString(50, y, "Statement")
+    y -= 30
+
+    pdf.setFont("Helvetica", 11)
+    pdf.drawString(50, y, f"Company: {tracking.company_name}")
+    y -= 18
+    pdf.drawString(50, y, f"Company Status: {tracking.company_status or '-'}")
+    y -= 18
+    pdf.drawString(50, y, f"Statement Date: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}")
+    y -= 30
+
+    pdf.setFont("Helvetica-Bold", 11)
+    pdf.drawString(50, y, "Month")
+    pdf.drawString(300, y, "Status")
+    pdf.drawRightString(560, y, "Amount")
+    y -= 15
+
+    pdf.setFont("Helvetica", 10)
+
+    if not statement_lines:
+        pdf.drawString(50, y, "No unpaid items on this statement.")
+        y -= 20
+    else:
+        for line in statement_lines:
+            if y < 80:
+                pdf.showPage()
+                y = height - 50
+                pdf.setFont("Helvetica-Bold", 11)
+                pdf.drawString(50, y, "Month")
+                pdf.drawString(300, y, "Status")
+                pdf.drawRightString(560, y, "Amount")
+                y -= 15
+                pdf.setFont("Helvetica", 10)
+
+            pdf.drawString(50, y, str(line["month_name"] or "-")[:30])
+            pdf.drawString(300, y, str(line["status"] or "-")[:20])
+            pdf.drawRightString(560, y, f"R {float(line['amount']):.2f}")
+            y -= 16
+
+    y -= 20
+    pdf.setFont("Helvetica-Bold", 11)
+    pdf.drawRightString(560, y, f"Total Due: R {float(tracking.total_amount_due or 0):.2f}")
+
+    pdf.showPage()
+    pdf.save()
+    buffer.seek(0)
+
+    filename = f"statement_{tracking.company_name.replace(' ', '_')}.pdf"
+
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'},
+    )
+
 @api_router.get("/auth/me", response_model=User)
 async def get_me(user: dict = Depends(get_current_user)):
     return User(**user)
