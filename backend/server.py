@@ -2274,33 +2274,40 @@ async def generate_bill_tracking_statement_pdf(company_id: str):
     tracking = CompanyBillTrackingRecord(**record)
 
     statement_lines = []
+    statement_total_due = 0.0
 
     if (tracking.month_1_status or "").upper() == "UNPAID":
+        amount = float(tracking.month_1_amount or 0)
         statement_lines.append(
             {
                 "month_name": tracking.month_1_name,
                 "status": tracking.month_1_status,
-                "amount": float(tracking.month_1_amount or 0),
+                "amount": amount,
             }
         )
+        statement_total_due += amount
 
     if (tracking.month_2_status or "").upper() == "UNPAID":
+        amount = float(tracking.month_2_amount or 0)
         statement_lines.append(
             {
                 "month_name": tracking.month_2_name,
                 "status": tracking.month_2_status,
-                "amount": float(tracking.month_2_amount or 0),
+                "amount": amount,
             }
         )
+        statement_total_due += amount
 
     if (tracking.month_3_status or "").upper() == "UNPAID":
+        amount = float(tracking.month_3_amount or 0)
         statement_lines.append(
             {
                 "month_name": tracking.month_3_name,
                 "status": tracking.month_3_status,
-                "amount": float(tracking.month_3_amount or 0),
+                "amount": amount,
             }
         )
+        statement_total_due += amount
 
     buffer = BytesIO()
     pdf = canvas.Canvas(buffer, pagesize=A4)
@@ -2350,7 +2357,7 @@ async def generate_bill_tracking_statement_pdf(company_id: str):
 
     y -= 20
     pdf.setFont("Helvetica-Bold", 11)
-    pdf.drawRightString(560, y, f"Total Due: R {float(tracking.total_amount_due or 0):.2f}")
+    pdf.drawRightString(560, y, f"Total Due: R {statement_total_due:.2f}")
 
     pdf.showPage()
     pdf.save()
