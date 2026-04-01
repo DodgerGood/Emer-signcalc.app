@@ -2258,14 +2258,14 @@ async def list_company_bill_tracking():
         existing = tracking_map.get(company_id)
 
         if existing:
-            merged = {
-                **existing,
-                "company_name": company.get("name", existing.get("company_name", "Unknown Company")),
-                "company_status": company.get("status", existing.get("company_status", "ACTIVE")),
-                "suspension_comment": company.get("suspension_comment"),
-                "suspension_date": company.get("suspension_date"),
-            }
-            rows.append(CompanyBillTrackingRecord(**merged))
+            existing["company_name"] = company.get(
+                "name",
+                existing.get("company_name", "Unknown Company")
+            )
+            existing["company_status"] = company.get("status", "ACTIVE")
+            existing["suspension_comment"] = company.get("suspension_comment")
+            existing["suspension_date"] = company.get("suspension_date")
+            rows.append(CompanyBillTrackingRecord(**existing))
    
         else:
             rows.append(
