@@ -1863,9 +1863,16 @@ async def suspend_company(company_id: str):
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
 
+    suspension_date = datetime.now(timezone.utc).isoformat()
+
     await db.companies.update_one(
         {"id": company_id},
-        {"$set": {"status": "SUSPENDED"}}
+        {
+            "$set": {
+                "status": "SUSPENDED",
+                "suspension_date": suspension_date,
+            }
+        }
     )
 
     await db.company_bill_tracking.update_one(
@@ -1873,9 +1880,11 @@ async def suspend_company(company_id: str):
         {
             "$set": {
                 "company_status": "SUSPENDED",
+                "suspension_date": suspension_date,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
-        }
+        },
+        upsert=True
     )
 
     await db.users.update_many(
@@ -1897,7 +1906,11 @@ async def soft_delete_company(company_id: str):
 
     await db.companies.update_one(
         {"id": company_id},
-        {"$set": {"status": "DELETED"}}
+        {
+            "$set": {
+                "status": "DELETED",
+            }
+        }
     )
 
     await db.company_bill_tracking.update_one(
@@ -1907,7 +1920,8 @@ async def soft_delete_company(company_id: str):
                 "company_status": "DELETED",
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
-        }
+        },
+        upsert=True
     )
 
     await db.users.update_many(
@@ -1921,7 +1935,6 @@ async def soft_delete_company(company_id: str):
         "status": "DELETED"
     }
 
-
 @api_router.post("/admin/companies/{company_id}/restore")
 async def restore_company(company_id: str):
     company = await db.companies.find_one({"id": company_id}, {"_id": 0})
@@ -1930,7 +1943,12 @@ async def restore_company(company_id: str):
 
     await db.companies.update_one(
         {"id": company_id},
-        {"$set": {"status": "ACTIVE"}}
+        {
+            "$set": {
+                "status": "ACTIVE",
+                "suspension_date": None,
+            }
+        }
     )
 
     await db.company_bill_tracking.update_one(
@@ -1938,9 +1956,11 @@ async def restore_company(company_id: str):
         {
             "$set": {
                 "company_status": "ACTIVE",
+                "suspension_date": None,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
-        }
+        },
+        upsert=True
     )
 
     await db.users.update_many(
