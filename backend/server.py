@@ -2351,17 +2351,6 @@ async def upsert_company_bill_tracking(req: CompanyBillTrackingUpdateRequest):
         suspension_date = None
         suspension_comment = None
 
-    existing_company_status = (company.get("status") or "ACTIVE").upper()
-    existing_suspension_date = company.get("suspension_date")
-
-    suspension_date = existing_suspension_date
-    if company_status == "SUSPENDED":
-        if existing_company_status != "SUSPENDED" or not existing_suspension_date:
-            suspension_date = datetime.now(timezone.utc).isoformat()
-    else:
-        suspension_date = None
-        suspension_comment = None
-
     await db.companies.update_one(
         {"id": req.company_id},
         {
@@ -2375,8 +2364,6 @@ async def upsert_company_bill_tracking(req: CompanyBillTrackingUpdateRequest):
     )
 
     company["status"] = company_status
-    company["suspension_comment"] = suspension_comment
-    company["suspension_date"] = suspension_date
     company["suspension_comment"] = suspension_comment
     company["suspension_date"] = suspension_date
 
@@ -2406,7 +2393,7 @@ async def upsert_company_bill_tracking(req: CompanyBillTrackingUpdateRequest):
         {"$set": record.model_dump()},
         upsert=True
     )
-    
+
     history_doc = await db.company_bill_tracking_history.find_one(
         {"company_id": req.company_id},
         {"_id": 0}
@@ -2443,7 +2430,11 @@ async def upsert_company_bill_tracking(req: CompanyBillTrackingUpdateRequest):
     for item in current_months:
         merged_by_name[item["month_name"]] = item
 
-    ordered_names = [item["month_name"] for item in existing_months if item["month_name"] in merged_by_name]
+    ordered_names = [
+        item["month_name"]
+        for item in existing_months
+        if item["month_name"] in merged_by_name
+    ]
     for item in current_months:
         if item["month_name"] not in ordered_names:
             ordered_names.append(item["month_name"])
