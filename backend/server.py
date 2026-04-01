@@ -1985,14 +1985,16 @@ async def update_company_suspension_note(
 
     suspension_comment = (req.suspension_comment or "").strip() or None
 
-    await db.companies.update_one(
-        {"id": company_id},
+
+    await db.company_bill_tracking.update_one(
+        {"company_id": company_id},
         {
             "$set": {
                 "suspension_comment": suspension_comment,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
-        }
+        },
+        upsert=True
     )
 
     await db.company_bill_tracking.update_one(
