@@ -213,6 +213,8 @@ class AdminCompanySummary(BaseModel):
     company_id: str
     company_name: str
     status: str = "ACTIVE"
+    suspension_comment: Optional[str] = None
+    suspension_date: Optional[str] = None
     user_count: int = 0
     total_lockout_count: int = 0
 
@@ -1310,11 +1312,13 @@ async def list_admin_companies():
         company_id = company.get("id")
         company_users = [u for u in users if u.get("company_id") == company_id]
 
-        summaries.append(
+    summaries.append(
             AdminCompanySummary(
                 company_id=company_id,
                 company_name=company.get("name", "Unknown Company"),
                 status=company.get("status", "ACTIVE"),
+                suspension_comment=company.get("suspension_comment"),
+                suspension_date=company.get("suspension_date"),
                 user_count=len(company_users),
                 total_lockout_count=sum(u.get("lockout_count", 0) for u in company_users),
             )
