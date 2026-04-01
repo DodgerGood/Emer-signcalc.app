@@ -1868,6 +1868,16 @@ async def suspend_company(company_id: str):
         {"$set": {"status": "SUSPENDED"}}
     )
 
+    await db.company_bill_tracking.update_one(
+        {"company_id": company_id},
+        {
+            "$set": {
+                "company_status": "SUSPENDED",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+        }
+    )
+
     await db.users.update_many(
         {"company_id": company_id},
         {"$set": {"status": "SUSPENDED"}}
@@ -1888,6 +1898,16 @@ async def soft_delete_company(company_id: str):
     await db.companies.update_one(
         {"id": company_id},
         {"$set": {"status": "DELETED"}}
+    )
+
+    await db.company_bill_tracking.update_one(
+        {"company_id": company_id},
+        {
+            "$set": {
+                "company_status": "DELETED",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+        }
     )
 
     await db.users.update_many(
@@ -1911,6 +1931,16 @@ async def restore_company(company_id: str):
     await db.companies.update_one(
         {"id": company_id},
         {"$set": {"status": "ACTIVE"}}
+    )
+
+    await db.company_bill_tracking.update_one(
+        {"company_id": company_id},
+        {
+            "$set": {
+                "company_status": "ACTIVE",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+        }
     )
 
     await db.users.update_many(
@@ -2208,7 +2238,15 @@ async def list_company_bill_tracking():
         existing = tracking_map.get(company_id)
 
         if existing:
-            rows.append(CompanyBillTrackingRecord(**existing))
+            merged = {
+                **existing,
+                "company_name": company.get("name", existing.get("company_name", "Unknown Company")),
+                "company_status": company.get("status", existing.get("company_status", "ACTIVE")),
+                "suspension_comment": company.get("suspension_comment"),
+                "suspension_date": company.get("suspension_date"),
+            }
+            rows.append(CompanyBillTrackingRecord(**merged))
+   
         else:
             rows.append(
                 CompanyBillTrackingRecord(
