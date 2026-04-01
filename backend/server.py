@@ -752,6 +752,10 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         if user is None:
             raise HTTPException(status_code=401, detail="User not found")
         
+        user_status = (user.get("status") or "ACTIVE").upper()
+        if user_status != "ACTIVE":
+            raise HTTPException(status_code=403, detail="Account suspended or inactive")
+
         # Check if session is still valid (not terminated by another login)
         if session_id and user.get("session_id") != session_id:
             raise HTTPException(status_code=401, detail="Session terminated - logged in from another device")
@@ -905,6 +909,13 @@ async def login(req: LoginRequest):
     user = await db.users.find_one({"email": req.email}, {"_id": 0})
     if not user or not verify_password(req.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    user_status = (user.get("status") or "ACTIVE").upper()
+    if user_status != "ACTIVE":
+        raise HTTPException(
+            status_code=403,
+            detail="Your account is not active. Please contact support."
+        )
 
     now = datetime.now(timezone.utc)
 
@@ -1349,7 +1360,14 @@ async def suspend_user(user_id: str):
 
     await db.users.update_one(
         {"id": user_id},
-        {"$set": {"status": "SUSPENDED"}}
+        {
+            "$set": {
+                "status": "SUSPENDED",
+                "session_id": None,
+                "device_id": None,
+                "device_lock_until": None,
+            }
+        }
     )
 
     return {
@@ -1383,7 +1401,14 @@ async def soft_delete_user(user_id: str):
 
     await db.users.update_one(
         {"id": user_id},
-        {"$set": {"status": "DELETED"}}
+        {
+            "$set": {
+                "status": "DELETED",
+                "session_id": None,
+                "device_id": None,
+                "device_lock_until": None,
+            }
+        }
     )
 
     return {
@@ -1893,7 +1918,14 @@ async def suspend_company(company_id: str):
 
     await db.users.update_many(
         {"company_id": company_id},
-        {"$set": {"status": "SUSPENDED"}}
+        {
+            "$set": {
+                "status": "SUSPENDED",
+                "session_id": None,
+                "device_id": None,
+                "device_lock_until": None,
+            }
+        }
     )
 
     return {
@@ -1930,7 +1962,14 @@ async def soft_delete_company(company_id: str):
 
     await db.users.update_many(
         {"company_id": company_id},
-        {"$set": {"status": "SUSPENDED"}}
+        {
+            "$set": {
+                "status": "SUSPENDED",
+                "session_id": None,
+                "device_id": None,
+                "device_lock_until": None,
+            }
+        }
     )
 
     return {
