@@ -69,6 +69,16 @@ export default function LoginPage() {
         toast.error('Server unavailable. Please try again in a moment.');
       } else if (msg === 'LOGIN_FAILED') {
         toast.error('Login failed. Please try again.');
+      } else if (
+        status === 403 &&
+        detail.toLowerCase().includes('not active')
+      ) {
+        toast.error('Your seat or company is suspended or deleted. Please contact support.');
+      } else if (
+        status === 403 &&
+        detail.toLowerCase().includes('suspended')
+      ) {
+        toast.error('Your seat or company is suspended. Please contact support.');
       } else if (status === 401 || status === 403) {
         toast.error(detail || 'Authentication failed');
       } else if (!error?.response || status === 502 || status === 503 || status === 504) {
