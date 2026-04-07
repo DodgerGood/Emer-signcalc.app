@@ -165,7 +165,27 @@ export default function InstallTypesPage() {
               </TableHeader>
               <TableBody>
                 {items.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-12 text-slate-500">No install types yet. Create your first one!</TableCell></TableRow>
+                  <TableRow>
+                    <TableCell colSpan={6} className="py-12">
+                      <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto">
+                        <div className="text-lg font-semibold text-slate-900">
+                          No installation rates added yet
+                        </div>
+                        <div className="mt-2 text-sm text-slate-600">
+                          Add your installation pricing so transport, crew time, and install work can be included in recipes and quotes.
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setDialogOpen(true)}
+                          data-testid="add-install-btn"
+                          className="mt-4 inline-flex items-center rounded bg-[#2563EB] px-4 py-2 text-sm text-white hover:bg-[#1d4ed8]"
+                        >
+                          Add your first installation rate
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
                 ) : (
                   items.map((item) => (
                     <TableRow key={item.id}>

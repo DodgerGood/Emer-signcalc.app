@@ -123,7 +123,27 @@ export default function LabourTypesPage() {
               </TableHeader>
               <TableBody>
                 {items.length === 0 ? (
-                  <TableRow><TableCell colSpan={4} className="text-center py-12 text-slate-500">No labour types yet. Create your first one!</TableCell></TableRow>
+                  <TableRow>
+                    <TableCell colSpan={4} className="py-12">
+                      <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto">
+                        <div className="text-lg font-semibold text-slate-900">
+                          No labour rates added yet
+                        </div>
+                        <div className="mt-2 text-sm text-slate-600">
+                          Add your labour pricing so production work can be costed accurately in recipes and quotes.
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setDialogOpen(true)}
+                          data-testid="add-labour-btn"
+                          className="mt-4 inline-flex items-center rounded bg-[#2563EB] px-4 py-2 text-sm text-white hover:bg-[#1d4ed8]"
+                        >
+                          Add your first labour rate
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
                 ) : (
                   items.map((item) => (
                     <TableRow key={item.id}>

@@ -140,7 +140,7 @@ export default function MaterialsPage() {
       grade: '',
       waste_percent: '',
     });
-    setShowModal(true);
+    setDialogOpen(true)
   };
 
   // Helper to get dimension label based on material type

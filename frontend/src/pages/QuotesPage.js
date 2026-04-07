@@ -66,6 +66,10 @@ export default function QuotesPage() {
     }
   };
 
+  const handleOpenCreateQuote = () => {
+    setDialogOpen(true);
+  };
+
   const getStatusBadge = (quote) => {
     const status = quote.quote_status;
     const approvalStatus = quote.quote_approval_status;
@@ -99,7 +103,11 @@ export default function QuotesPage() {
           {isQuotingStaff && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
-                <Button data-testid="new-quote-btn" className="bg-[#2563EB] hover:bg-[#1e40af]">
+                <Button
+                  onClick={handleOpenCreateQuote}
+                  data-testid="new-quote-btn"
+                  className="bg-[#2563EB] hover:bg-[#1e40af]"
+                >
                   <Plus size={18} className="mr-2" />New Quote
                 </Button>
               </DialogTrigger>
@@ -193,7 +201,7 @@ export default function QuotesPage() {
                   {isQuotingStaff && (
                     <button
                       type="button"
-                      onClick={() => navigate('/quotes/new')}
+                      onClick={handleOpenCreateQuote}
                       data-testid="add-quote-btn"
                       className="mt-4 inline-flex items-center rounded bg-[#2563EB] px-4 py-2 text-sm text-white hover:bg-[#1d4ed8]"
                     >
