@@ -8,18 +8,19 @@ import { toast } from 'sonner';
 
 export default function ApprovalsPage() {
   const [approvals, setApprovals] = useState([]);
+  const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { loadApprovals(); }, []);
 
   const loadApprovals = async () => {
     try {
+      setError(false);
       const response = await api.get('/approvals');
       setApprovals(response.data);
     } catch (error) {
+      setError(true);
       toast.error('Failed to load approvals');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -53,8 +54,40 @@ export default function ApprovalsPage() {
 
         {loading ? (
           <div className="flex justify-center p-12"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div></div>
+        ) : error ? (
+          <Card>
+            <CardContent className="py-12">
+              <div className="flex flex-col items-center justify-center text-center">
+                <div className="text-lg font-semibold text-red-600">
+                  Failed to load approvals
+                </div>
+                <div className="mt-2 text-sm text-slate-600">
+                  Please try again or refresh the page.
+                </div>
+
+                <button
+                  type="button"
+                  onClick={loadApprovals}
+                  className="mt-4 inline-flex items-center rounded bg-[#2563EB] px-4 py-2 text-sm text-white hover:bg-[#1d4ed8]"
+                >
+                  Retry
+                </button>
+              </div>
+            </CardContent>
+          </Card>
         ) : approvals.length === 0 ? (
-          <Card><CardContent className="py-12 text-center text-slate-500">No pending approvals</CardContent></Card>
+          <Card>
+            <CardContent className="py-12">
+              <div className="flex flex-col items-center justify-center text-center">
+                <div className="text-lg font-semibold text-slate-900">
+                  No approvals pending
+                </div>
+                <div className="mt-2 text-sm text-slate-600">
+                  Markup approvals will appear here when quotes require review.
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         ) : (
           <div className="space-y-4">
             {approvals.map((approval) => (
