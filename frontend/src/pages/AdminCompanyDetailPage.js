@@ -295,6 +295,7 @@ const handleCreateSeat = async () => {
                         <option value="MANAGER">Manager</option>
                         <option value="PROCUREMENT">Procurement</option>
                         <option value="QUOTING_STAFF">Quoting Staff</option>
+                        <option value="MD_ADMIN">MD Admin</option>
                       </select>
                     </div>
 
@@ -441,6 +442,7 @@ const handleCreateSeat = async () => {
                                  <option value="MANAGER">Manager</option>
                                  <option value="PROCUREMENT">Procurement</option>
                                  <option value="QUOTING_STAFF">Quoting Staff</option>
+                                 <option value="MD_ADMIN">MD Admin</option>
                                </select>
                              ) : (
                                user.role || '—'
