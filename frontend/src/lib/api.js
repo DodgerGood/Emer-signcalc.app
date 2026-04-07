@@ -20,11 +20,24 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status;
+    const detail = (error.response?.data?.detail || '').toString().toLowerCase();
+
+    if (status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
     }
+
+    if (
+      status === 403 &&
+      (detail.includes('not active') || detail.includes('suspended') || detail.includes('inactive'))
+    ) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
+
     return Promise.reject(error);
   }
 );
