@@ -172,7 +172,29 @@ export default function InkProfilesPage() {
               </TableHeader>
               <TableBody>
                 {items.length === 0 ? (
-                  <TableRow><TableCell colSpan={canEdit ? 7 : 6} className="text-center py-12 text-slate-500">No ink profiles yet. {canEdit && 'Create your first one!'}</TableCell></TableRow>
+                  <TableRow>
+                    <TableCell colSpan={canEdit ? 7 : 6} className="py-12">
+                      <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto">
+                        <div className="text-lg font-semibold text-slate-900">
+                          No ink profiles added yet
+                        </div>
+                        <div className="mt-2 text-sm text-slate-600">
+                          Add your ink cost profiles so print pricing can flow into recipes and quotes.
+                        </div>
+
+                        {canEdit && (
+                          <button
+                            type="button"
+                            onClick={() => setDialogOpen(true)}
+                            data-testid="add-ink-profile-btn"
+                            className="mt-4 inline-flex items-center rounded bg-[#2563EB] px-4 py-2 text-sm text-white hover:bg-[#1d4ed8]"
+                          >
+                            Add your first ink profile
+                          </button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
                 ) : (
                   items.map((item) => (
                     <TableRow key={item.id}>
@@ -184,8 +206,12 @@ export default function InkProfilesPage() {
                       <TableCell className="data-mono">R {item.price_per_sqm_coverage.toFixed(2)}</TableCell>
                       {canEdit && (
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(item)}><Pencil size={16} /></Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-700 hover:bg-red-50"><Trash2 size={16} /></Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleEdit(item)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       )}
                     </TableRow>

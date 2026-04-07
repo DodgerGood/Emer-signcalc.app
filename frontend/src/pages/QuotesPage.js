@@ -175,18 +175,35 @@ export default function QuotesPage() {
             </Dialog>
           )}
         </div>
+          {loading ? (
+            <div className="flex justify-center p-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
+            </div>
+          ) : quotes.length === 0 ? (
+            <Card>
+              <CardContent className="py-12">
+                <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto">
+                  <div className="text-lg font-semibold text-slate-900">
+                    No quotes created yet
+                  </div>
+                  <div className="mt-2 text-sm text-slate-600">
+                    Quotes will appear here once your costing setup is in place and you start creating them.
+                  </div>
 
-        {loading ? (
-          <div className="flex justify-center p-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
-          </div>
-        ) : quotes.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center text-slate-500">
-              No quotes yet. {isQuotingStaff && 'Create your first one!'}
-            </CardContent>
-          </Card>
-        ) : (
+                  {isQuotingStaff && (
+                    <button
+                      type="button"
+                      onClick={() => navigate('/quotes/new')}
+                      data-testid="add-quote-btn"
+                      className="mt-4 inline-flex items-center rounded bg-[#2563EB] px-4 py-2 text-sm text-white hover:bg-[#1d4ed8]"
+                    >
+                      Create your first quote
+                    </button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
           <div className="space-y-4">
             {quotes.map((quote) => {
               const signCount = quote.blueprint?.signs?.length || 0;

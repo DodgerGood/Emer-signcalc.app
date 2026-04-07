@@ -126,6 +126,23 @@ export default function MaterialsPage() {
     });
   };
 
+  const handleOpenCreateMaterial = () => {
+    setEditingId(null);
+    setFormData({
+      name: '',
+      type: '',
+      width_mm: '',
+      height_mm: '',
+      total_sqm: '',
+      thickness: '',
+      price_zar: '',
+      supplier: '',
+      grade: '',
+      waste_percent: '',
+    });
+    setShowModal(true);
+  };
+
   // Helper to get dimension label based on material type
   const getDimensionLabels = () => {
     switch (formData.material_type) {
@@ -153,7 +170,7 @@ export default function MaterialsPage() {
           {canEdit && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
-                <Button onClick={resetForm} data-testid="add-material-btn" className="bg-[#2563EB] hover:bg-[#1e40af]">
+                <Button onClick={handleOpenCreateMaterial} data-testid="add-material-btn" className="bg-[#2563EB] text-white hover:bg-[#1d4ed8]">
                   <Plus size={18} className="mr-2" />Add Material
                 </Button>
               </DialogTrigger>
@@ -353,22 +370,8 @@ export default function MaterialsPage() {
                       {canEdit && (
                         <button
                           type="button"
-                          onClick={() => {
-                            setEditingId(null);
-                            setFormData({
-                              name: '',
-                              type: '',
-                              width_mm: '',
-                              height_mm: '',
-                              total_sqm: '',
-                              thickness: '',
-                              price_zar: '',
-                              supplier: '',
-                              grade: '',
-                              waste_percent: '',
-                            });
-                            setShowModal(true);
-                          }}
+                          onClick={handleOpenCreateMaterial}
+                          data-testid="add-material-btn"
                           className="mt-4 inline-flex items-center rounded bg-[#2563EB] px-4 py-2 text-sm text-white hover:bg-[#1d4ed8]"
                         >
                           Add your first material

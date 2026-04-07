@@ -231,7 +231,29 @@ export default function RecipesPage() {
         {loading ? (
           <div className="flex justify-center p-12"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div></div>
         ) : recipes.length === 0 ? (
-          <Card><CardContent className="py-12 text-center text-slate-500">No recipes yet. {isManager() && 'Create your first one!'}</CardContent></Card>
+          <Card>
+            <CardContent className="py-12">
+              <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto">
+                <div className="text-lg font-semibold text-slate-900">
+                  No recipes added yet
+                </div>
+                <div className="mt-2 text-sm text-slate-600">
+                  Recipes combine your costing inputs into reusable pricing structures for quotes.
+                </div>
+
+                {isManager() && (
+                  <button
+                    type="button"
+                    onClick={() => setDialogOpen(true)}
+                    data-testid="add-recipe-btn"
+                    className="mt-4 inline-flex items-center rounded bg-[#2563EB] px-4 py-2 text-sm text-white hover:bg-[#1d4ed8]"
+                  >
+                    Add your first recipe
+                  </button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {recipes.map((recipe) => (
