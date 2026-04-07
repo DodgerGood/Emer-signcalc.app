@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Layout } from '../components/Layout';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -33,6 +33,43 @@ export default function DashboardPage() {
 
   const [loading, setLoading] = useState(true);
 
+  const setupSteps = useMemo(() => {
+    const steps = [];
+
+    if ((isProcurement() || isManager() || isCEO()) && stats.materials === 0) {
+      steps.push({
+        label: 'Add Materials',
+        description: 'Set up the substrates and material costs your business uses.',
+        link: '/materials',
+      });
+    }
+
+    if ((isProcurement() || isManager() || isCEO()) && stats.inkProfiles === 0) {
+      steps.push({
+        label: 'Add Ink Profiles',
+        description: 'Define your ink cost profiles for accurate print costing.',
+        link: '/ink-profiles',
+      });
+    }
+
+    if ((isManager() || isCEO()) && stats.recipes === 0) {
+      steps.push({
+        label: 'Build Recipes',
+        description: 'Create reusable pricing assemblies from your costing inputs.',
+        link: '/recipes',
+      });
+    }
+
+    if ((isQuotingStaff() || isManager() || isCEO()) && stats.quotes === 0) {
+      steps.push({
+        label: 'Create Quotes',
+        description: 'Start creating quotes once your costing setup is in place.',
+        link: '/quotes',
+      });
+    }
+
+    return steps;
+  }, [stats, isProcurement, isManager, isCEO, isQuotingStaff]);
   const loadStats = useCallback(async () => {
     try {
       const requests = [];
@@ -144,6 +181,39 @@ export default function DashboardPage() {
           </h1>
           <p className="text-slate-600 mt-2">Here&apos;s your overview</p>
         </div>
+
+        {setupSteps.length > 0 && (
+          <Card className="card-technical border-blue-200 bg-blue-50">
+            <CardHeader>
+              <CardTitle className="text-base font-semibold text-blue-900">
+                Complete your costing setup
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-blue-900">
+                The zero values below are expected until you configure your own costing data.
+                Start with the setup steps below to build your pricing model.
+              </p>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                {setupSteps.map((step) => (
+                  <Link
+                    key={step.label}
+                    to={step.link}
+                    className="rounded-lg border border-blue-200 bg-white p-4 hover:border-blue-300 hover:shadow-sm transition"
+                  >
+                    <div className="text-sm font-semibold text-slate-900">
+                      {step.label}
+                    </div>
+                    <div className="mt-1 text-sm text-slate-600">
+                      {step.description}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="bento-grid">
           {(isProcurement() || isManager() || isCEO()) && (
