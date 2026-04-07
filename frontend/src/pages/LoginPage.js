@@ -186,6 +186,7 @@ const handleContactSupport = async () => {
                       <SelectItem value="PROCUREMENT">Procurement</SelectItem>
                       <SelectItem value="QUOTING_STAFF">Quoting Staff</SelectItem>
                       <SelectItem value="CEO">CEO</SelectItem>
+                      <SelectItem value="MD_ADMIN">MD Admin</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-slate-500">Select the appropriate role for this user</p>

@@ -115,6 +115,7 @@ class UserRole(str):
     PROCUREMENT = "PROCUREMENT"
     QUOTING_STAFF = "QUOTING_STAFF"
     CEO = "CEO"
+    MD_ADMIN = "MD_ADMIN"
 
 class QtyDriver(str):
     SQM = "SQM"
@@ -1440,7 +1441,7 @@ async def update_user(user_id: str, req: AdminUserUpdateRequest):
     update_fields = {}
     original_email = user.get("email")
     email_changed = False
-    allowed_roles = {"CEO", "MANAGER", "PROCUREMENT", "QUOTING_STAFF"}
+    allowed_roles = {"MANAGER", "PROCUREMENT", "QUOTING_STAFF", "CEO", "MD_ADMIN"}
     allowed_statuses = {"ACTIVE", "SUSPENDED", "DELETED"}
 
     if req.full_name is not None:
@@ -1525,7 +1526,7 @@ async def create_company_user(company_id: str, req: AdminCreateUserRequest):
     if existing_user:
         raise HTTPException(status_code=400, detail="User with this email already exists in this company")
 
-    allowed_roles = {"CEO", "MANAGER", "PROCUREMENT", "QUOTING_STAFF"}
+    allowed_roles = {"CEO", "MANAGER", "PROCUREMENT", "QUOTING_STAFF", "MD_ADMIN"}
     allowed_statuses = {"ACTIVE", "SUSPENDED", "DELETED"}
 
     role = req.role.strip().upper()
@@ -1678,7 +1679,7 @@ async def import_company_csv(company_id: str, file: UploadFile = File(...)):
     reader = csv.DictReader(io.StringIO(text))
 
     result = CsvImportResult()
-    allowed_roles = {"CEO", "MANAGER", "PROCUREMENT", "QUOTING_STAFF"}
+    allowed_roles = {"CEO", "MANAGER", "PROCUREMENT", "QUOTING_STAFF", "MD_ADMIN"}
     allowed_statuses = {"ACTIVE", "SUSPENDED"}
 
     for index, row in enumerate(reader, start=2):
@@ -1761,7 +1762,7 @@ async def import_all_companies_csv(file: UploadFile = File(...)):
     reader = csv.DictReader(io.StringIO(text))
 
     result = CsvImportResult()
-    allowed_roles = {"CEO", "MANAGER", "PROCUREMENT", "QUOTING_STAFF"}
+    allowed_roles = {"CEO", "MANAGER", "PROCUREMENT", "QUOTING_STAFF", "MD_ADMIN"}
     allowed_statuses = {"ACTIVE", "SUSPENDED"}
 
     for index, row in enumerate(reader, start=2):
@@ -3284,13 +3285,13 @@ async def delete_quote_travel(quote_id: str, user: dict = Depends(require_quotin
 
 async def can_view_blueprint(user: dict = Depends(get_current_user)) -> dict:
     """CEO and Director can view blueprints, Quoting Staff can edit"""
-    if user["role"] not in ["QUOTING_STAFF", "CEO", "MANAGER"]:
+    if user["role"] not in ["QUOTING_STAFF", "CEO", "MANAGER", "MD_ADMIN"]:
         raise HTTPException(status_code=403, detail="Access denied to quote blueprints")
     return user
 
 async def can_edit_blueprint(user: dict = Depends(get_current_user)) -> dict:
     """Only Quoting Staff can edit blueprints"""
-    if user["role"] != "QUOTING_STAFF":
+    if user["role"] not in ["QUOTING_STAFF", "MD_ADMIN"]:
         raise HTTPException(status_code=403, detail="Only Quoting Staff can edit blueprints")
     return user
 
@@ -3550,7 +3551,7 @@ async def get_quote_blueprint(quote_id: str, user: dict = Depends(can_view_bluep
     if not quote:
         raise HTTPException(status_code=404, detail="Quote not found")
     
-    can_edit = user["role"] == "QUOTING_STAFF" and quote["created_by"] == user["id"]
+    can_edit = user["role"] in ["QUOTING_STAFF", "MD_ADMIN"] and quote["created_by"] == user["id"]
     
     return {
         "quote_id": quote_id,
