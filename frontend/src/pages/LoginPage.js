@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -23,7 +23,8 @@ export default function LoginPage() {
   const [supportSubmitting, setSupportSubmitting] = useState(false);
   const { login, register } = useAuth();
   const navigate = useNavigate();
-  const getDeviceId = () => {
+  const location = useLocation(); 
+const getDeviceId = () => {
     let id = localStorage.getItem('device_id');
     if (!id) {
       id = (crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`).toString();
@@ -31,6 +32,16 @@ export default function LoginPage() {
     }
     return id;
   };
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const reason = params.get('reason');
+
+    if (reason === 'suspended') {
+      toast.error('Your seat or company is suspended or deleted. Please contact support.');
+      navigate('/login', { replace: true });
+    }
+  }, [location.search, navigate]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
