@@ -340,11 +340,44 @@ export default function MaterialsPage() {
               <TableBody>
                 {materials.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={canEdit ? 10 : 9} className="text-center py-12 text-slate-500">
-                      No materials yet. {canEdit && 'Create your first one!'}
-                    </TableCell>
-                  </TableRow>
-                ) : (
+                    <TableCell colSpan={canEdit ? 10 : 9} className="py-12">
+                    <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto">
+                      <div className="text-lg font-semibold text-slate-900">
+                        No materials added yet
+                      </div>
+                      <div className="mt-2 text-sm text-slate-600">
+                        Add the substrates and material costs your business uses so pricing can
+                        flow into recipes and quotes.
+                      </div>
+
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingId(null);
+                            setFormData({
+                              name: '',
+                              type: '',
+                              width_mm: '',
+                              height_mm: '',
+                              total_sqm: '',
+                              thickness: '',
+                              price_zar: '',
+                              supplier: '',
+                              grade: '',
+                              waste_percent: '',
+                            });
+                            setShowModal(true);
+                          }}
+                          className="mt-4 inline-flex items-center rounded bg-[#2563EB] px-4 py-2 text-sm text-white hover:bg-[#1d4ed8]"
+                        >
+                          Add your first material
+                        </button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
                   materials.map((material) => {
                     let dimensions = '-';
                     if (material.material_type === 'UNIT') {
