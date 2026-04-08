@@ -768,7 +768,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         raise HTTPException(status_code=401, detail="Invalid token")
 
 async def require_manager(user: dict = Depends(get_current_user)) -> dict:
-    if user["role"] not in [UserRole.MANAGER, UserRole.MD_ADMIN]:
+    if user["role"] not in [UserRole.MANAGER, UserRole.CEO, UserRole.MD_ADMIN]:
         raise HTTPException(status_code=403, detail="Manager access required")
     return user
 
@@ -778,7 +778,7 @@ async def require_procurement(user: dict = Depends(get_current_user)) -> dict:
     return user
 
 async def require_quoting_staff(user: dict = Depends(get_current_user)) -> dict:
-    if user["role"] not in [UserRole.QUOTING_STAFF, UserRole.CEO]:
+    if user["role"] not in [UserRole.QUOTING_STAFF, UserRole.MD_ADMIN]:
         raise HTTPException(status_code=403, detail="Quoting staff access required")
     return user
 
