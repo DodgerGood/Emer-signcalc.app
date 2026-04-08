@@ -32,7 +32,10 @@ export default function MaterialsPage() {
     waste_default_percent: '10'
   });
 
-  const canEdit = user?.role === 'PROCUREMENT' || user?.role === 'CEO';
+const canEdit =
+  user?.role === 'PROCUREMENT' ||
+  user?.role === 'CEO' ||
+  user?.role === 'MD_ADMIN';
 
   useEffect(() => { loadMaterials(); }, []);
 

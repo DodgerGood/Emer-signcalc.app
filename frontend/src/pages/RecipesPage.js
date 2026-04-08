@@ -15,7 +15,7 @@ const LINE_TYPES = ['MATERIAL', 'INK', 'SPRAY_CONSUMABLE', 'LABOUR', 'SPRAY_LABO
 const QTY_DRIVERS = ['SQM', 'HOURS', 'PER_JOB'];
 
 export default function RecipesPage() {
-  const { isManager } = useAuth();
+  const { isManager, isMDAdmin } = useAuth();
   const [recipes, setRecipes] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [inks, setInks] = useState([]);
@@ -74,7 +74,7 @@ export default function RecipesPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!isManager()) {
+      if (!(isManager() || isMDAdmin())) {
       toast.error('Only managers can create recipes');
       return;
     }
@@ -137,7 +137,7 @@ export default function RecipesPage() {
             <h1 className="text-4xl font-black tracking-tight leading-none">Recipes</h1>
             <p className="text-slate-600 mt-2">Pricing assemblies for quotes</p>
           </div>
-          {isManager() && (
+          {(isManager() || isMDAdmin()) && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <button
@@ -251,7 +251,7 @@ export default function RecipesPage() {
                   Recipes combine your costing inputs into reusable pricing structures for quotes.
                 </div>
 
-                {isManager() && (
+                {(isManager() || isMDAdmin()) && (
                   <button
                     type="button"
                     onClick={() => setDialogOpen(true)}
@@ -284,7 +284,7 @@ export default function RecipesPage() {
                       </div>
                     ))}
                   </div>
-                  {isManager() && (
+                    {(isManager() || isMDAdmin()) && (
                     <div className="mt-4 pt-4 border-t">
                       <Button size="sm" variant="ghost" onClick={() => handleDelete(recipe.id)} data-testid={`delete-recipe-${recipe.id}`} className="text-red-600 hover:text-red-700 hover:bg-red-50 w-full">
                         <Trash2 size={16} className="mr-2" />Delete

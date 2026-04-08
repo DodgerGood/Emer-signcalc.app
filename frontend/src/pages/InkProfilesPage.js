@@ -21,7 +21,10 @@ export default function InkProfilesPage() {
     name: '', ink_type: 'UV', supplier: '', quantity_liters: '', price_per_unit: '', price_per_sqm_coverage: ''
   });
 
-  const canEdit = user?.role === 'PROCUREMENT' || user?.role === 'CEO';
+const canEdit =
+  user?.role === 'PROCUREMENT' ||
+  user?.role === 'CEO' ||
+  user?.role === 'MD_ADMIN';
 
   useEffect(() => { loadItems(); }, []);
 
