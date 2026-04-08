@@ -15,12 +15,15 @@ export default function ApprovalsPage() {
 
   const loadApprovals = async () => {
     try {
+      setLoading(true);
       setError(false);
       const response = await api.get('/approvals');
       setApprovals(response.data);
     } catch (error) {
       setError(true);
       toast.error('Failed to load approvals');
+    } finally {
+      setLoading(false);
     }
   };
 
