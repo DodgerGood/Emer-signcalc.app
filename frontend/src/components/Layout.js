@@ -34,7 +34,7 @@ const role = user?.role;
 
   // Role-based navigation
   const getLinks = () => {
-    if (role === 'MANAGER') {
+    if (role === 'MD_ADMIN') {
       return [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/materials', icon: Package, label: 'Materials' },
@@ -43,6 +43,16 @@ const role = user?.role;
         { to: '/install-types', icon: Wrench, label: 'Installation Pricelist' },
         { to: '/recipes', icon: BookOpen, label: 'Recipes' },
         { to: '/quotes', icon: FileText, label: 'Quotes' },
+        { to: '/approvals', icon: CheckCircle, label: 'Approvals' },
+      ];
+    } else if (role === 'MANAGER') {
+      return [
+        { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+        { to: '/materials', icon: Package, label: 'Materials' },
+        { to: '/ink-profiles', icon: Droplet, label: 'Ink Profiles' },
+        { to: '/labour-types', icon: Users, label: 'Labour Pricelist' },
+        { to: '/install-types', icon: Wrench, label: 'Installation Pricelist' },
+        { to: '/recipes', icon: BookOpen, label: 'Recipes' },
       ];
     } else if (role === 'PROCUREMENT') {
       return [

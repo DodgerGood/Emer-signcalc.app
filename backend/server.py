@@ -3285,7 +3285,7 @@ async def delete_quote_travel(quote_id: str, user: dict = Depends(require_quotin
 
 async def can_view_blueprint(user: dict = Depends(get_current_user)) -> dict:
     """CEO and Director can view blueprints, Quoting Staff can edit"""
-    if user["role"] not in ["QUOTING_STAFF", "CEO", "MANAGER", "MD_ADMIN"]:
+    if user["role"] not in ["QUOTING_STAFF", "MD_ADMIN"]:
         raise HTTPException(status_code=403, detail="Access denied to quote blueprints")
     return user
 

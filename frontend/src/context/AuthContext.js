@@ -115,8 +115,7 @@ export const AuthProvider = ({ children }) => {
     window.location.href = '/login';
   };
 
-  const isManager = () =>
-    user?.role === 'MANAGER' || user?.role === 'MD_ADMIN';
+  const isManager = () => user?.role === 'MANAGER';
 
   const isProcurement = () =>
     user?.role === 'PROCUREMENT' || user?.role === 'MD_ADMIN';
@@ -124,8 +123,9 @@ export const AuthProvider = ({ children }) => {
   const isQuotingStaff = () =>
     user?.role === 'QUOTING_STAFF' || user?.role === 'MD_ADMIN';
 
-  const isCEO = () =>
-    user?.role === 'CEO' || user?.role === 'MD_ADMIN';
+  const isCEO = () => user?.role === 'CEO';
+
+  const isMDAdmin = () => user?.role === 'MD_ADMIN';
 
   return (
     <AuthContext.Provider

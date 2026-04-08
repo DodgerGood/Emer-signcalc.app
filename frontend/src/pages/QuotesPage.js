@@ -26,7 +26,8 @@ export default function QuotesPage() {
     description: ''
   });
 
-  const isQuotingStaff = user?.role === 'QUOTING_STAFF';
+  const isQuotingStaff =
+  user?.role === 'QUOTING_STAFF' || user?.role === 'MD_ADMIN';
 
   useEffect(() => { loadQuotes(); }, []);
 

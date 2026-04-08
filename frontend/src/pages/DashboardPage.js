@@ -60,7 +60,7 @@ export default function DashboardPage() {
       });
     }
 
-    if ((isQuotingStaff() || isManager() || isCEO()) && stats.quotes === 0) {
+    if (isQuotingStaff() && stats.quotes === 0) {
       steps.push({
         label: 'Create Quotes',
         description: 'Start creating quotes once your costing setup is in place.',
@@ -92,13 +92,13 @@ export default function DashboardPage() {
         requests.push(Promise.resolve({ data: [] }));
       }
 
-      if (isQuotingStaff() || isManager() || isCEO()) {
+      if (isQuotingStaff()) {
         requests.push(api.get('/quotes'));
       } else {
         requests.push(Promise.resolve({ data: [] }));
       }
 
-      if (isQuotingStaff() || isManager() || isCEO()) {
+      if (isQuotingStaff()) {
         requests.push(api.get('/approvals'));
       } else {
         requests.push(Promise.resolve({ data: [] }));
@@ -242,7 +242,7 @@ export default function DashboardPage() {
             />
           )}
 
-          {(isQuotingStaff() || isManager() || isCEO()) && (
+          {isQuotingStaff() && (
             <StatCard
               icon={FileText}
               title="Quotes"
@@ -251,7 +251,7 @@ export default function DashboardPage() {
             />
           )}
 
-          {(isQuotingStaff() || isManager() || isCEO()) &&
+          {isQuotingStaff() &&
             stats.pendingApprovals > 0 && (
               <StatCard
                 icon={Clock}
@@ -259,9 +259,9 @@ export default function DashboardPage() {
                 value={stats.pendingApprovals}
                 linkTo="/approvals"
               />
-            )}
+          )}
 
-          {(isManager() || isCEO()) &&
+          {isCEO() &&
             stats.pendingQuoteApprovals > 0 && (
               <StatCard
                 icon={FileText}
@@ -269,7 +269,7 @@ export default function DashboardPage() {
                 value={stats.pendingQuoteApprovals}
                 linkTo="/quotes"
               />
-            )}
+          )}
         </div>
       </div>
     </Layout>
