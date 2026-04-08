@@ -323,12 +323,12 @@ export default function AdminBillingTrackingPage() {
                 <thead className="bg-slate-100 text-slate-700">
                   <tr>
                     <th className="text-left px-4 py-3">Company</th>
-                    <th className="text-left px-4 py-3">Status</th>
+                    <th className="text-left px-4 py-3">Status</th> 
                     <th className="text-left px-4 py-3">Month 1</th>
                     <th className="text-left px-4 py-3">Month 2</th>
                     <th className="text-left px-4 py-3">Month 3</th>
-                    <th className="text-left px-4 py-3">Balance Due</th>
-                    <th className="text-left px-4 py-3">Suspension Note</th>
+                    <th className="text-left px-4 py-3">Amount Due</th>
+                    <th className="text-left px-4 py-3">Suspension Notes</th>
                     <th className="text-left px-4 py-3">Actions</th>
                   </tr>
                 </thead>
@@ -490,27 +490,27 @@ export default function AdminBillingTrackingPage() {
 
                       <td className="px-4 py-3">
                         {String(row.company_status || '').toUpperCase() === 'SUSPENDED' ? (
-                          <div className="space-y-2">
-                            <input
-                              type="text"
+                          <div className="space-y-2 min-w-[220px]">
+                            <textarea
                               value={row.suspension_comment || ''}
                               onChange={(e) =>
                                 updateRowField(row.company_id, 'suspension_comment', e.target.value)
                               }
-                              placeholder="Suspension comment"
-                              className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-sm text-slate-900"
+                              placeholder="Enter suspension reason..."
+                              rows={3}
+                              className="w-full rounded-md border border-slate-300 bg-white px-2 py-2 text-sm text-slate-900 resize-y"
                             />
                             <div className="text-xs text-slate-500">
                               Suspended on:{' '}
-                                {row.suspension_date
-                                  ? new Date(row.suspension_date).toLocaleDateString()
-                                  : 'Pending save'}
-                              </div>
+                              {row.suspension_date
+                                ? new Date(row.suspension_date).toLocaleDateString()
+                                : 'Pending save'}
                             </div>
-                          ) : (
-                            <span className="text-slate-400 text-sm">—</span>
-                          )}
-                        </td>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 text-sm">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 align-top">
                         <div className="flex flex-col gap-2 min-w-[110px]">
                           <button

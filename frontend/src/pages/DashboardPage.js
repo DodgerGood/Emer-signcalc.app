@@ -92,10 +92,10 @@ export default function DashboardPage() {
         requests.push(Promise.resolve({ data: [] }));
       }
 
-      if (isQuotingStaff()) {
-        requests.push(api.get('/quotes'));
+      if (isQuotingStaff() || isManager() || isCEO()) {
+        requests.push(api.get('/approvals'));
       } else {
-        requests.push(Promise.resolve({ data: [] }));
+        requests.push(Promise.resolve({ data: [] })); 
       }
 
       if (isQuotingStaff()) {
@@ -251,7 +251,7 @@ export default function DashboardPage() {
             />
           )}
 
-          {isQuotingStaff() &&
+          {(isQuotingStaff() || isManager() || isCEO()) &&
             stats.pendingApprovals > 0 && (
               <StatCard
                 icon={Clock}

@@ -39,6 +39,18 @@ export default function AdminCompaniesPage() {
   }, [companyFilter, companySearch]);
 
 
+  useEffect(() => {
+  loadCompanies();
+}, []);
+
+useEffect(() => {
+  const interval = setInterval(() => {
+    loadCompanies();
+  }, 30000);
+
+  return () => clearInterval(interval);
+}, []);
+
   const handleDownloadAllCsv = async () => {
     try {
       const response = await api.get('/admin/companies/export', {
