@@ -768,7 +768,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         raise HTTPException(status_code=401, detail="Invalid token")
 
 async def require_manager(user: dict = Depends(get_current_user)) -> dict:
-    if user["role"] not in [UserRole.MANAGER, UserRole.CEO, UserRole.MD_ADMIN]:
+    if user["role"] not in [UserRole.MANAGER, UserRole.CEO, UserRole.MD_ADMIN, UserRole.QUOTING_STAFF]:
         raise HTTPException(status_code=403, detail="Manager access required")
     return user
 
@@ -788,8 +788,13 @@ async def require_ceo(user: dict = Depends(get_current_user)) -> dict:
     return user
 
 async def can_view_materials(user: dict = Depends(get_current_user)) -> dict:
-    if user["role"] not in [UserRole.PROCUREMENT, UserRole.MANAGER, UserRole.CEO]:
+    if user["role"] not in [UserRole.PROCUREMENT, UserRole.MANAGER, UserRole.CEO, UserRole.MD_ADMIN]:
         raise HTTPException(status_code=403, detail="Access denied")
+    return user
+
+async def can_edit_materials(user: dict = Depends(get_current_user)) -> dict:
+    if user["role"] not in [UserRole.PROCUREMENT, UserRole.CEO, UserRole.MD_ADMIN]:
+        raise HTTPException(status_code=403, detail="Edit access denied")
     return user
 
 async def can_edit_materials(user: dict = Depends(get_current_user)) -> dict:
