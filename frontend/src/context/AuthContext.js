@@ -138,6 +138,7 @@ export const AuthProvider = ({ children }) => {
         isManager,
         isProcurement,
         isQuotingStaff,
+        isMDAdmin,
         isCEO,
         isAuthenticated: !!user,
       }}
