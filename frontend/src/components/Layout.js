@@ -53,6 +53,7 @@ const role = user?.role;
         { to: '/labour-types', icon: Users, label: 'Labour Pricelist' },
         { to: '/install-types', icon: Wrench, label: 'Installation Pricelist' },
         { to: '/recipes', icon: BookOpen, label: 'Recipes' },
+        { to: '/approvals', icon: CheckCircle, label: 'Approvals' },
       ];
     } else if (role === 'PROCUREMENT') {
       return [
