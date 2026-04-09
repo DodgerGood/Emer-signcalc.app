@@ -195,7 +195,7 @@ const canEdit =
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="material_type">Material Type *</Label>
+                    <Label htmlFor="material_type">Category *</Label>
                     <Select value={formData.material_type} onValueChange={(v) => setFormData({ ...formData, material_type: v })}>
                       <SelectTrigger data-testid="material-type-select"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -250,7 +250,7 @@ const canEdit =
                     </div>
                     {formData.material_type !== 'UNIT' ? (
                       <div className="space-y-2">
-                        <Label htmlFor="sqm_price">Price per SqM (ZAR) *</Label>
+                        <Label htmlFor="sqm_price">Cost per m² (ZAR) *</Label>
                         <Input
                           id="sqm_price"
                           type="number"
@@ -299,7 +299,7 @@ const canEdit =
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="waste_default_percent">Waste Default (%) *</Label>
+                    <Label htmlFor="waste_default_percent">Waste (%) *</Label>
                     <Input
                       id="waste_default_percent"
                       type="number"
@@ -345,15 +345,15 @@ const canEdit =
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Dimensions (mm)</TableHead>
-                  <TableHead>Total SqM</TableHead>
-                  <TableHead>Thickness</TableHead>
-                  <TableHead className="data-mono">Price (ZAR)</TableHead>
-                  <TableHead>Supplier</TableHead>
-                  <TableHead>Grade</TableHead>
-                  <TableHead className="data-mono">Waste %</TableHead>
+                  <TableHead>Material Name</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Product Dimensions (mm)</TableHead>
+                    <TableHead>Total Area (m²)</TableHead>
+                    <TableHead>Thickness (mm)</TableHead>
+                    <TableHead className="data-mono">Cost per m² (ZAR)</TableHead>
+                    <TableHead>Supplier</TableHead>
+                    <TableHead>Material Grade</TableHead>
+                    <TableHead className="data-mono">Waste (%)</TableHead>
                   {canEdit && <TableHead className="text-right">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
