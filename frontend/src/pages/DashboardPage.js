@@ -17,12 +17,14 @@ import {
 } from 'lucide-react';
 
 export default function DashboardPage() {
+
   const {
     user,
     isManager,
     isProcurement,
     isQuotingStaff,
     isCEO,
+    isMDAdmin,
   } = useAuth();
 
   const [stats, setStats] = useState({
@@ -56,7 +58,7 @@ export default function DashboardPage() {
         );
       }
 
-      if (isManager() || isCEO()) {
+      if (isManager() || isCEO() || isMDAdmin()) {
         requests.push(
           api.get('/labour-types'),
           api.get('/install-types'),
@@ -70,13 +72,13 @@ export default function DashboardPage() {
         );
       }
 
-      if (isQuotingStaff()) {
+      if (isQuotingStaff() || isMDAdmin()) {
         requests.push(api.get('/quotes'));
       } else {
         requests.push(Promise.resolve({ data: [] }));
       }
 
-      if (isQuotingStaff() || isManager() || isCEO()) {
+      if (isQuotingStaff() || isManager() || isCEO() || isMDAdmin()) {
         requests.push(api.get('/approvals'));
       } else {
         requests.push(Promise.resolve({ data: [] }));
@@ -114,7 +116,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [isProcurement, isManager, isCEO, isQuotingStaff]);
+  }, [isProcurement, isManager, isCEO, isQuotingStaff, isMDAdmin]);
 
   useEffect(() => {
     loadStats();
@@ -236,7 +238,7 @@ export default function DashboardPage() {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {(isProcurement() || isManager() || isCEO()) && (
+          {(isProcurement() || isManager() || isCEO() || isMDAdmin()) && (
             <StatCard
               icon={Package}
               title="Materials"
@@ -245,7 +247,7 @@ export default function DashboardPage() {
             />
           )}
 
-          {(isProcurement() || isManager() || isCEO()) && (
+          {(isProcurement() || isManager() || isCEO() || isMDAdmin()) && (
             <StatCard
               icon={Droplet}
               title="Ink Profiles"
@@ -253,8 +255,8 @@ export default function DashboardPage() {
               linkTo="/ink-profiles"
             />
           )}
-
-          {(isManager() || isCEO()) && (
+ 
+          {(isManager() || isCEO() || isMDAdmin()) && ( 
             <StatCard
               icon={Users}
               title="Labour Pricelist"
@@ -263,7 +265,7 @@ export default function DashboardPage() {
             />
           )}
 
-          {(isManager() || isCEO()) && (
+          {(isManager() || isCEO() || isMDAdmin()) && (
             <StatCard
               icon={Wrench}
               title="Installation Pricelist"
@@ -272,7 +274,7 @@ export default function DashboardPage() {
             />
           )}
 
-          {(isManager() || isCEO()) && (
+          {(isManager() || isCEO() || isMDAdmin()) && (
             <StatCard
               icon={BookOpen}
               title="Recipes"
@@ -281,7 +283,7 @@ export default function DashboardPage() {
             />
           )}
 
-          {isQuotingStaff() && (
+          {(isQuotingStaff() || isMDAdmin()) && (
             <StatCard
               icon={FileText}
               title="Quotes"
@@ -290,13 +292,14 @@ export default function DashboardPage() {
             />
           )}
 
-          {(isQuotingStaff() || isManager() || isCEO()) && stats.pendingApprovals > 0 && (
-            <StatCard
-              icon={Clock}
-              title="Pending Markup Approvals"
-              value={stats.pendingApprovals}
-              linkTo="/approvals"
-            />
+          {(isQuotingStaff() || isManager() || isCEO() || isMDAdmin()) &&
+            stats.pendingApprovals > 0 && (
+              <StatCard
+                icon={Clock}
+                title="Pending Markup Approvals"
+                value={stats.pendingApprovals}
+                linkTo="/approvals"
+              />
           )}
 
           {isCEO() && stats.pendingQuoteApprovals > 0 && (
