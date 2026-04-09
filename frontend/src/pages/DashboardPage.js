@@ -11,6 +11,9 @@ import {
   FileText,
   Clock,
   TrendingUp,
+  Wrench,
+  BookOpen,
+  LayoutDashboard,
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -22,98 +25,23 @@ export default function DashboardPage() {
     isCEO,
   } = useAuth();
 
-  const requests = [];
-
-  if (isProcurement() || isManager() || isCEO()) {
-  requests.push(
-      api.get('/materials'),
-      api.get('/ink-profiles')
-    );
-  } else {
-    requests.push(
-      Promise.resolve({ data: [] }),
-      Promise.resolve({ data: [] })
-    );
-  }
-
-  if (isManager() || isCEO()) {
-    requests.push(
-      api.get('/labour-types'),
-      api.get('/install-types'),
-      api.get('/recipes')
-    );
-  } else {
-    requests.push(
-      Promise.resolve({ data: [] }),
-      Promise.resolve({ data: [] }),
-      Promise.resolve({ data: [] })
-    );
-  }
-
-  if (isQuotingStaff()) {
-    requests.push(api.get('/quotes'));
-  } else {
-    requests.push(Promise.resolve({ data: [] }));
-  }
-
-  if (isQuotingStaff() || isManager() || isCEO()) {
-    requests.push(api.get('/approvals'));
-  } else {
-    requests.push(Promise.resolve({ data: [] }));
-  }
-
-  if (isCEO()) {
-    requests.push(api.get('/quotes/pending-approval/list'));
-  } else {
-    requests.push(Promise.resolve({ data: [] }));
-  }
+  const [stats, setStats] = useState({
+    materials: 0,
+    inkProfiles: 0,
+    labourTypes: 0,
+    installTypes: 0,
+    recipes: 0,
+    quotes: 0,
+    pendingApprovals: 0,
+    pendingQuoteApprovals: 0,
+  });
 
   const [loading, setLoading] = useState(true);
 
-  const setupSteps = [];
-
-    if ((isProcurement() || isManager() || isCEO()) && stats.materials === 0) {
-      setupSteps.push({
-        label: 'Add Materials',
-        description: 'Set up the substrates and material costs your business uses.',
-        link: '/materials',
-      });
-    }
-
-    if ((isProcurement() || isManager() || isCEO()) && stats.inkProfiles === 0) {
-      setupSteps.push({
-        label: 'Add Ink Profiles',
-        description: 'Define your ink cost profiles for accurate print costing.',
-        link: '/ink-profiles',
-      });
-    }
-
-    if ((isManager() || isCEO()) && stats.labourTypes === 0) {
-      setupSteps.push({
-        label: 'Add Labour Rates',
-        description: 'Set your labour pricing for production work.',
-        link: '/labour-types',
-      });
-    }
-
-    if ((isManager() || isCEO()) && stats.installTypes === 0) {
-      setupSteps.push({
-        label: 'Add Installation Rates',
-        description: 'Set your installation pricing for crew, equipment, and site work.',
-        link: '/install-types',
-      });
-    }
-
-    if ((isManager() || isCEO()) && stats.recipes === 0) {
-      setupSteps.push({
-        label: 'Build Recipes',
-        description: 'Create reusable pricing assemblies from your costing inputs.',
-        link: '/recipes',
-      });
-    }
-
   const loadStats = useCallback(async () => {
     try {
+      setLoading(true);
+
       const requests = [];
 
       if (isProcurement() || isManager() || isCEO()) {
@@ -129,7 +57,21 @@ export default function DashboardPage() {
       }
 
       if (isManager() || isCEO()) {
-        requests.push(api.get('/recipes'));
+        requests.push(
+          api.get('/labour-types'),
+          api.get('/install-types'),
+          api.get('/recipes')
+        );
+      } else {
+        requests.push(
+          Promise.resolve({ data: [] }),
+          Promise.resolve({ data: [] }),
+          Promise.resolve({ data: [] })
+        );
+      }
+
+      if (isQuotingStaff()) {
+        requests.push(api.get('/quotes'));
       } else {
         requests.push(Promise.resolve({ data: [] }));
       }
@@ -137,35 +79,31 @@ export default function DashboardPage() {
       if (isQuotingStaff() || isManager() || isCEO()) {
         requests.push(api.get('/approvals'));
       } else {
-        requests.push(Promise.resolve({ data: [] })); 
-      }
-
-      if (isQuotingStaff()) {
-        requests.push(api.get('/approvals'));
-      } else {
         requests.push(Promise.resolve({ data: [] }));
       }
 
-      if (isManager() || isCEO()) {
+      if (isCEO()) {
         requests.push(api.get('/quotes/pending-approval/list'));
       } else {
         requests.push(Promise.resolve({ data: [] }));
       }
 
-  setStats({
-    materials: materials.data.length,
-    inkProfiles: inks.data.length,
-    labourTypes: labourTypes.data.length,
-    installTypes: installTypes.data.length,
-    recipes: recipes.data.length,
-    quotes: quotes.data.length,
-    pendingApprovals: approvals.data.length,
-    pendingQuoteApprovals: pendingQuotes.data.length,
-  });
+      const [
+        materials,
+        inks,
+        labourTypes,
+        installTypes,
+        recipes,
+        quotes,
+        approvals,
+        pendingQuotes,
+      ] = await Promise.all(requests);
 
       setStats({
         materials: materials.data.length,
         inkProfiles: inks.data.length,
+        labourTypes: labourTypes.data.length,
+        installTypes: installTypes.data.length,
         recipes: recipes.data.length,
         quotes: quotes.data.length,
         pendingApprovals: approvals.data.length,
@@ -176,19 +114,57 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
- }, [isProcurement, isManager, isCEO, isQuotingStaff]);
+  }, [isProcurement, isManager, isCEO, isQuotingStaff]);
 
   useEffect(() => {
     loadStats();
   }, [loadStats]);
 
-  const StatCard = ({ icon: Icon, title, value, linkTo, gridSpan }) => {
+  const setupSteps = [];
+
+  if ((isProcurement() || isManager() || isCEO()) && stats.materials === 0) {
+    setupSteps.push({
+      label: 'Add Materials',
+      description: 'Set up the substrates and material costs your business uses.',
+      link: '/materials',
+    });
+  }
+
+  if ((isProcurement() || isManager() || isCEO()) && stats.inkProfiles === 0) {
+    setupSteps.push({
+      label: 'Add Ink Profiles',
+      description: 'Define your ink cost profiles for accurate print costing.',
+      link: '/ink-profiles',
+    });
+  }
+
+  if ((isManager() || isCEO()) && stats.labourTypes === 0) {
+    setupSteps.push({
+      label: 'Add Labour Rates',
+      description: 'Set your labour pricing for production work.',
+      link: '/labour-types',
+    });
+  }
+
+  if ((isManager() || isCEO()) && stats.installTypes === 0) {
+    setupSteps.push({
+      label: 'Add Installation Rates',
+      description: 'Set your installation pricing for crew, equipment, and site work.',
+      link: '/install-types',
+    });
+  }
+
+  if ((isManager() || isCEO()) && stats.recipes === 0) {
+    setupSteps.push({
+      label: 'Build Recipes',
+      description: 'Create reusable pricing assemblies from your costing inputs.',
+      link: '/recipes',
+    });
+  }
+
+  const StatCard = ({ icon: Icon, title, value, linkTo }) => {
     const content = (
-      <Card
-        className={`card-technical ${
-        gridSpan || 'col-span-1'
-        } ${linkTo ? 'cursor-pointer hover:shadow-md transition' : ''}`}
-      >
+      <Card className={`card-technical col-span-1 ${linkTo ? 'cursor-pointer hover:shadow-md transition' : ''}`}>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium text-slate-600 uppercase tracking-wide">
             {title}
@@ -266,82 +242,72 @@ export default function DashboardPage() {
               title="Materials"
               value={stats.materials}
               linkTo="/materials"
-              gridSpan="col-span-1"
             />
           )}
 
           {(isProcurement() || isManager() || isCEO()) && (
             <StatCard
-            icon={Droplet}
-            title="Ink Profiles"
-            value={stats.inkProfiles}
-            linkTo="/ink-profiles"
-            gridSpan="col-span-1"
-          />
-        )}
+              icon={Droplet}
+              title="Ink Profiles"
+              value={stats.inkProfiles}
+              linkTo="/ink-profiles"
+            />
+          )}
 
-        {(isManager() || isCEO()) && (
-          <StatCard
-            icon={Users}
-            title="Labour Pricelist"
-            value={stats.labourTypes}
-            linkTo="/labour-types"
-            gridSpan="col-span-1"
-          />
-        )}
+          {(isManager() || isCEO()) && (
+            <StatCard
+              icon={Users}
+              title="Labour Pricelist"
+              value={stats.labourTypes}
+              linkTo="/labour-types"
+            />
+          )}
 
-        {(isManager() || isCEO()) && (
-          <StatCard
-            icon={TrendingUp}
-            title="Installation Pricelist"
-            value={stats.installTypes}
-            linkTo="/install-types"
-            gridSpan="col-span-1"
-          />
-        )}
+          {(isManager() || isCEO()) && (
+            <StatCard
+              icon={Wrench}
+              title="Installation Pricelist"
+              value={stats.installTypes}
+              linkTo="/install-types"
+            />
+          )}
 
-        {(isManager() || isCEO()) && (
-          <StatCard
-            icon={Users}
-            title="Recipes"
-            value={stats.recipes}
-            linkTo="/recipes"
-            gridSpan="col-span-1"
-          />
-        )}
+          {(isManager() || isCEO()) && (
+            <StatCard
+              icon={BookOpen}
+              title="Recipes"
+              value={stats.recipes}
+              linkTo="/recipes"
+            />
+          )}
 
-        {isQuotingStaff() && (
-          <StatCard
-            icon={FileText}
-            title="Quotes"
-            value={stats.quotes}
-            linkTo="/quotes"
-            gridSpan="col-span-1"
-          />
-        )}
+          {isQuotingStaff() && (
+            <StatCard
+              icon={FileText}
+              title="Quotes"
+              value={stats.quotes}
+              linkTo="/quotes"
+            />
+          )}
 
-        {(isQuotingStaff() || isManager() || isCEO()) &&
-          stats.pendingApprovals > 0 && (
+          {(isQuotingStaff() || isManager() || isCEO()) && stats.pendingApprovals > 0 && (
             <StatCard
               icon={Clock}
               title="Pending Markup Approvals"
               value={stats.pendingApprovals}
               linkTo="/approvals"
-              gridSpan="col-span-1"
             />
-        )}
+          )}
 
-        {isCEO() &&
-          stats.pendingQuoteApprovals > 0 && (
+          {isCEO() && stats.pendingQuoteApprovals > 0 && (
             <StatCard
-              icon={FileText}
+              icon={LayoutDashboard}
               title="Quotes Awaiting Approval"
               value={stats.pendingQuoteApprovals}
               linkTo="/quotes"
-              gridSpan="col-span-1"
             />
-        )}
-      </div>
+          )}
+        </div>
       </div>
     </Layout>
   );
