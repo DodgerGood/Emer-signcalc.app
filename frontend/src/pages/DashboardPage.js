@@ -204,7 +204,14 @@ export default function DashboardPage() {
           <p className="text-slate-600 mt-2">Here&apos;s your overview</p>
         </div>
 
-        {setupSteps.length > 0 && (
+        const showSetup =
+          stats.materials === 0 &&
+          stats.inkProfiles === 0 &&
+          stats.labourTypes === 0 &&
+          stats.installTypes === 0 &&
+          stats.recipes === 0;
+
+        {showSetup && (
           <Card className="card-technical border-blue-200 bg-blue-50">
             <CardHeader>
               <CardTitle className="text-base font-semibold text-blue-900">
@@ -302,7 +309,7 @@ export default function DashboardPage() {
               />
           )}
 
-          {isCEO() && stats.pendingQuoteApprovals > 0 && (
+          {(isCEO() || isMDAdmin()) && stats.pendingQuoteApprovals > 0 && (
             <StatCard
               icon={LayoutDashboard}
               title="Quotes Awaiting Approval"
