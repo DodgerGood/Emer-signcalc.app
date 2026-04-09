@@ -46,7 +46,7 @@ export default function DashboardPage() {
 
       const requests = [];
 
-      if (isProcurement() || isManager() || isCEO()) {
+      if (isProcurement() || isManager() || isCEO() || isMDAdmin()) {
         requests.push(
           api.get('/materials'),
           api.get('/ink-profiles')
@@ -124,7 +124,7 @@ export default function DashboardPage() {
 
   const setupSteps = [];
 
-  if ((isProcurement() || isManager() || isCEO()) && stats.materials === 0) {
+  if ((isProcurement() || isManager() || isCEO() || isMDAdmin()) && stats.materials === 0) {
     setupSteps.push({
       label: 'Add Materials',
       description: 'Set up the substrates and material costs your business uses.',
@@ -132,7 +132,7 @@ export default function DashboardPage() {
     });
   }
 
-  if ((isProcurement() || isManager() || isCEO()) && stats.inkProfiles === 0) {
+  if ((isProcurement() || isManager() || isCEO() || isMDAdmin()) && stats.inkProfiles === 0) {
     setupSteps.push({
       label: 'Add Ink Profiles',
       description: 'Define your ink cost profiles for accurate print costing.',
@@ -140,7 +140,7 @@ export default function DashboardPage() {
     });
   }
 
-  if ((isManager() || isCEO()) && stats.labourTypes === 0) {
+  if ((isManager() || isCEO() || isMDAdmin()) && stats.labourTypes === 0) {
     setupSteps.push({
       label: 'Add Labour Rates',
       description: 'Set your labour pricing for production work.',
@@ -148,7 +148,7 @@ export default function DashboardPage() {
     });
   }
 
-  if ((isManager() || isCEO()) && stats.installTypes === 0) {
+  if ((isManager() || isCEO() || isMDAdmin()) && stats.installTypes === 0) {
     setupSteps.push({
       label: 'Add Installation Rates',
       description: 'Set your installation pricing for crew, equipment, and site work.',
@@ -156,13 +156,20 @@ export default function DashboardPage() {
     });
   }
 
-  if ((isManager() || isCEO()) && stats.recipes === 0) {
+  if ((isManager() || isCEO() || isMDAdmin()) && stats.recipes === 0) {
     setupSteps.push({
       label: 'Build Recipes',
       description: 'Create reusable pricing assemblies from your costing inputs.',
       link: '/recipes',
     });
   }
+
+  const showSetup =
+    stats.materials === 0 &&
+    stats.inkProfiles === 0 &&
+    stats.labourTypes === 0 &&
+    stats.installTypes === 0 &&
+    stats.recipes === 0;
 
   const StatCard = ({ icon: Icon, title, value, linkTo }) => {
     const content = (
@@ -203,13 +210,6 @@ export default function DashboardPage() {
           </h1>
           <p className="text-slate-600 mt-2">Here&apos;s your overview</p>
         </div>
-
-        const showSetup =
-          stats.materials === 0 &&
-          stats.inkProfiles === 0 &&
-          stats.labourTypes === 0 &&
-          stats.installTypes === 0 &&
-          stats.recipes === 0;
 
         {showSetup && (
           <Card className="card-technical border-blue-200 bg-blue-50">
