@@ -156,11 +156,26 @@ const canEdit =
       case 'BOARD':
         return { width: 'Board Width (mm)', height: 'Board Length (mm)' };
       default:
-        return { width: 'Width (mm)', height: 'Height (mm)' };
+        return { width: 'Width (mm)', height: 'Length (mm)' };
     }
   };
 
   const dimensionLabels = getDimensionLabels();
+
+  const getCategoryHint = () => {
+    switch (formData.material_type) {
+      case 'SHEET':
+        return 'Standard flat sheet material priced by total area.';
+      case 'ROLL':
+        return 'Flexible roll material priced by total area.';
+      case 'BOARD':
+        return 'Rigid board material priced by total area.';
+      case 'UNIT':
+        return 'Individual item priced per unit, not by area.';
+      default:
+        return 'Choose the material category that best matches how this item is bought and costed.';
+    }
+  };
 
   return (
     <Layout>
@@ -205,7 +220,10 @@ const canEdit =
                         <SelectItem value="UNIT">Unit (e.g., LED Module)</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
+                    <p className="text-xs text-slate-500">
+                      {getCategoryHint()}
+                    </p>
+                 </div>
 
                   {formData.material_type !== 'UNIT' && (
                     <div className="grid grid-cols-2 gap-4">
@@ -387,28 +405,59 @@ const canEdit =
                   materials.map((material) => {
                     let dimensions = '-';
                     if (material.material_type === 'UNIT') {
-                      dimensions = 'Per Unit';
+                      dimensions = 'Per unit';
                     } else if (material.width && material.height) {
-                      dimensions = `${material.width} × ${material.height}`;
+                      dimensions = `${material.width} W × ${material.height} L mm`;
                     }
 
-                    const totalSqm = material.total_sqm ? `${material.total_sqm.toFixed(2)} m²` : '-';
+                    const totalSqm =
+                      material.total_sqm !== null && material.total_sqm !== undefined
+                        ? `${material.total_sqm.toFixed(2)} m²`
+                        : '-';
 
                     const price = material.material_type === 'UNIT'
-                      ? (material.unit_price ? `R ${material.unit_price.toFixed(2)}/unit` : '-')
-                      : (material.sqm_price ? `R ${material.sqm_price.toFixed(2)}/sqm` : '-');
+                      ? (material.unit_price !== null && material.unit_price !== undefined
+                        ? `R ${material.unit_price.toFixed(2)} / unit`
+                        : '-') 
+                      : (material.sqm_price !== null && material.sqm_price !== undefined
+                        ? `R ${material.sqm_price.toFixed(2)} / m²`
+                        : '-');
 
                     return (
                       <TableRow key={material.id} data-testid={`material-row-${material.id}`}>
-                        <TableCell className="font-medium">{material.name}</TableCell>
-                        <TableCell className="text-sm">{material.material_type}</TableCell>
+                        <TableCell className="font-semibold text-slate-900">
+                          {material.name}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {material.material_type === 'SHEET'
+                            ? 'Sheet'
+                            : material.material_type === 'ROLL'
+                            ? 'Roll'
+                            : material.material_type === 'BOARD'    
+                            ? 'Board'
+                            : material.material_type === 'UNIT'
+                            ? 'Unit'
+                            : material.material_type}
+                        </TableCell>
                         <TableCell className="data-mono text-sm">{dimensions}</TableCell>
-                        <TableCell className="data-mono text-sm">{totalSqm}</TableCell>
-                        <TableCell className="data-mono text-sm">{material.thickness ? `${material.thickness}mm` : '-'}</TableCell>
-                        <TableCell className="data-mono">{price}</TableCell>
-                        <TableCell className="text-sm">{material.supplier || '-'}</TableCell>
-                        <TableCell className="text-sm">{material.material_grade || '-'}</TableCell>
-                        <TableCell className="data-mono">{material.waste_default_percent}%</TableCell>
+                        <TableCell className="data-mono text-sm text-right">{totalSqm}</TableCell>
+                        <TableCell className="data-mono text-sm text-right">
+                          {material.thickness !== null && material.thickness !== undefined
+                            ? `${material.thickness} mm`
+                            : '-'}
+                        </TableCell>
+                        <TableCell className="data-mono text-right">{price}</TableCell>
+                        <TableCell className="text-sm text-slate-500">
+                          {material.supplier || '-'}
+                        </TableCell>
+                        <TableCell className="text-sm text-slate-500">
+                          {material.material_grade || '-'} 
+                        </TableCell>
+                        <TableCell className="data-mono text-right">
+                          {material.waste_default_percent !== null && material.waste_default_percent !== undefined
+                            ? `${material.waste_default_percent}%`
+                            : '-'}
+                        </TableCell>
                         {canEdit && (
                           <TableCell className="text-right">
                             <Button variant="ghost" size="sm" onClick={() => handleEdit(material)} data-testid={`edit-material-${material.id}`}>
