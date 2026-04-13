@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import api from '../lib/api';
@@ -20,6 +20,7 @@ export default function MaterialsPage() {
   const [editingId, setEditingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
+  const importFileRef = useRef(null);
   const [formData, setFormData] = useState({
     name: '',
     material_type: 'SHEET',
@@ -82,6 +83,41 @@ const handleExportMaterials = async () => {
     toast.success('Materials export downloaded');
   } catch (error) {
     toast.error('Failed to export materials');
+  }
+};
+
+const handleImportMaterials = async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  try {
+    const formDataUpload = new FormData();
+    formDataUpload.append('file', file);
+
+    const response = await api.post('/materials/import', formDataUpload, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    const result = response.data;
+
+    toast.success(
+      `Import complete: ${result.imported_count} added, ${result.updated_count} updated`
+    );
+
+    if (result.error_count > 0) {
+      toast.error(`${result.error_count} row(s) had errors`);
+      console.log('Material import errors:', result.errors);
+    }
+
+    loadMaterials();
+  } catch (error) {
+    toast.error(error.response?.data?.detail || 'Failed to import materials');
+  } finally {
+    if (importFileRef.current) {
+      importFileRef.current.value = '';
+    }
   }
 };
 
@@ -240,7 +276,22 @@ const handleExportMaterials = async () => {
             <p className="text-slate-600 mt-2">Manage material inventory and pricing (ZAR)</p>
           </div>
           <div className="flex items-center gap-2">
+            <input
+              ref={importFileRef}
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={handleImportMaterials}
+              data-testid="import-materials-file-input"
+            />
             <Button
+              type="button"
+              variant="outline"
+              onClick={() => importFileRef.current?.click()}
+              data-testid="import-materials-btn"
+            >
+              Import Materials
+            </Button><Button
               type="button"
               variant="outline"
               onClick={handleExportMaterials}

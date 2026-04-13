@@ -2761,6 +2761,102 @@ async def export_materials(user: dict = Depends(can_view_materials)):
         headers={"Content-Disposition": "attachment; filename=materials_export.csv"},
     )
 
+@api_router.post("/materials/import")
+async def import_materials(
+    file: UploadFile = File(...),
+    user: dict = Depends(can_edit_materials)
+):
+    try:
+        content = await file.read()
+        decoded = content.decode("utf-8-sig")
+        reader = csv.DictReader(io.StringIO(decoded))
+
+        imported_count = 0
+        updated_count = 0
+        errors = []
+
+        for row_num, row in enumerate(reader, start=2):
+            try:
+                name = (row.get("name") or "").strip()
+                material_type = (row.get("material_type") or "").strip().upper()
+
+                if not name:
+                    errors.append(f"Row {row_num}: name is required")
+                    continue
+
+                if material_type not in ["SHEET", "ROLL", "BOARD", "UNIT"]:
+                    errors.append(f"Row {row_num}: material_type must be SHEET, ROLL, BOARD, or UNIT")
+                    continue
+
+                def parse_float(value):
+                    if value is None or str(value).strip() == "":
+                        return None
+                    return float(value)
+
+                width = parse_float(row.get("width"))
+                height = parse_float(row.get("height"))
+                total_sqm = parse_float(row.get("total_sqm"))
+                thickness = parse_float(row.get("thickness"))
+                sqm_price = parse_float(row.get("sqm_price"))
+                unit_price = parse_float(row.get("unit_price"))
+                waste_default_percent = parse_float(row.get("waste_default_percent"))
+
+                if waste_default_percent is None:
+                    waste_default_percent = 10.0
+
+                if material_type != "UNIT" and total_sqm is None and width is not None and height is not None:
+                    total_sqm = (width * height) / 1000000
+
+                material_doc = {
+                    "company_id": user["company_id"],
+                    "name": name,
+                    "material_type": material_type,
+                    "width": width,
+                    "height": height,
+                    "total_sqm": total_sqm,
+                    "thickness": thickness,
+                    "sqm_price": sqm_price,
+                    "unit_price": unit_price,
+                    "supplier": (row.get("supplier") or "").strip() or None,
+                    "material_grade": (row.get("material_grade") or "").strip() or None,
+                    "waste_default_percent": waste_default_percent,
+                    "product_specs": (row.get("product_specs") or "").strip() or None,
+                }
+
+                existing = await db.materials.find_one(
+                    {"company_id": user["company_id"], "name": name},
+                    {"_id": 0}
+                )
+
+                if existing:
+                    await db.materials.update_one(
+                        {"id": existing["id"], "company_id": user["company_id"]},
+                        {"$set": material_doc}
+                    )
+                    updated_count += 1
+                else:
+                    material_obj = MaterialCreate(**material_doc)
+                    new_material = Material(
+                        **material_obj.model_dump(),
+                        company_id=user["company_id"]
+                    )
+                    await db.materials.insert_one(new_material.model_dump())
+                    imported_count += 1
+
+            except Exception as row_error:
+                errors.append(f"Row {row_num}: {str(row_error)}")
+
+        return {
+            "message": "Materials import completed",
+            "imported_count": imported_count,
+            "updated_count": updated_count,
+            "error_count": len(errors),
+            "errors": errors[:20],
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Import failed: {str(e)}")
+
 @api_router.put("/materials/{material_id}", response_model=Material)
 async def update_material(material_id: str, material: MaterialCreate, user: dict = Depends(can_edit_materials)):
     mat_data = material.model_dump()
