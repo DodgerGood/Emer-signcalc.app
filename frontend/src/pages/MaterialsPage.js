@@ -64,6 +64,27 @@ const canEdit =
   return matchesSearch && matchesCategory;
 });
 
+const handleExportMaterials = async () => {
+  try {
+    const response = await api.get('/materials/export', {
+      responseType: 'blob',
+    });
+
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'materials_export.csv');
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+
+    toast.success('Materials export downloaded');
+  } catch (error) {
+    toast.error('Failed to export materials');
+  }
+};
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -162,21 +183,22 @@ const canEdit =
   };
 
   const handleOpenCreateMaterial = () => {
-    setEditingId(null);
-    setFormData({
-      name: '',
-      type: '',
-      width_mm: '',
-      height_mm: '',
-      total_sqm: '',
-      thickness: '',
-      price_zar: '',
-      supplier: '',
-      grade: '',
-      waste_percent: '',
-    });
-    setDialogOpen(true)
-  };
+  setEditingId(null);
+  setFormData({
+    name: '',
+    material_type: 'SHEET',
+    width: '',
+    height: '',
+    thickness: '',
+    sqm_price: '',
+    unit_price: '',
+    supplier: '',
+    material_grade: '',
+    product_specs: '',
+    waste_default_percent: '10',
+  });
+  setDialogOpen(true);
+};
 
   // Helper to get dimension label based on material type
   const getDimensionLabels = () => {
@@ -217,8 +239,19 @@ const canEdit =
             <h1 className="text-4xl font-black tracking-tight leading-none">Materials Pricelist</h1>
             <p className="text-slate-600 mt-2">Manage material inventory and pricing (ZAR)</p>
           </div>
-          {canEdit && (
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleExportMaterials}
+              data-testid="export-materials-btn"
+            >
+              Export Materials
+            </Button>
+
+            {canEdit && (
+            <Dialog open={dialogOpen} 
+              onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={handleOpenCreateMaterial} data-testid="add-material-btn" className="bg-[#2563EB] text-white hover:bg-[#1d4ed8]">
                   <Plus size={18} className="mr-2" />Add Material
@@ -384,6 +417,7 @@ const canEdit =
               </DialogContent>
             </Dialog>
           )}
+        </div>
         </div>
 
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">

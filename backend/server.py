@@ -2711,6 +2711,56 @@ async def get_materials(user: dict = Depends(can_view_materials)):
     materials = await db.materials.find({"company_id": user["company_id"]}, {"_id": 0}).to_list(1000)
     return materials
 
+@api_router.get("/materials/export")
+async def export_materials(user: dict = Depends(can_view_materials)):
+    materials = await db.materials.find(
+        {"company_id": user["company_id"]},
+        {"_id": 0}
+    ).sort("name", 1).to_list(5000)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        "name",
+        "material_type",
+        "width",
+        "height",
+        "total_sqm",
+        "thickness",
+        "sqm_price",
+        "unit_price",
+        "supplier",
+        "material_grade",
+        "waste_default_percent",
+        "product_specs",
+    ])
+
+    for material in materials:
+        writer.writerow([
+            material.get("name", ""),
+            material.get("material_type", ""),
+            material.get("width", ""),
+            material.get("height", ""),
+            material.get("total_sqm", ""),
+            material.get("thickness", ""),
+            material.get("sqm_price", ""),
+            material.get("unit_price", ""),
+            material.get("supplier", ""),
+            material.get("material_grade", ""),
+            material.get("waste_default_percent", ""),
+            material.get("product_specs", ""),
+        ])
+
+    csv_bytes = io.BytesIO(output.getvalue().encode("utf-8"))
+    output.close()
+
+    return StreamingResponse(
+        csv_bytes,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=materials_export.csv"},
+    )
+
 @api_router.put("/materials/{material_id}", response_model=Material)
 async def update_material(material_id: str, material: MaterialCreate, user: dict = Depends(can_edit_materials)):
     mat_data = material.model_dump()
