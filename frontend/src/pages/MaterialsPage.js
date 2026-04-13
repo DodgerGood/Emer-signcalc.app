@@ -289,9 +289,12 @@ const handleImportMaterials = async (event) => {
               variant="outline"
               onClick={() => importFileRef.current?.click()}
               data-testid="import-materials-btn"
+              className="border-slate-300 text-slate-700 bg-slate-100 hover:bg-slate-200"
             >
               Import Materials
-            </Button><Button
+            </Button>
+
+            <Button
               type="button"
               variant="outline"
               onClick={handleExportMaterials}
@@ -469,9 +472,13 @@ const handleImportMaterials = async (event) => {
             </Dialog>
           )}
         </div>
-        </div>
+      </div>
 
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+      <p className="text-sm text-slate-500">
+        Use the exported CSV as your import template. Import updates matching material names and adds new ones.
+      </p>
+
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div className="w-full md:max-w-sm space-y-2">
             <Label htmlFor="material-search">Search Materials</Label>
             <Input
