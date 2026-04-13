@@ -369,6 +369,7 @@ const canEdit =
                     <TableHead>Total Area (m²)</TableHead>
                     <TableHead>Thickness (mm)</TableHead>
                     <TableHead className="data-mono">Cost per m² (ZAR)</TableHead>
+                    <TableHead className="data-mono">Effective Cost (ZAR/m²)</TableHead>
                     <TableHead>Supplier</TableHead>
                     <TableHead>Material Grade</TableHead>
                     <TableHead className="data-mono">Waste (%)</TableHead>
@@ -378,7 +379,7 @@ const canEdit =
               <TableBody>
                 {materials.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={canEdit ? 10 : 9} className="py-12">
+                    <TableCell colSpan={canEdit ? 11 : 10} className="py-12">
                     <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto">
                       <div className="text-lg font-semibold text-slate-900">
                         No materials added yet
@@ -422,6 +423,18 @@ const canEdit =
                       : (material.sqm_price !== null && material.sqm_price !== undefined
                         ? `R ${material.sqm_price.toFixed(2)} / m²`
                         : '-');
+                    let effectiveCost = '-';
+
+                    if (
+                      material.material_type !== 'UNIT' &&
+                      material.sqm_price !== null &&
+                      material.sqm_price !== undefined &&
+                      material.waste_default_percent !== null &&
+                      material.waste_default_percent !== undefined
+                    ) {
+                      const calc = material.sqm_price * (1 + material.waste_default_percent / 100);
+                      effectiveCost = `R ${calc.toFixed(2)}`;
+                    }
 
                     return (
                       <TableRow key={material.id} data-testid={`material-row-${material.id}`}>
@@ -447,6 +460,7 @@ const canEdit =
                             : '-'}
                         </TableCell>
                         <TableCell className="data-mono text-right">{price}</TableCell>
+                        <TableCell className="data-mono text-right">{effectiveCost}</TableCell>
                         <TableCell className="text-sm text-slate-500">
                           {material.supplier || '-'}
                         </TableCell>
