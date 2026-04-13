@@ -360,7 +360,8 @@ const canEdit =
           </div>
         ) : (
           <div className="bg-white border border-slate-200 rounded-md shadow-sm overflow-x-auto">
-            <Table>
+            <div className="min-w-[1200px]">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Material Name</TableHead>
@@ -452,34 +453,53 @@ const canEdit =
                             ? 'Unit'
                             : material.material_type}
                         </TableCell>
-                        <TableCell className="data-mono text-sm">{dimensions}</TableCell>
-                        <TableCell className="data-mono text-sm text-right">{totalSqm}</TableCell>
-                        <TableCell className="data-mono text-sm text-right">
+                        <TableCell className="data-mono text-sm text-slate-600 whitespace-nowrap">
+                          {dimensions}
+                        </TableCell>
+                        <TableCell className="data-mono text-sm text-right whitespace-nowrap">
+                          {totalSqm}
+                        </TableCell>
+                        <TableCell className="data-mono text-sm text-right whitespace-nowrap">
                           {material.thickness !== null && material.thickness !== undefined
                             ? `${material.thickness} mm`
                             : '-'}
                         </TableCell>
-                        <TableCell className="data-mono text-right">{price}</TableCell>
-                        <TableCell className="data-mono text-right">{effectiveCost}</TableCell>
-                        <TableCell className="text-sm text-slate-500">
+                        <TableCell className="data-mono text-sm text-right whitespace-nowrap">
+                          {price}
+                        </TableCell>
+                        <TableCell className="data-mono text-sm text-right whitespace-nowrap">
+                          {effectiveCost}
+                        </TableCell>
+                        <TableCell className="text-sm text-slate-500 whitespace-nowrap">
                           {material.supplier || '-'}
                         </TableCell>
-                        <TableCell className="text-sm text-slate-500">
+                        <TableCell className="text-sm text-slate-500 whitespace-nowrap">
                           {material.material_grade || '-'} 
                         </TableCell>
-                        <TableCell className="data-mono text-right">
+                        <TableCell className="data-mono text-sm text-right whitespace-nowrap">
                           {material.waste_default_percent !== null && material.waste_default_percent !== undefined
                             ? `${material.waste_default_percent}%`
                             : '-'}
                         </TableCell>
                         {canEdit && (
-                          <TableCell className="text-right">
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(material)} data-testid={`edit-material-${material.id}`}>
+                          <TableCell className="text-right whitespace-nowrap">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(material)}
+                              data-testid={`edit-material-${material.id}`}
+                            >
                               <Pencil size={16} />
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(material.id)} data-testid={`delete-material-${material.id}`} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(material.id)}
+                              data-testid={`delete-material-${material.id}`}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
                               <Trash2 size={16} />
-                            </Button>
+                            </Button> 
                           </TableCell>
                         )}
                       </TableRow>
@@ -488,6 +508,7 @@ const canEdit =
                 )}
               </TableBody>
             </Table>
+          </div>
           </div>
         )}
       </div>
