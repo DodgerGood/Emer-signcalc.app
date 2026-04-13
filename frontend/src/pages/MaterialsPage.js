@@ -367,10 +367,18 @@ const canEdit =
                   <TableHead>Material Name</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead>Product Dimensions (mm)</TableHead>
-                    <TableHead>Total Area (m²)</TableHead>
-                    <TableHead>Thickness (mm)</TableHead>
-                    <TableHead className="data-mono">Cost per m² (ZAR)</TableHead>
-                    <TableHead className="data-mono">Effective Cost (ZAR/m²)</TableHead>
+                    <TableHead className="whitespace-nowrap text-xs text-right">
+                      Area (m²)
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap text-xs text-right">
+                      Thickness (mm)
+                    </TableHead>
+                    <TableHead className="data-mono whitespace-nowrap text-xs text-right">
+                      Cost / m² (ZAR)
+                    </TableHead>
+                    <TableHead className="data-mono whitespace-nowrap text-xs text-right">
+                      Effective / m² (ZAR)
+                    </TableHead>
                     <TableHead>Supplier</TableHead>
                     <TableHead>Material Grade</TableHead>
                     <TableHead className="data-mono">Waste (%)</TableHead>
