@@ -21,6 +21,8 @@ export default function MaterialsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const importFileRef = useRef(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [formData, setFormData] = useState({
     name: '',
     material_type: 'SHEET',
@@ -53,7 +55,14 @@ const canEdit =
     }
   };
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, categoryFilter]);
+
   const filteredMaterials = materials.filter((material) => {
+  const totalPages = Math.max(1, Math.ceil(filteredMaterials.length / itemsPerPage));
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedMaterials = filteredMaterials.slice(startIndex, startIndex + itemsPerPage);
   const matchesSearch =
     material.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     material.supplier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -291,7 +300,7 @@ const handleImportMaterials = async (event) => {
               data-testid="import-materials-btn"
               className="border-slate-300 text-slate-700 bg-slate-100 hover:bg-slate-200"
             >
-              Import Materials
+              Import Materials CSV
             </Button>
 
             <Button
@@ -300,7 +309,7 @@ const handleImportMaterials = async (event) => {
               onClick={handleExportMaterials}
               data-testid="export-materials-btn"
             >
-              Export Materials
+              Export Materials CSV
             </Button>
 
             {canEdit && (
@@ -512,7 +521,8 @@ const handleImportMaterials = async (event) => {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
           </div>
         ) : (
-          <div className="bg-white border border-slate-200 rounded-md shadow-sm overflow-x-auto">
+          <div className="space-y-0">
+            <div className="bg-white border border-slate-200 rounded-md shadow-sm overflow-x-auto">
             <div className="min-w-[1200px]">
               <Table>
               <TableHeader>
@@ -566,7 +576,7 @@ const handleImportMaterials = async (event) => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                  filteredMaterials.map((material) => {
+                  paginatedMaterials.map((material) => {
                     let dimensions = '-';
                     if (material.material_type === 'UNIT') {
                       dimensions = 'Per unit';
@@ -671,8 +681,42 @@ const handleImportMaterials = async (event) => {
               </TableBody>
             </Table>
           </div>
-          </div>
-        )}
+        </div>
+          {filteredMaterials.length > 0 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 bg-white">
+              <div className="text-sm text-slate-500">
+                Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredMaterials.length)} of {filteredMaterials.length} materials
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+  
+                <span className="text-sm text-slate-600">
+                  Page {currentPage} of {totalPages}
+                </span>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
       </div>
     </Layout>
   );
