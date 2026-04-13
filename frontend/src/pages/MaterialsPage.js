@@ -18,6 +18,8 @@ export default function MaterialsPage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [formData, setFormData] = useState({
     name: '',
     material_type: 'SHEET',
@@ -50,22 +52,52 @@ const canEdit =
     }
   };
 
+  const filteredMaterials = materials.filter((material) => {
+  const matchesSearch =
+    material.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    material.supplier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    material.material_grade?.toLowerCase().includes(searchTerm.toLowerCase());
+
+  const matchesCategory =
+    categoryFilter === 'ALL' || material.material_type === categoryFilter;
+
+  return matchesSearch && matchesCategory;
+});
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const data = {
-        name: formData.name,
-        material_type: formData.material_type,
-        width: formData.width ? parseFloat(formData.width) : null,
-        height: formData.height ? parseFloat(formData.height) : null,
-        thickness: formData.thickness ? parseFloat(formData.thickness) : null,
-        sqm_price: formData.sqm_price ? parseFloat(formData.sqm_price) : null,
-        unit_price: formData.unit_price ? parseFloat(formData.unit_price) : null,
-        supplier: formData.supplier || null,
-        material_grade: formData.material_grade || null,
-        product_specs: formData.product_specs || null,
-        waste_default_percent: parseFloat(formData.waste_default_percent)
-      };
+      const width = formData.width ? parseFloat(formData.width) : null;
+      const height = formData.height ? parseFloat(formData.height) : null;
+      const thickness = formData.thickness ? parseFloat(formData.thickness) : null;
+      const sqm_price = formData.sqm_price ? parseFloat(formData.sqm_price) : null;
+      const unit_price = formData.unit_price ? parseFloat(formData.unit_price) : null;
+      const waste_default_percent = parseFloat(formData.waste_default_percent);
+
+      let total_sqm = null;
+
+      if (
+        formData.material_type !== 'UNIT' &&
+        width !== null &&
+        height !== null
+     ) {
+        total_sqm = (width * height) / 1000000;
+     }
+
+     const data = {
+       name: formData.name,
+       material_type: formData.material_type,
+       width,
+       height,
+       total_sqm,
+       thickness,
+       sqm_price,
+       unit_price,
+       supplier: formData.supplier || null,
+       material_grade: formData.material_grade || null,
+       product_specs: formData.product_specs || null,
+       waste_default_percent
+     };
 
       if (editingId) {
         await api.put(`/materials/${editingId}`, data);
@@ -354,6 +386,35 @@ const canEdit =
           )}
         </div>
 
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div className="w-full md:max-w-sm space-y-2">
+            <Label htmlFor="material-search">Search Materials</Label>
+            <Input
+              id="material-search"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by name, supplier, or grade"
+              data-testid="material-search-input"
+            />
+          </div>
+
+          <div className="w-full md:w-56 space-y-2">
+            <Label htmlFor="material-category-filter">Category</Label>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger id="material-category-filter" data-testid="material-category-filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Categories</SelectItem>
+                <SelectItem value="SHEET">Sheet</SelectItem>
+                <SelectItem value="ROLL">Roll</SelectItem>
+                <SelectItem value="BOARD">Board</SelectItem>
+                <SelectItem value="UNIT">Unit</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
         {loading ? (
           <div className="flex justify-center p-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
@@ -385,34 +446,35 @@ const canEdit =
                   {canEdit && <TableHead className="text-right">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
-              <TableBody>
-                {materials.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={canEdit ? 11 : 10} className="py-12">
-                    <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto">
-                      <div className="text-lg font-semibold text-slate-900">
-                        No materials added yet
-                      </div>
-                      <div className="mt-2 text-sm text-slate-600">
-                        Add the substrates and material costs your business uses so pricing can
-                        flow into recipes and quotes.
-                      </div>
+                <TableBody>
+                  {filteredMaterials.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={canEdit ? 11 : 10} className="py-12">
+                        <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto">
+                          <div className="text-lg font-semibold text-slate-900">
+                            {materials.length === 0 ? 'No materials added yet' : 'No materials match your search'}
+                          </div>
+                          <div className="mt-2 text-sm text-slate-600">
+                            {materials.length === 0
+                              ? 'Add the substrates and material costs your business uses so pricing can flow into recipes and quotes.'
+                              : 'Try a different search term or category filter.'}
+                          </div>
 
-                      {canEdit && (
-                        <button
-                          type="button"
-                          onClick={handleOpenCreateMaterial}
-                          data-testid="add-material-btn"
-                          className="mt-4 inline-flex items-center rounded bg-[#2563EB] px-4 py-2 text-sm text-white hover:bg-[#1d4ed8]"
-                        >
-                          Add your first material
-                        </button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                  materials.map((material) => {
+                          {canEdit && materials.length === 0 && (
+                            <button
+                              type="button"
+                              onClick={handleOpenCreateMaterial}
+                              data-testid="add-material-btn"
+                              className="mt-4 inline-flex items-center rounded bg-[#2563EB] px-4 py-2 text-sm text-white hover:bg-[#1d4ed8]"
+                            >
+                              Add your first material
+                            </button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                  filteredMaterials.map((material) => {
                     let dimensions = '-';
                     if (material.material_type === 'UNIT') {
                       dimensions = 'Per unit';
