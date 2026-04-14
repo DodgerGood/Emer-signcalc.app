@@ -2892,10 +2892,135 @@ async def create_ink_profile(ink: InkProfileCreate, user: dict = Depends(require
     await db.ink_profiles.insert_one(ink_obj.model_dump())
     return ink_obj
 
-@api_router.get("/ink-profiles", response_model=List[InkProfile])
-async def get_ink_profiles(user: dict = Depends(get_current_user)):
-    inks = await db.ink_profiles.find({"company_id": user["company_id"]}, {"_id": 0}).to_list(1000)
-    return inks
+@api_router.get("/ink-profiles/export")
+async def export_ink_profiles(user: dict = Depends(get_current_user)):
+    inks = await db.ink_profiles.find(
+        {"company_id": user["company_id"]},
+        {"_id": 0}
+    ).sort("name", 1).to_list(5000)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        "name",
+        "ink_type",
+        "supplier",
+        "quantity_liters",
+        "price_per_unit",
+        "price_per_sqm_coverage",
+    ])
+
+    for ink in inks:
+        writer.writerow([
+            ink.get("name", ""),
+            ink.get("ink_type", ""),
+            ink.get("supplier", ""),
+            ink.get("quantity_liters", ""),
+            ink.get("price_per_unit", ""),
+            ink.get("price_per_sqm_coverage", ""),
+        ])
+
+    csv_bytes = io.BytesIO(output.getvalue().encode("utf-8"))
+    output.close()
+
+    return StreamingResponse(
+        csv_bytes,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=ink_profiles_export.csv"},
+    )
+
+@api_router.post("/ink-profiles/import")
+async def import_ink_profiles(
+    file: UploadFile = File(...),
+    user: dict = Depends(require_manager)
+):
+    try:
+        content = await file.read()
+        decoded = content.decode("utf-8-sig")
+        reader = csv.DictReader(io.StringIO(decoded))
+
+        imported_count = 0
+        updated_count = 0
+        errors = []
+
+        for row_num, row in enumerate(reader, start=2):
+            try:
+                name = (row.get("name") or "").strip()
+                ink_type = (row.get("ink_type") or "").strip()
+
+                if not name:
+                    errors.append(f"Row {row_num}: name is required")
+                    continue
+
+                if not ink_type:
+                    errors.append(f"Row {row_num}: ink_type is required")
+                    continue
+
+                def parse_float(value):
+                    if value is None or str(value).strip() == "":
+                        return None
+                    return float(value)
+
+                quantity_liters = parse_float(row.get("quantity_liters"))
+                price_per_unit = parse_float(row.get("price_per_unit"))
+                price_per_sqm_coverage = parse_float(row.get("price_per_sqm_coverage"))
+
+                if quantity_liters is None:
+                    errors.append(f"Row {row_num}: quantity_liters is required")
+                    continue
+
+                if price_per_unit is None:
+                    errors.append(f"Row {row_num}: price_per_unit is required")
+                    continue
+
+                if price_per_sqm_coverage is None:
+                    errors.append(f"Row {row_num}: price_per_sqm_coverage is required")
+                    continue
+
+                ink_doc = {
+                    "company_id": user["company_id"],
+                    "name": name,
+                    "ink_type": ink_type,
+                    "supplier": (row.get("supplier") or "").strip() or None,
+                    "quantity_liters": quantity_liters,
+                    "price_per_unit": price_per_unit,
+                    "price_per_sqm_coverage": price_per_sqm_coverage,
+                }
+
+                existing = await db.ink_profiles.find_one(
+                    {"company_id": user["company_id"], "name": name},
+                    {"_id": 0}
+                )
+
+                if existing:
+                    await db.ink_profiles.update_one(
+                        {"id": existing["id"], "company_id": user["company_id"]},
+                        {"$set": ink_doc}
+                    )
+                    updated_count += 1
+                else:
+                    ink_obj = InkProfileCreate(**ink_doc)
+                    new_ink = InkProfile(
+                        **ink_obj.model_dump(),
+                        company_id=user["company_id"]
+                    )
+                    await db.ink_profiles.insert_one(new_ink.model_dump())
+                    imported_count += 1
+
+            except Exception as row_error:
+                errors.append(f"Row {row_num}: {str(row_error)}")
+
+        return {
+            "message": "Ink profiles import completed",
+            "imported_count": imported_count,
+            "updated_count": updated_count,
+            "error_count": len(errors),
+            "errors": errors[:20],
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Import failed: {str(e)}")
 
 @api_router.put("/ink-profiles/{ink_id}", response_model=InkProfile)
 async def update_ink_profile(ink_id: str, ink: InkProfileCreate, user: dict = Depends(require_manager)):
