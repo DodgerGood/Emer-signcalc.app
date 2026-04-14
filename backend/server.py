@@ -3054,6 +3054,122 @@ async def get_labour_types(user: dict = Depends(get_current_user)):
     labours = await db.labour_types.find({"company_id": user["company_id"]}, {"_id": 0}).to_list(1000)
     return labours
 
+@api_router.get("/labour-types/export")
+async def export_labour_types(user: dict = Depends(get_current_user)):
+    labours = await db.labour_types.find(
+        {"company_id": user["company_id"]},
+        {"_id": 0}
+    ).sort("name", 1).to_list(5000)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        "name",
+        "rate_per_hour",
+        "number_of_people",
+    ])
+
+    for labour in labours:
+        writer.writerow([
+            labour.get("name", ""),
+            labour.get("rate_per_hour", ""),
+            labour.get("number_of_people", ""),
+        ])
+
+    csv_bytes = io.BytesIO(output.getvalue().encode("utf-8"))
+    output.close()
+
+    return StreamingResponse(
+        csv_bytes,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=labour_types_export.csv"},
+    )
+
+@api_router.post("/labour-types/import")
+async def import_labour_types(
+    file: UploadFile = File(...),
+    user: dict = Depends(require_manager)
+):
+    try:
+        content = await file.read()
+        decoded = content.decode("utf-8-sig")
+        reader = csv.DictReader(io.StringIO(decoded))
+
+        imported_count = 0
+        updated_count = 0
+        errors = []
+
+        for row_num, row in enumerate(reader, start=2):
+            try:
+                name = (row.get("name") or "").strip()
+
+                if not name:
+                    errors.append(f"Row {row_num}: name is required")
+                    continue
+
+                def parse_float(value):
+                    if value is None or str(value).strip() == "":
+                        return None
+                    return float(value)
+
+                def parse_int(value):
+                    if value is None or str(value).strip() == "":
+                        return None
+                    return int(float(value))
+
+                rate_per_hour = parse_float(row.get("rate_per_hour"))
+                number_of_people = parse_int(row.get("number_of_people"))
+
+                if rate_per_hour is None:
+                    errors.append(f"Row {row_num}: rate_per_hour is required")
+                    continue
+
+                if number_of_people is None:
+                    errors.append(f"Row {row_num}: number_of_people is required")
+                    continue
+
+                labour_doc = {
+                    "company_id": user["company_id"],
+                    "name": name,
+                    "rate_per_hour": rate_per_hour,
+                    "number_of_people": number_of_people,
+                }
+
+                existing = await db.labour_types.find_one(
+                    {"company_id": user["company_id"], "name": name},
+                    {"_id": 0}
+                )
+
+                if existing:
+                    await db.labour_types.update_one(
+                        {"id": existing["id"], "company_id": user["company_id"]},
+                        {"$set": labour_doc}
+                    )
+                    updated_count += 1
+                else:
+                    labour_obj = LabourTypeCreate(**labour_doc)
+                    new_labour = LabourType(
+                        **labour_obj.model_dump(),
+                        company_id=user["company_id"]
+                    )
+                    await db.labour_types.insert_one(new_labour.model_dump())
+                    imported_count += 1
+
+            except Exception as row_error:
+                errors.append(f"Row {row_num}: {str(row_error)}")
+
+        return {
+            "message": "Labour types import completed",
+            "imported_count": imported_count,
+            "updated_count": updated_count,
+            "error_count": len(errors),
+            "errors": errors[:20],
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Import failed: {str(e)}")
+
 @api_router.put("/labour-types/{labour_id}", response_model=LabourType)
 async def update_labour_type(labour_id: str, labour: LabourTypeCreate, user: dict = Depends(require_manager)):
     result = await db.labour_types.find_one_and_update(
