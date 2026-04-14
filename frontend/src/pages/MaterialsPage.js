@@ -378,6 +378,11 @@ const handleImportMaterials = async (event) => {
                           data-testid="material-height-input"
                           placeholder="e.g., 50000"
                         />
+                        {formData.width && formData.height && (
+                          <p className="text-xs text-slate-500">
+                            Total area: {((parseFloat(formData.width) * parseFloat(formData.height)) / 1000000).toFixed(2)} m²
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}
@@ -484,7 +489,7 @@ const handleImportMaterials = async (event) => {
       </div>
 
       <p className="text-sm text-slate-500">
-        Use the exported CSV as your import template. Import updates matching material names and adds new ones.
+        Use the exported CSV as your template. Matching names update existing materials, new names are added.
       </p>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -682,7 +687,7 @@ const handleImportMaterials = async (event) => {
             </Table>
           </div>
         </div>
-          {filteredMaterials.length > 0 && (
+          {true && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 bg-white">
               <div className="text-sm text-slate-500">
                 Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredMaterials.length)} of {filteredMaterials.length} materials
@@ -694,7 +699,7 @@ const handleImportMaterials = async (event) => {
                   variant="outline"
                   size="sm"
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
+                  disabled={currentPage === 1 || filteredMaterials.length === 0}
                 >
                   Previous
                 </Button>
@@ -708,7 +713,7 @@ const handleImportMaterials = async (event) => {
                   variant="outline"
                   size="sm"
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
+                  disabled={currentPage === totalPages || filteredMaterials.length === 0}
                 >
                   Next
                 </Button>
