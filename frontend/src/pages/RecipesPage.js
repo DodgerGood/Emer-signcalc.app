@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Plus, Trash2, Package, Droplet, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
-const LINE_TYPES = ['MATERIAL', 'INK', 'SPRAY_CONSUMABLE', 'LABOUR', 'SPRAY_LABOUR'];
+const LINE_TYPES = ['MATERIAL', 'INK', 'SPRAY_CONSUMABLE', 'LABOUR', 'SPRAY_LABOUR', 'INSTALL'];
 const QTY_DRIVERS = ['SQM', 'HOURS', 'PER_JOB'];
 
 export default function RecipesPage() {
@@ -20,30 +20,46 @@ export default function RecipesPage() {
   const [materials, setMaterials] = useState([]);
   const [inks, setInks] = useState([]);
   const [labours, setLabours] = useState([]);
+  const [installs, setInstalls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 9;
   const [formData, setFormData] = useState({ name: '', lines: [] });
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   const loadData = async () => {
     try {
-      const [recipesRes, materialsRes, inksRes, laboursRes] = await Promise.all([
-        api.get('/recipes'),
-        api.get('/materials'),
-        api.get('/ink-profiles'),
-        api.get('/labour-types')
-      ]);
-      setRecipes(recipesRes.data);
-      setMaterials(materialsRes.data);
-      setInks(inksRes.data);
-      setLabours(laboursRes.data);
+      const [recipesRes, materialsRes, inksRes, laboursRes, installsRes] = await Promise.all([
+              api.get('/recipes'),
+              api.get('/materials'),
+              api.get('/ink-profiles'),
+              api.get('/labour-types'),
+              api.get('/install-types')
+            ]);
+            setRecipes(recipesRes.data);
+            setMaterials(materialsRes.data);
+            setInks(inksRes.data);
+            setLabours(laboursRes.data);
+            setInstalls(installsRes.data);
     } catch (error) {
       toast.error('Failed to load data');
     } finally {
       setLoading(false);
     }
   };
+
+  const filteredRecipes = recipes.filter((recipe) =>
+    recipe.name?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const totalPages = Math.max(1, Math.ceil(filteredRecipes.length / itemsPerPage));
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedRecipes = filteredRecipes.slice(startIndex, startIndex + itemsPerPage);
 
   const addLine = () => {
     setFormData({
@@ -106,11 +122,17 @@ export default function RecipesPage() {
 
   const getRefOptions = (lineType) => {
     switch (lineType) {
-      case 'MATERIAL': return materials;
-      case 'INK': return inks;
+      case 'MATERIAL':
+        return materials;
+      case 'INK':
+        return inks;
       case 'LABOUR':
-      case 'SPRAY_LABOUR': return labours;
-      default: return [];
+      case 'SPRAY_LABOUR':
+        return labours;
+      case 'INSTALL':
+        return installs;
+      default:
+        return [];
     }
   };
 
@@ -140,14 +162,15 @@ export default function RecipesPage() {
           {(isManager() || isMDAdmin()) && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
-                <button
-                  type="button" 
-                  onClick={resetForm}
+                <Button
+                  type="button"
+                  onClick={handleOpenCreateRecipe}
                   data-testid="add-recipe-btn"
-                  className="mt-4 inline-flex items-center rounded bg-[#2563EB] px-4 py-2 text-sm text-white hover:bg-[#1d4ed8]"
+                  className="bg-[#2563EB] text-white hover:bg-[#1d4ed8]"
                 >
-                  Add your first recipe
-                </button>
+                  <Plus size={18} className="mr-2" />
+                  Add Recipe
+                </Button>
               </DialogTrigger>
               <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader><DialogTitle>Create New Recipe</DialogTitle></DialogHeader>
@@ -237,10 +260,21 @@ export default function RecipesPage() {
             </Dialog>
           )}
         </div>
-
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div className="w-full md:max-w-sm space-y-2">
+            <Label htmlFor="recipe-search">Search Recipes</Label>
+            <Input
+              id="recipe-search"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by recipe name"
+              data-testid="recipe-search-input"
+            />
+          </div>
+        </div>
         {loading ? (
           <div className="flex justify-center p-12"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div></div>
-        ) : recipes.length === 0 ? (
+        ) : filteredRecipes.length === 0 ? (
           <Card>
             <CardContent className="py-12">
               <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto">
@@ -265,36 +299,78 @@ export default function RecipesPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {recipes.map((recipe) => (
-              <Card key={recipe.id} className="card-technical" data-testid={`recipe-${recipe.id}`}>
-                <CardHeader>
-                  <CardTitle className="flex justify-between items-start">
-                    <span className="text-lg">{recipe.name}</span>
-                    <span className="text-xs text-slate-500 font-mono">v{recipe.version}</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {recipe.lines.map((line, idx) => (
-                      <div key={idx} className="flex items-center gap-2 text-sm text-slate-600">
-                        {getLineIcon(line.line_type)}
-                        <span>{line.line_type}</span>
-                        <span className="text-xs text-slate-400">({line.qty_driver})</span>
-                      </div>
-                    ))}
-                  </div>
-                    {(isManager() || isMDAdmin()) && (
-                    <div className="mt-4 pt-4 border-t">
-                      <Button size="sm" variant="ghost" onClick={() => handleDelete(recipe.id)} data-testid={`delete-recipe-${recipe.id}`} className="text-red-600 hover:text-red-700 hover:bg-red-50 w-full">
-                        <Trash2 size={16} className="mr-2" />Delete
-                      </Button>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {paginatedRecipes.map((recipe) => (
+                <Card key={recipe.id} className="card-technical" data-testid={`recipe-${recipe.id}`}>
+                  <CardHeader>
+                    <CardTitle className="flex justify-between items-start">
+                      <span className="text-lg">{recipe.name}</span>
+                      <span className="text-xs text-slate-500 font-mono">v{recipe.version}</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {recipe.lines.map((line, idx) => (
+                        <div key={idx} className="flex items-center gap-2 text-sm text-slate-600">
+                          {getLineIcon(line.line_type)}
+                          <span>{line.line_type}</span>
+                          <span className="text-xs text-slate-400">({line.qty_driver})</span>
+                        </div>
+                      ))}
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+
+                    {(isManager() || isMDAdmin()) && (
+                      <div className="mt-4 pt-4 border-t">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDelete(recipe.id)}
+                          data-testid={`delete-recipe-${recipe.id}`}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 w-full"
+                        >
+                          <Trash2 size={16} className="mr-2" />
+                          Delete
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <div className="flex flex-col gap-3 text-sm text-slate-600 md:flex-row md:items-center md:justify-between">
+              <div>
+                Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredRecipes.length)} of {filteredRecipes.length} recipes
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+
+                <span>
+                  Page {currentPage} of {totalPages}
+                </span>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </Layout>
