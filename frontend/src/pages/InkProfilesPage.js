@@ -386,74 +386,77 @@ return (
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
           </div>
         ) : (
-          <div className="bg-white border border-slate-200 rounded-md shadow-sm overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Supplier</TableHead>
-                  <TableHead className="data-mono">Quantity (L)</TableHead>
-                  <TableHead className="data-mono">Price/Unit (ZAR)</TableHead>
-                  <TableHead className="data-mono">Price/SqM (ZAR)</TableHead>
-                  {canEdit && <TableHead className="text-right">Actions</TableHead>}
-                </TableRow>
-              </TableHeader>
-
-              <TableBody>
-                {filteredItems.length === 0 ? (
+        <>
+            <div className="bg-white border border-slate-200 rounded-md shadow-sm overflow-x-auto">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={canEdit ? 7 : 6} className="py-12">
-                      <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto">
-                        <div className="text-lg font-semibold text-slate-900">
-                          No ink profiles found
+                    <TableHead>Name</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Supplier</TableHead>
+                    <TableHead className="data-mono">Quantity (L)</TableHead>
+                    <TableHead className="data-mono">Price/Unit (ZAR)</TableHead>
+                    <TableHead className="data-mono">Price/SqM (ZAR)</TableHead>
+                    {canEdit && <TableHead className="text-right">Actions</TableHead>}
+                  </TableRow>
+                </TableHeader>
+
+                <TableBody>
+                  {filteredItems.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={canEdit ? 7 : 6} className="py-12">
+                        <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto">
+                          <div className="text-lg font-semibold text-slate-900">
+                            No ink profiles found
+                          </div>
+                          <div className="mt-2 text-sm text-slate-600">
+                            Try adjusting your search or filter, or add a new ink profile.
+                          </div>
+
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                resetForm();
+                                setDialogOpen(true);
+                              }}
+                              data-testid="add-first-ink-profile-btn"
+                              className="mt-4 inline-flex items-center rounded bg-[#2563EB] px-4 py-2 text-sm text-white hover:bg-[#1d4ed8]"
+                            >
+                              Add your first ink profile
+                            </button>
+                          )}
                         </div>
-                        <div className="mt-2 text-sm text-slate-600">
-                          Try adjusting your search or filter, or add a new ink profile.
-                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    paginatedItems.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">{item.name}</TableCell>
+                        <TableCell>{item.ink_type}</TableCell>
+                        <TableCell>{item.supplier || '-'}</TableCell>
+                        <TableCell className="data-mono">{item.quantity_liters}L</TableCell>
+                        <TableCell className="data-mono">R {item.price_per_unit.toFixed(2)}</TableCell>
+                        <TableCell className="data-mono">R {item.price_per_sqm_coverage.toFixed(2)}</TableCell>
 
                         {canEdit && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              resetForm();
-                              setDialogOpen(true);
-                            }}
-                            data-testid="add-first-ink-profile-btn"
-                            className="mt-4 inline-flex items-center rounded bg-[#2563EB] px-4 py-2 text-sm text-white hover:bg-[#1d4ed8]"
-                          >
-                            Add your first ink profile
-                          </button>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(item)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
                         )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  paginatedItems.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.name}</TableCell>
-                      <TableCell>{item.ink_type}</TableCell>
-                      <TableCell>{item.supplier || '-'}</TableCell>
-                      <TableCell className="data-mono">{item.quantity_liters}L</TableCell>
-                      <TableCell className="data-mono">R {item.price_per_unit.toFixed(2)}</TableCell>
-                      <TableCell className="data-mono">R {item.price_per_sqm_coverage.toFixed(2)}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
 
-                      {canEdit && (
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(item)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-            <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-3 text-sm text-slate-600 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-3 text-sm text-slate-600 md:flex-row md:items-center md:justify-between">
               <div>
                 Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredItems.length)} of {filteredItems.length} ink profiles
               </div>
@@ -484,7 +487,7 @@ return (
                 </Button>
               </div>
             </div>
-          </div>
+          </>
         )}
       </div>
     </Layout>
