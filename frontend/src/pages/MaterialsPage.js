@@ -60,19 +60,20 @@ const canEdit =
   }, [searchTerm, categoryFilter]);
 
   const filteredMaterials = materials.filter((material) => {
+    const matchesSearch =
+      material.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      material.supplier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      material.material_grade?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesCategory =
+      categoryFilter === 'ALL' || material.material_type === categoryFilter;
+
+    return matchesSearch && matchesCategory;
+  });
+
   const totalPages = Math.max(1, Math.ceil(filteredMaterials.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedMaterials = filteredMaterials.slice(startIndex, startIndex + itemsPerPage);
-  const matchesSearch =
-    material.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    material.supplier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    material.material_grade?.toLowerCase().includes(searchTerm.toLowerCase());
-
-  const matchesCategory =
-    categoryFilter === 'ALL' || material.material_type === categoryFilter;
-
-  return matchesSearch && matchesCategory;
-});
 
 const handleExportMaterials = async () => {
   try {
