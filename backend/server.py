@@ -3202,6 +3202,138 @@ async def get_install_types(user: dict = Depends(get_current_user)):
     installs = await db.install_types.find({"company_id": user["company_id"]}, {"_id": 0}).to_list(1000)
     return installs
 
+@api_router.get("/install-types/export")
+async def export_install_types(user: dict = Depends(get_current_user)):
+    installs = await db.install_types.find(
+        {"company_id": user["company_id"]},
+        {"_id": 0}
+    ).sort("name", 1).to_list(5000)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        "name",
+        "quantity_of_people",
+        "rate_per_hour",
+        "tools_required",
+        "equipment",
+        "equipment_supplier",
+        "equipment_rate",
+    ])
+
+    for install in installs:
+        writer.writerow([
+            install.get("name", ""),
+            install.get("quantity_of_people", ""),
+            install.get("rate_per_hour", ""),
+            install.get("tools_required", ""),
+            install.get("equipment", ""),
+            install.get("equipment_supplier", ""),
+            install.get("equipment_rate", ""),
+        ])
+
+    csv_bytes = io.BytesIO(output.getvalue().encode("utf-8"))
+    output.close()
+
+    return StreamingResponse(
+        csv_bytes,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=install_types_export.csv"},
+    )
+
+@api_router.post("/install-types/import")
+async def import_install_types(
+    file: UploadFile = File(...),
+    user: dict = Depends(require_manager)
+):
+    try:
+        content = await file.read()
+        decoded = content.decode("utf-8-sig")
+        reader = csv.DictReader(io.StringIO(decoded))
+
+        imported_count = 0
+        updated_count = 0
+        errors = []
+
+        for row_num, row in enumerate(reader, start=2):
+            try:
+                name = (row.get("name") or "").strip()
+
+                if not name:
+                    errors.append(f"Row {row_num}: name is required")
+                    continue
+
+                def parse_float(value):
+                    if value is None or str(value).strip() == "":
+                        return None
+                    return float(value)
+
+                def parse_int(value):
+                    if value is None or str(value).strip() == "":
+                        return None
+                    return int(float(value))
+
+                quantity_of_people = parse_int(row.get("quantity_of_people"))
+                rate_per_hour = parse_float(row.get("rate_per_hour"))
+                equipment_rate = parse_float(row.get("equipment_rate"))
+
+                if quantity_of_people is None:
+                    errors.append(f"Row {row_num}: quantity_of_people is required")
+                    continue
+
+                if rate_per_hour is None:
+                    errors.append(f"Row {row_num}: rate_per_hour is required")
+                    continue
+
+                if equipment_rate is None:
+                    equipment_rate = 0.0
+
+                install_doc = {
+                    "company_id": user["company_id"],
+                    "name": name,
+                    "quantity_of_people": quantity_of_people,
+                    "rate_per_hour": rate_per_hour,
+                    "tools_required": (row.get("tools_required") or "").strip() or None,
+                    "equipment": (row.get("equipment") or "").strip() or None,
+                    "equipment_supplier": (row.get("equipment_supplier") or "").strip() or None,
+                    "equipment_rate": equipment_rate,
+                }
+
+                existing = await db.install_types.find_one(
+                    {"company_id": user["company_id"], "name": name},
+                    {"_id": 0}
+                )
+
+                if existing:
+                    await db.install_types.update_one(
+                        {"id": existing["id"], "company_id": user["company_id"]},
+                        {"$set": install_doc}
+                    )
+                    updated_count += 1
+                else:
+                    install_obj = InstallTypeCreate(**install_doc)
+                    new_install = InstallType(
+                        **install_obj.model_dump(),
+                        company_id=user["company_id"]
+                    )
+                    await db.install_types.insert_one(new_install.model_dump())
+                    imported_count += 1
+
+            except Exception as row_error:
+                errors.append(f"Row {row_num}: {str(row_error)}")
+
+        return {
+            "message": "Install types import completed",
+            "imported_count": imported_count,
+            "updated_count": updated_count,
+            "error_count": len(errors),
+            "errors": errors[:20],
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Import failed: {str(e)}")
+
 @api_router.put("/install-types/{install_id}", response_model=InstallType)
 async def update_install_type(install_id: str, install: InstallTypeCreate, user: dict = Depends(require_manager)):
     result = await db.install_types.find_one_and_update(
