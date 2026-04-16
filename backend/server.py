@@ -366,16 +366,18 @@ class CompanyBillTrackingHistoryResponse(BaseModel):
 # Material Models
 class MaterialCreate(BaseModel):
     name: str
-    material_type: str  # SHEET, ROLL, BOARD, UNIT
+    material_type: str  # SHEET, ROLL, BOARD, UNIT, INK
     width: Optional[float] = None  # Width in mm (for SHEET, ROLL, BOARD)
     height: Optional[float] = None  # Height/Length in mm (for SHEET, ROLL, BOARD)
     thickness: Optional[float] = None
-    sqm_price: Optional[float] = None  # Cost per 1 square meter (for area-based)
-    unit_price: Optional[float] = None  # Cost per unit (for UNIT type)
+    sqm_price: Optional[float] = None  # Cost per 1 square meter (for area-based / INK calculated)
+    unit_price: Optional[float] = None  # Cost per unit / bottle price
     supplier: Optional[str] = None
     material_grade: Optional[str] = None
     product_specs: Optional[str] = None
-    waste_default_percent: float = 10.0
+    volume_liters: Optional[float] = None
+    cc_per_sqm: Optional[float] = None
+    waste_default_percent: float
 
 class Material(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -2696,13 +2698,29 @@ async def change_password(req: PasswordChangeRequest, user: dict = Depends(get_c
 @api_router.post("/materials", response_model=Material)
 async def create_material(material: MaterialCreate, user: dict = Depends(can_edit_materials)):
     mat_data = material.model_dump()
-    
     # Calculate total_sqm from width and height (mm to sqm: divide by 1,000,000)
     total_sqm = None
-    if mat_data.get("width") and mat_data.get("height") and mat_data["material_type"] != "UNIT":
+    if (
+        mat_data.get("width")
+        and mat_data.get("height")
+        and mat_data["material_type"] not in ["UNIT", "INK"]
+    ):
         total_sqm = (mat_data["width"] * mat_data["height"]) / 1_000_000
-    
+    mat_data["total_sqm"] = total_sqm
+
+    if mat_data["material_type"] == "INK":
+        unit_price = mat_data.get("unit_price")
+        volume_liters = mat_data.get("volume_liters")
+        cc_per_sqm = mat_data.get("cc_per_sqm")
+
+        if unit_price is not None and volume_liters and cc_per_sqm is not None:
+            mat_data["sqm_price"] = (unit_price / (volume_liters * 1000)) * cc_per_sqm
+
+        if unit_price is not None and volume_liters and cc_per_sqm is not None:
+            mat_data["sqm_price"] = (unit_price / (volume_liters * 1000)) * cc_per_sqm
+
     mat = Material(**mat_data, company_id=user["company_id"], total_sqm=total_sqm)
+ 
     await db.materials.insert_one(mat.model_dump())
     return mat
 
@@ -2732,6 +2750,8 @@ async def export_materials(user: dict = Depends(can_view_materials)):
         "unit_price",
         "supplier",
         "material_grade",
+        "volume_liters",
+        "cc_per_sqm",
         "waste_default_percent",
         "product_specs",
     ])
@@ -2748,6 +2768,8 @@ async def export_materials(user: dict = Depends(can_view_materials)):
             material.get("unit_price", ""),
             material.get("supplier", ""),
             material.get("material_grade", ""),
+            material.get("volume_liters", ""),
+            material.get("cc_per_sqm", ""),
             material.get("waste_default_percent", ""),
             material.get("product_specs", ""),
         ])
@@ -2784,8 +2806,8 @@ async def import_materials(
                     errors.append(f"Row {row_num}: name is required")
                     continue
 
-                if material_type not in ["SHEET", "ROLL", "BOARD", "UNIT"]:
-                    errors.append(f"Row {row_num}: material_type must be SHEET, ROLL, BOARD, or UNIT")
+                if material_type not in ["SHEET", "ROLL", "BOARD", "UNIT", "INK"]:
+                    errors.append(f"Row {row_num}: material_type must be SHEET, ROLL, BOARD, UNIT, or INK")
                     continue
 
                 def parse_float(value):
@@ -2799,13 +2821,18 @@ async def import_materials(
                 thickness = parse_float(row.get("thickness"))
                 sqm_price = parse_float(row.get("sqm_price"))
                 unit_price = parse_float(row.get("unit_price"))
+                volume_liters = parse_float(row.get("volume_liters"))
+                cc_per_sqm = parse_float(row.get("cc_per_sqm"))
                 waste_default_percent = parse_float(row.get("waste_default_percent"))
 
                 if waste_default_percent is None:
                     waste_default_percent = 10.0
 
-                if material_type != "UNIT" and total_sqm is None and width is not None and height is not None:
+                if material_type not in ["UNIT", "INK"] and total_sqm is None and width is not None and height is not None:
                     total_sqm = (width * height) / 1000000
+
+                if material_type == "INK" and unit_price is not None and volume_liters and cc_per_sqm is not None:
+                    sqm_price = (unit_price / (volume_liters * 1000)) * cc_per_sqm
 
                 material_doc = {
                     "company_id": user["company_id"],
@@ -2819,6 +2846,8 @@ async def import_materials(
                     "unit_price": unit_price,
                     "supplier": (row.get("supplier") or "").strip() or None,
                     "material_grade": (row.get("material_grade") or "").strip() or None,
+                    "volume_liters": volume_liters,
+                    "cc_per_sqm": cc_per_sqm,
                     "waste_default_percent": waste_default_percent,
                     "product_specs": (row.get("product_specs") or "").strip() or None,
                 }

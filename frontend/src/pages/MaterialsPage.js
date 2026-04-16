@@ -34,7 +34,9 @@ export default function MaterialsPage() {
     supplier: '',
     material_grade: '',
     product_specs: '',
-    waste_default_percent: '10'
+    waste_default_percent: '10',
+    volume_liters: '',
+    cc_per_sqm: ''
   });
 
 const canEdit =
@@ -139,12 +141,15 @@ const handleImportMaterials = async (event) => {
       const thickness = formData.thickness ? parseFloat(formData.thickness) : null;
       const sqm_price = formData.sqm_price ? parseFloat(formData.sqm_price) : null;
       const unit_price = formData.unit_price ? parseFloat(formData.unit_price) : null;
+      const volume_liters = formData.volume_liters ? parseFloat(formData.volume_liters) : null;
+      const cc_per_sqm = formData.cc_per_sqm ? parseFloat(formData.cc_per_sqm) : null;
       const waste_default_percent = parseFloat(formData.waste_default_percent);
 
       let total_sqm = null;
 
       if (
         formData.material_type !== 'UNIT' &&
+        formData.material_type !== 'INK' &&
         width !== null &&
         height !== null
      ) {
@@ -163,6 +168,8 @@ const handleImportMaterials = async (event) => {
        supplier: formData.supplier || null,
        material_grade: formData.material_grade || null,
        product_specs: formData.product_specs || null,
+       volume_liters,
+       cc_per_sqm,
        waste_default_percent
      };
 
@@ -195,7 +202,9 @@ const handleImportMaterials = async (event) => {
       supplier: material.supplier || '',
       material_grade: material.material_grade || '',
       product_specs: material.product_specs || '',
-      waste_default_percent: material.waste_default_percent.toString()
+      waste_default_percent: material.waste_default_percent.toString(),
+      volume_liters: material.volume_liters?.toString() || '',
+      cc_per_sqm: material.cc_per_sqm?.toString() || ''
     });
     setDialogOpen(true);
   };
@@ -255,6 +264,8 @@ const handleImportMaterials = async (event) => {
         return { width: 'Sheet Width (mm)', height: 'Sheet Length (mm)' };
       case 'BOARD':
         return { width: 'Board Width (mm)', height: 'Board Length (mm)' };
+      case 'INK':
+        return { width: 'Bottle Size Helper', height: 'Coverage Helper' };
       default:
         return { width: 'Width (mm)', height: 'Length (mm)' };
     }
@@ -272,6 +283,8 @@ const handleImportMaterials = async (event) => {
         return 'Rigid board material priced by total area.';
       case 'UNIT':
         return 'Individual item priced per unit, not by area.';
+      case 'INK':
+        return 'Ink is priced from bottle cost, bottle volume in liters, and cc usage per square meter.';
       default:
         return 'Choose the material category that best matches how this item is bought and costed.';
     }
@@ -347,14 +360,14 @@ const handleImportMaterials = async (event) => {
                         <SelectItem value="ROLL">Roll</SelectItem>
                         <SelectItem value="BOARD">Board</SelectItem>
                         <SelectItem value="UNIT">Unit (e.g., LED Module)</SelectItem>
+                        <SelectItem value="INK">Ink</SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-slate-500">
                       {getCategoryHint()}
                     </p>
                  </div>
-
-                  {formData.material_type !== 'UNIT' && (
+                  {formData.material_type !== 'UNIT' && formData.material_type !== 'INK' && (
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="width">{dimensionLabels.width}</Label>
@@ -388,34 +401,10 @@ const handleImportMaterials = async (event) => {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="thickness">Thickness (mm)</Label>
-                      <Input
-                        id="thickness"
-                        type="number"
-                        step="0.01"
-                        value={formData.thickness}
-                        onChange={(e) => setFormData({ ...formData, thickness: e.target.value })}
-                        data-testid="material-thickness-input"
-                      />
-                    </div>
-                    {formData.material_type !== 'UNIT' ? (
+                  {formData.material_type === 'INK' ? (
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                       <div className="space-y-2">
-                        <Label htmlFor="sqm_price">Cost per m² (ZAR) *</Label>
-                        <Input
-                          id="sqm_price"
-                          type="number"
-                          step="0.01"
-                          value={formData.sqm_price}
-                          onChange={(e) => setFormData({ ...formData, sqm_price: e.target.value })}
-                          required
-                          data-testid="material-price-input"
-                        />
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <Label htmlFor="unit_price">Price per Unit (ZAR) *</Label>
+                        <Label htmlFor="unit_price">Bottle Price (ZAR) *</Label>
                         <Input
                           id="unit_price"
                           type="number"
@@ -426,8 +415,90 @@ const handleImportMaterials = async (event) => {
                           data-testid="material-unit-price-input"
                         />
                       </div>
-                    )}
-                  </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="volume_liters">Bottle Size (Liters) *</Label>
+                        <Input
+                          id="volume_liters"
+                          type="number"
+                          step="0.01"
+                          value={formData.volume_liters}
+                          onChange={(e) => setFormData({ ...formData, volume_liters: e.target.value })}
+                          required
+                          data-testid="material-volume-liters-input"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="cc_per_sqm">CC per m² *</Label>
+                        <Input
+                          id="cc_per_sqm"
+                          type="number"
+                          step="0.01"
+                          value={formData.cc_per_sqm}
+                          onChange={(e) => setFormData({ ...formData, cc_per_sqm: e.target.value })}
+                          required
+                          data-testid="material-cc-per-sqm-input"
+                        />
+                      </div>
+
+                      {formData.unit_price && formData.volume_liters && formData.cc_per_sqm && (
+                        <div className="md:col-span-3">
+                          <p className="text-xs text-slate-500">
+                            Calculated ink cost: R{' '}
+                            {(
+                              (parseFloat(formData.unit_price) /
+                                (parseFloat(formData.volume_liters) * 1000)) *
+                              parseFloat(formData.cc_per_sqm)
+                            ).toFixed(2)}{' '}
+                            per m²
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="thickness">Thickness (mm)</Label>
+                        <Input
+                          id="thickness"
+                          type="number"
+                          step="0.01"
+                          value={formData.thickness}
+                          onChange={(e) => setFormData({ ...formData, thickness: e.target.value })}
+                          data-testid="material-thickness-input"
+                        />
+                      </div>
+
+                      {formData.material_type !== 'UNIT' ? (
+                        <div className="space-y-2">
+                          <Label htmlFor="sqm_price">Cost per m² (ZAR) *</Label>
+                          <Input
+                            id="sqm_price"
+                            type="number"
+                            step="0.01"
+                            value={formData.sqm_price}
+                            onChange={(e) => setFormData({ ...formData, sqm_price: e.target.value })}
+                            required
+                            data-testid="material-price-input"
+                          />
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Label htmlFor="unit_price">Price per Unit (ZAR) *</Label>
+                          <Input
+                            id="unit_price"
+                            type="number"
+                            step="0.01"
+                            value={formData.unit_price}
+                            onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
+                            required
+                            data-testid="material-unit-price-input"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )} 
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -517,6 +588,7 @@ const handleImportMaterials = async (event) => {
                 <SelectItem value="ROLL">Roll</SelectItem>
                 <SelectItem value="BOARD">Board</SelectItem>
                 <SelectItem value="UNIT">Unit</SelectItem>
+                <SelectItem value="INK">Ink</SelectItem>
               </SelectContent>
             </Select>
           </div>
