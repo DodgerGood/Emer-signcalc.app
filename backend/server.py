@@ -799,11 +799,6 @@ async def can_edit_materials(user: dict = Depends(get_current_user)):
         return user
     raise HTTPException(status_code=403, detail="Edit access denied")
 
-async def can_edit_materials(user: dict = Depends(get_current_user)) -> dict:
-    if user["role"] not in [UserRole.PROCUREMENT, UserRole.CEO]:
-        raise HTTPException(status_code=403, detail="Edit access denied")
-    return user
-
 def send_email_alert(subject: str, body: str, to_email: str):
     if not SMTP_HOST or not SMTP_USERNAME or not SMTP_PASSWORD or not SMTP_FROM_EMAIL or not to_email:
         print("Email alert skipped: SMTP settings incomplete")
