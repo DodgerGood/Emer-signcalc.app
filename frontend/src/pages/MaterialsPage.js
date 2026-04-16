@@ -36,6 +36,7 @@ export default function MaterialsPage() {
     product_specs: '',
     waste_default_percent: '10',
     volume_liters: '',
+    liters_per_unit: '',
     cc_per_sqm: ''
   });
 
@@ -400,63 +401,51 @@ const handleImportMaterials = async (event) => {
                       </div>
                     </div>
                   )}
-
                   {formData.material_type === 'INK' ? (
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="unit_price">Bottle Price (ZAR) *</Label>
+                        <Label>Bottle Price (ZAR)</Label>
                         <Input
-                          id="unit_price"
                           type="number"
                           step="0.01"
                           value={formData.unit_price}
                           onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
-                          required
-                          data-testid="material-unit-price-input"
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="volume_liters">Bottle Size (Liters) *</Label>
+                        <Label>Liters per Bottle</Label>
                         <Input
-                          id="volume_liters"
                           type="number"
                           step="0.01"
-                          value={formData.volume_liters}
-                          onChange={(e) => setFormData({ ...formData, volume_liters: e.target.value })}
-                          required
-                          data-testid="material-volume-liters-input"
+                          value={formData.liters_per_unit || ''}
+                          onChange={(e) => setFormData({ ...formData, liters_per_unit: e.target.value })}
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="cc_per_sqm">CC per m² *</Label>
+                        <Label>CC per m²</Label>
                         <Input
-                          id="cc_per_sqm"
                           type="number"
                           step="0.01"
-                          value={formData.cc_per_sqm}
+                          value={formData.cc_per_sqm || ''}
                           onChange={(e) => setFormData({ ...formData, cc_per_sqm: e.target.value })}
-                          required
-                          data-testid="material-cc-per-sqm-input"
                         />
                       </div>
 
-                      {formData.unit_price && formData.volume_liters && formData.cc_per_sqm && (
-                        <div className="md:col-span-3">
-                          <p className="text-xs text-slate-500">
-                            Calculated ink cost: R{' '}
-                            {(
+                      {formData.unit_price && formData.liters_per_unit && formData.cc_per_sqm && (
+                        <div className="col-span-3 text-sm text-green-600 font-medium">
+                          Estimated Cost per m²: R {
+                            (
                               (parseFloat(formData.unit_price) /
-                                (parseFloat(formData.volume_liters) * 1000)) *
+                                (parseFloat(formData.liters_per_unit) * 1000)) *
                               parseFloat(formData.cc_per_sqm)
-                            ).toFixed(2)}{' '}
-                            per m²
-                          </p>
+                            ).toFixed(2)
+                          }
                         </div>
                       )}
                     </div>
-                  ) : (
+                  ) : formData.material_type !== 'UNIT' && (
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="thickness">Thickness (mm)</Label>
