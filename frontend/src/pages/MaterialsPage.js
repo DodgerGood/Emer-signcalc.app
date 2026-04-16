@@ -195,7 +195,13 @@ const handleImportMaterials = async (event) => {
       resetForm();
       loadMaterials();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Operation failed');
+      console.log('Material save error:', error.response?.data || error);
+      toast.error(
+        error.response?.data?.detail ||
+        JSON.stringify(error.response?.data) ||
+        error.message ||
+        'Operation failed'
+      );
     }
   };
 
