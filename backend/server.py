@@ -794,10 +794,10 @@ async def can_view_materials(user: dict = Depends(get_current_user)) -> dict:
         raise HTTPException(status_code=403, detail="Access denied")
     return user
 
-async def can_edit_materials(user: dict = Depends(get_current_user)) -> dict:
-    if user["role"] not in [UserRole.PROCUREMENT, UserRole.CEO, UserRole.MD_ADMIN]:
-        raise HTTPException(status_code=403, detail="Edit access denied")
-    return user
+async def can_edit_materials(user: dict = Depends(get_current_user)):
+    if user["role"] in ["PROCUREMENT", "CEO", "MD_ADMIN"]:
+        return user
+    raise HTTPException(status_code=403, detail="Edit access denied")
 
 async def can_edit_materials(user: dict = Depends(get_current_user)) -> dict:
     if user["role"] not in [UserRole.PROCUREMENT, UserRole.CEO]:
