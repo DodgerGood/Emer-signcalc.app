@@ -140,7 +140,7 @@ const handleImportMaterials = async (event) => {
       const width = formData.width ? parseFloat(formData.width) : null;
       const height = formData.height ? parseFloat(formData.height) : null;
       const thickness = formData.thickness ? parseFloat(formData.thickness) : null;
-      const sqm_price = formData.sqm_price ? parseFloat(formData.sqm_price) : null;
+      let sqm_price = formData.sqm_price ? parseFloat(formData.sqm_price) : null;
       const unit_price = formData.unit_price ? parseFloat(formData.unit_price) : null;
       const volume_liters = formData.volume_liters ? parseFloat(formData.volume_liters) : null;
       const cc_per_sqm = formData.cc_per_sqm ? parseFloat(formData.cc_per_sqm) : null;
@@ -153,9 +153,18 @@ const handleImportMaterials = async (event) => {
         formData.material_type !== 'INK' &&
         width !== null &&
         height !== null
-     ) {
+      ) {
         total_sqm = (width * height) / 1000000;
-     }
+      }
+
+      if (
+        formData.material_type === 'INK' &&
+        unit_price !== null &&
+        volume_liters !== null &&
+        cc_per_sqm !== null
+      ) {
+        sqm_price = (unit_price / (volume_liters * 1000)) * cc_per_sqm;
+      }
 
      const data = {
        name: formData.name,
