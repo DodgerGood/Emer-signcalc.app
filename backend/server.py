@@ -2887,7 +2887,7 @@ async def update_material(material_id: str, material: MaterialCreate, user: dict
     
     # Calculate total_sqm from width and height (mm to sqm: divide by 1,000,000)
     total_sqm = None
-    if mat_data.get("width") and mat_data.get("height") and mat_data["material_type"] != "UNIT":
+    if mat_data.get("width") and mat_data.get("height") and mat_data["material_type"] not in ["UNIT", "INK"]:
         total_sqm = (mat_data["width"] * mat_data["height"]) / 1_000_000
     mat_data["total_sqm"] = total_sqm
     
