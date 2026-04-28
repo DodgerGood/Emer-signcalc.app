@@ -370,7 +370,6 @@ const handleImportMaterials = async (event) => {
                       id="name"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      required
                       data-testid="material-name-input"
                       placeholder="e.g., Vinyl Matte"
                     />
@@ -485,7 +484,7 @@ const handleImportMaterials = async (event) => {
 
                       {formData.material_type !== 'UNIT' ? (
                         <div className="space-y-2">
-                          <Label htmlFor="sqm_price">Cost per m² (ZAR) *</Label>
+                          <Label htmlFor="sqm_price">Direct Cost per m² (ZAR)</Label>
                           <Input
                             id="sqm_price"
                             type="number"
