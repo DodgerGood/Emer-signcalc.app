@@ -666,6 +666,9 @@ const handleImportMaterials = async (event) => {
                   <TableHead>Material Name</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead>Product Dimensions (mm)</TableHead>
+                    <TableHead className="data-mono whitespace-nowrap text-xs text-right">
+                      Product Total Price
+                    </TableHead>
                     <TableHead className="whitespace-nowrap text-xs text-right">
                       Area (m²)
                     </TableHead>
@@ -687,7 +690,7 @@ const handleImportMaterials = async (event) => {
                 <TableBody>
                   {filteredMaterials.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={canEdit ? 11 : 10} className="py-12">
+                      <TableCell colSpan={canEdit ? 12 : 11} className="py-12">
                         <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto">
                           <div className="text-lg font-semibold text-slate-900">
                             {materials.length === 0 ? 'No materials added yet' : 'No materials match your search'}
@@ -725,6 +728,11 @@ const handleImportMaterials = async (event) => {
                     const totalSqm =
                       material.total_sqm !== null && material.total_sqm !== undefined
                         ? `${material.total_sqm.toFixed(2)} m²`
+                        : '-';
+
+                    const productTotalPrice =
+                      material.unit_price !== null && material.unit_price !== undefined
+                        ? `R ${material.unit_price.toFixed(2)}`
                         : '-';
 
                     const price = material.material_type === 'UNIT'
@@ -773,6 +781,9 @@ const handleImportMaterials = async (event) => {
                         </TableCell>
                         <TableCell className="data-mono text-sm text-slate-600 whitespace-nowrap">
                           {dimensions}
+                        </TableCell>
+                        <TableCell className="data-mono text-sm text-right whitespace-nowrap">
+                          {productTotalPrice}
                         </TableCell>
                         <TableCell className="data-mono text-sm text-right whitespace-nowrap">
                           {totalSqm}
