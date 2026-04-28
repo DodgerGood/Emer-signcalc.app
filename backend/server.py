@@ -372,6 +372,7 @@ class MaterialCreate(BaseModel):
     thickness: Optional[float] = None
     sqm_price: Optional[float] = None  # Cost per 1 square meter (for area-based / INK calculated)
     unit_price: Optional[float] = None  # Cost per unit / bottle price
+    quantity_per_unit: Optional[float] = None
     supplier: Optional[str] = None
     material_grade: Optional[str] = None
     product_specs: Optional[str] = None
@@ -391,6 +392,7 @@ class Material(BaseModel):
     total_sqm: Optional[float] = None  # Calculated: (width * height) / 1,000,000
     sqm_price: Optional[float] = None
     unit_price: Optional[float] = None
+    quantity_per_unit: Optional[float] = None
     supplier: Optional[str] = None
     material_grade: Optional[str] = None
     product_specs: Optional[str] = None
