@@ -2711,10 +2711,7 @@ async def create_material(material: MaterialCreate, user: dict = Depends(can_edi
         if unit_price is not None and volume_liters and cc_per_sqm is not None:
             mat_data["sqm_price"] = (unit_price / (volume_liters * 1000)) * cc_per_sqm
 
-        if unit_price is not None and volume_liters and cc_per_sqm is not None:
-            mat_data["sqm_price"] = (unit_price / (volume_liters * 1000)) * cc_per_sqm
-
-    mat = Material(**mat_data, company_id=user["company_id"], total_sqm=total_sqm)
+    mat = Material(**mat_data, company_id=user["company_id"])
  
     await db.materials.insert_one(mat.model_dump())
     return mat
