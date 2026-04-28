@@ -36,7 +36,7 @@ export default function MaterialsPage() {
     product_specs: '',
     waste_default_percent: '10',
     volume_liters: '',
-    liters_per_unit: '',
+    volume_liters: '',
     cc_per_sqm: ''
   });
 
@@ -155,6 +155,15 @@ const handleImportMaterials = async (event) => {
         height !== null
       ) {
         total_sqm = (width * height) / 1000000;
+      }
+
+      if (
+        ['SHEET', 'ROLL', 'BOARD'].includes(formData.material_type) &&
+        unit_price !== null &&
+        total_sqm !== null &&
+        total_sqm > 0
+      ) {
+        sqm_price = unit_price / total_sqm;
       }
 
       if (
@@ -433,8 +442,8 @@ const handleImportMaterials = async (event) => {
                         <Input
                           type="number"
                           step="0.01"
-                          value={formData.liters_per_unit || ''}
-                          onChange={(e) => setFormData({ ...formData, liters_per_unit: e.target.value })}
+                          value={formData.volume_liters || ''}
+                          onChange={(e) => setFormData({ ...formData, volume_liters: e.target.value })}
                         />
                       </div>
 
@@ -448,12 +457,12 @@ const handleImportMaterials = async (event) => {
                         />
                       </div>
 
-                      {formData.unit_price && formData.liters_per_unit && formData.cc_per_sqm && (
+                      {formData.unit_price && formData.volume_liters && formData.cc_per_sqm && (
                         <div className="col-span-3 text-sm text-green-600 font-medium">
                           Estimated Cost per m²: R {
                             (
                               (parseFloat(formData.unit_price) /
-                                (parseFloat(formData.liters_per_unit) * 1000)) *
+                                (parseFloat(formData.volume_liters) * 1000)) *
                               parseFloat(formData.cc_per_sqm)
                             ).toFixed(2)
                           }
