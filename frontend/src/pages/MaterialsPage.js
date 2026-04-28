@@ -388,7 +388,7 @@ const handleImportMaterials = async (event) => {
                         <SelectItem value="SHEET">Sheet</SelectItem>
                         <SelectItem value="ROLL">Roll</SelectItem>
                         <SelectItem value="BOARD">Board</SelectItem>
-                        <SelectItem value="UNIT">Unit (e.g., LED Module)</SelectItem>
+                        <SelectItem value="UNIT">Pack (e.g., LED Modules)</SelectItem>
                         <SelectItem value="INK">Ink</SelectItem>
                       </SelectContent>
                     </Select>
@@ -502,7 +502,7 @@ const handleImportMaterials = async (event) => {
 
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label>Unit Price (ZAR)</Label>
+                          <Label>Pack Price (ZAR)</Label>
                           <Input
                             type="number"
                             step="0.01"
@@ -512,7 +512,7 @@ const handleImportMaterials = async (event) => {
                         </div>
 
                         <div className="space-y-2">
-                          <Label>Quantity per Unit</Label>
+                          <Label>Quantity in Pack</Label>
                           <Input
                             type="number"
                             step="1"
@@ -524,7 +524,7 @@ const handleImportMaterials = async (event) => {
 
                       {formData.unit_price && formData.quantity_per_unit && (
                         <div className="text-sm text-green-600 font-medium">
-                          Price per Individual: R {
+                          Price per Individual Item: R {
                             (
                               parseFloat(formData.unit_price) /
                               parseFloat(formData.quantity_per_unit)
