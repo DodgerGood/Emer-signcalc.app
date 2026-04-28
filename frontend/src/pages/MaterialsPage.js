@@ -263,7 +263,8 @@ const handleImportMaterials = async (event) => {
       supplier: '',
       material_grade: '',
       product_specs: '',
-      waste_default_percent: '10'
+      waste_default_percent: '10',
+      length_mm: '',
     });
   };
 
@@ -282,6 +283,7 @@ const handleImportMaterials = async (event) => {
     material_grade: '',
     product_specs: '',
     waste_default_percent: '10',
+    length_mm: '',
   });
   setDialogOpen(true);
 };
@@ -390,7 +392,8 @@ const handleImportMaterials = async (event) => {
                         <SelectItem value="BOARD">Board</SelectItem>
                         <SelectItem value="UNIT">Pack (e.g., LED Modules)</SelectItem>
                         <SelectItem value="Ink / Paint / Liquid">Ink / Paint / Liquid</SelectItem>
-                      </SelectContent>
+                        <SelectItem value="PROFILE">Profiles & Structural</SelectItem> 
+                     </SelectContent>
                     </Select>
                     <p className="text-xs text-slate-500">
                       {getCategoryHint()}
@@ -525,7 +528,44 @@ const handleImportMaterials = async (event) => {
                         )}
 
                     </div>
-                  )}
+                  )} 
+                {formData.material_type === 'PROFILE' && (
+                   <div className="space-y-4">
+
+                     <div className="space-y-2">
+                       <Label>Profile Length (mm)</Label>
+                       <Input
+                         type="number"
+                         step="1"
+                         value={formData.length_mm || ''}
+                         onChange={(e) => setFormData({ ...formData, length_mm: e.target.value })}
+                         placeholder="e.g., 6000"
+                       />
+                     </div>
+
+                     <div className="space-y-2">
+                       <Label>Total Price (ZAR)</Label>
+                       <Input
+                         type="number"
+                         step="0.01"
+                         value={formData.unit_price}
+                         onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
+                       />
+                     </div>
+
+                     {formData.length_mm && formData.unit_price && (
+                       <div className="text-sm text-green-600 font-medium">
+                         Cost per meter: R {
+                           (
+                             parseFloat(formData.unit_price) /
+                             (parseFloat(formData.length_mm) / 1000)
+                           ).toFixed(2)
+                         }
+                       </div>
+                     )}
+
+                   </div>
+                 )}
 
                   {formData.material_type !== 'UNIT' && formData.material_type !== 'Ink / Paint / Liquid' && (
                     <div className="grid grid-cols-2 gap-4">
