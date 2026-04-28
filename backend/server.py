@@ -370,6 +370,7 @@ class MaterialCreate(BaseModel):
     width: Optional[float] = None  # Width in mm (for SHEET, ROLL, BOARD)
     height: Optional[float] = None  # Height/Length in mm (for SHEET, ROLL, BOARD)
     thickness: Optional[float] = None
+    length_mm: Optional[float] = None
     sqm_price: Optional[float] = None  # Cost per 1 square meter (for area-based / INK calculated)
     unit_price: Optional[float] = None  # Cost per unit / bottle price
     quantity_per_unit: Optional[float] = None
@@ -389,6 +390,7 @@ class Material(BaseModel):
     width: Optional[float] = None
     height: Optional[float] = None
     thickness: Optional[float] = None
+    length_mm: Optional[float] = None
     total_sqm: Optional[float] = None  # Calculated: (width * height) / 1,000,000
     sqm_price: Optional[float] = None
     unit_price: Optional[float] = None
@@ -2800,7 +2802,7 @@ async def import_materials(
                     errors.append(f"Row {row_num}: name is required")
                     continue
 
-                if material_type not in ["SHEET", "ROLL", "BOARD", "UNIT", "INK"]:
+                if material_type not in ["SHEET", "ROLL", "BOARD", "UNIT", "INK", "PROFILE"]:
                     errors.append(f"Row {row_num}: material_type must be SHEET, ROLL, BOARD, UNIT, or INK")
                     continue
 
