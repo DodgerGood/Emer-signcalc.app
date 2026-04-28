@@ -765,7 +765,7 @@ const handleImportMaterials = async (event) => {
 
                     return (
                       <TableRow key={material.id} data-testid={`material-row-${material.id}`}>
-                        <TableCell className="font-semibold text-slate-900 min-w-[25ch]">
+                        <TableCell className="font-semibold text-slate-900 min-w-[18ch]">
                           {material.name}
                         </TableCell>
                         <TableCell className="text-sm">
