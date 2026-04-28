@@ -146,13 +146,15 @@ const handleImportMaterials = async (event) => {
       const volume_liters = formData.volume_liters ? parseFloat(formData.volume_liters) : null;
       const cc_per_sqm = formData.cc_per_sqm ? parseFloat(formData.cc_per_sqm) : null;
       const quantity_per_unit = formData.quantity_per_unit ? parseFloat(formData.quantity_per_unit) : null;
+      const length_mm = formData.length_mm ? parseFloat(formData.length_mm) : null;
       const waste_default_percent = parseFloat(formData.waste_default_percent);
 
       let total_sqm = null;
 
       if (
         formData.material_type !== 'UNIT' &&
-        formData.material_type !== 'Ink / Paint / Liquid' &&
+        formData.material_type !== 'INK' &&
+        formData.material_type !== 'PROFILE' &&
         width !== null &&
         height !== null
       ) {
@@ -169,12 +171,21 @@ const handleImportMaterials = async (event) => {
       }
 
       if (
-        formData.material_type === 'Ink / Paint / Liquid' &&
+        formData.material_type === 'INK' &&
         unit_price !== null &&
         volume_liters !== null &&
         cc_per_sqm !== null
       ) {
         sqm_price = (unit_price / (volume_liters * 1000)) * cc_per_sqm;
+      }
+
+      if (
+        formData.material_type === 'PROFILE' &&
+        unit_price !== null &&
+        length_mm !== null &&
+        length_mm > 0
+      ) {
+        sqm_price = unit_price / (length_mm / 1000);
       }
 
      const data = {
@@ -192,6 +203,7 @@ const handleImportMaterials = async (event) => {
        product_specs: formData.product_specs || null,
        volume_liters,
        cc_per_sqm,
+       length_mm,
        waste_default_percent
      };
 
