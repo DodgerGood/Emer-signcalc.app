@@ -514,6 +514,7 @@ const handleImportMaterials = async (event) => {
                             step="0.01"
                             value={formData.sqm_price}
                             onChange={(e) => setFormData({ ...formData, sqm_price: e.target.value })}
+                            disabled={!!formData.unit_price}
                             data-testid="material-price-input"
                           />
                         <p className="text-xs text-slate-500">
