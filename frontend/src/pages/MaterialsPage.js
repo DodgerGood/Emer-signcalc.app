@@ -375,18 +375,6 @@ const handleImportMaterials = async (event) => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="unit_price">Total Roll / Sheet / Board Price (ZAR)</Label>
-                    <Input      
-                      id="unit_price"  
-                      type="number"
-                      step="0.01"
-                      value={formData.unit_price}
-                      onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
-                      data-testid="material-unit-price-input"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
                     <Label htmlFor="material_type">Category *</Label>
                     <Select value={formData.material_type} onValueChange={(v) => setFormData({ ...formData, material_type: v })}>
                       <SelectTrigger data-testid="material-type-select"><SelectValue /></SelectTrigger>
