@@ -516,6 +516,9 @@ const handleImportMaterials = async (event) => {
                             onChange={(e) => setFormData({ ...formData, sqm_price: e.target.value })}
                             data-testid="material-price-input"
                           />
+                        <p className="text-xs text-slate-500">
+                          Leave blank if you entered total price above. System will calculate automatically.
+                        </p>
                         </div>
                       )}
                     </div>
