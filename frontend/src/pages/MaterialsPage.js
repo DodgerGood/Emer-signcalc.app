@@ -465,7 +465,7 @@ const handleImportMaterials = async (event) => {
                       </div>
 
                       <div className="space-y-2">
-                        <Label>CC / ML per m²</Label>
+                        <Label>CC / ML  per m²</Label>
                         <Input
                           type="number"
                           step="0.01"
