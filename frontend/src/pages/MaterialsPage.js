@@ -724,7 +724,9 @@ const handleImportMaterials = async (event) => {
                   paginatedMaterials.map((material) => {
                     let dimensions = '-';
                     if (material.material_type === 'UNIT') {
-                      dimensions = 'Per unit';
+                      dimensions = material.quantity_per_unit
+                        ? `${material.quantity_per_unit} items / pack`
+                        : 'Pack';
                     } else if (material.width && material.height) {
                       dimensions = `${material.width} W × ${material.height} L mm`;
                     }
@@ -736,7 +738,7 @@ const handleImportMaterials = async (event) => {
 
                     const price = material.material_type === 'UNIT'
                       ? (material.unit_price !== null && material.unit_price !== undefined
-                        ? `R ${material.unit_price.toFixed(2)} / unit`
+                        ? `R ${material.unit_price.toFixed(2)} / pack`
                         : '-') 
                       : (material.sqm_price !== null && material.sqm_price !== undefined
                         ? `R ${material.sqm_price.toFixed(2)} / m²`
@@ -767,7 +769,7 @@ const handleImportMaterials = async (event) => {
                             : material.material_type === 'BOARD'    
                             ? 'Board'
                             : material.material_type === 'UNIT'
-                            ? 'Unit'
+                            ? 'Pack'
                             : material.material_type}
                         </TableCell>
                         <TableCell className="data-mono text-sm text-slate-600 whitespace-nowrap">
