@@ -673,7 +673,7 @@ const handleImportMaterials = async (event) => {
                       Thickness (mm)
                     </TableHead>
                     <TableHead className="data-mono whitespace-nowrap text-xs text-right">
-                      Cost / m² (ZAR)
+                      Cost / m² / Unit (ZAR)
                     </TableHead>
                     <TableHead className="data-mono whitespace-nowrap text-xs text-right">
                       Effective / m² (ZAR)
@@ -734,7 +734,7 @@ const handleImportMaterials = async (event) => {
                           material.quantity_per_unit !== null &&
                           material.quantity_per_unit !== undefined &&
                           material.quantity_per_unit > 0
-                            ? `R ${(material.unit_price / material.quantity_per_unit).toFixed(2)} / item`
+                            ? `R ${(material.unit_price / material.quantity_per_unit).toFixed(2)} / Unit`
                             : material.unit_price !== null && material.unit_price !== undefined
                             ? `R ${material.unit_price.toFixed(2)} / pack`
                             : '-'
