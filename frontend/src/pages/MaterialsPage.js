@@ -728,9 +728,17 @@ const handleImportMaterials = async (event) => {
                         : '-';
 
                     const price = material.material_type === 'UNIT'
-                      ? (material.unit_price !== null && material.unit_price !== undefined
-                        ? `R ${material.unit_price.toFixed(2)} / pack`
-                        : '-') 
+                      ? (
+                          material.unit_price !== null &&
+                          material.unit_price !== undefined &&
+                          material.quantity_per_unit !== null &&
+                          material.quantity_per_unit !== undefined &&
+                          material.quantity_per_unit > 0
+                            ? `R ${(material.unit_price / material.quantity_per_unit).toFixed(2)} / item`
+                            : material.unit_price !== null && material.unit_price !== undefined
+                            ? `R ${material.unit_price.toFixed(2)} / pack`
+                            : '-'
+                        )
                       : (material.sqm_price !== null && material.sqm_price !== undefined
                         ? `R ${material.sqm_price.toFixed(2)} / m²`
                         : '-');
