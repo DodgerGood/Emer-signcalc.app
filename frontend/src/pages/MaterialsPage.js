@@ -403,6 +403,18 @@ const handleImportMaterials = async (event) => {
                     </p>
                  </div>
                   {formData.material_type !== 'UNIT' && formData.material_type !== 'INK' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="unit_price">Total Roll / Sheet / Board Price (ZAR)</Label>
+                      <Input
+                        id="unit_price"
+                        type="number"
+                        step="0.01"
+                        value={formData.unit_price}
+                        onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
+                        data-testid="material-unit-price-input"
+                      />
+                    </div>
+                  )}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="width">{dimensionLabels.width}</Label>
@@ -493,7 +505,7 @@ const handleImportMaterials = async (event) => {
                         />
                       </div>
 
-                      {formData.material_type !== 'UNIT' ? (
+                      {formData.material_type !== 'UNIT' && (
                         <div className="space-y-2">
                           <Label htmlFor="sqm_price">Direct Cost per m² (ZAR)</Label>
                           <Input
@@ -503,19 +515,6 @@ const handleImportMaterials = async (event) => {
                             value={formData.sqm_price}
                             onChange={(e) => setFormData({ ...formData, sqm_price: e.target.value })}
                             data-testid="material-price-input"
-                          />
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <Label htmlFor="unit_price">Price per Unit (ZAR) *</Label>
-                          <Input
-                            id="unit_price"
-                            type="number"
-                            step="0.01"
-                            value={formData.unit_price}
-                            onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
-                            required
-                            data-testid="material-unit-price-input"
                           />
                         </div>
                       )}
