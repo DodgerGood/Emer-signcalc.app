@@ -441,8 +441,8 @@ const handleImportMaterials = async (event) => {
                         )}
                       </div>
                     </div>
-                  )}
-                  {formData.material_type === 'INK' ? (
+                    )}
+                  {formData.material_type === 'INK' && (
                     <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <Label>Bottle Price (ZAR)</Label>
@@ -486,7 +486,9 @@ const handleImportMaterials = async (event) => {
                         </div>
                       )}
                     </div>
-                  ) : formData.material_type === 'UNIT' ? (
+                  )}
+
+                  {formData.material_type === 'UNIT' && (
                     <div className="space-y-4">
 
                       <div className="space-y-2">
@@ -499,7 +501,6 @@ const handleImportMaterials = async (event) => {
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
-
                         <div className="space-y-2">
                           <Label>Unit Price (ZAR)</Label>
                           <Input
@@ -519,7 +520,6 @@ const handleImportMaterials = async (event) => {
                             onChange={(e) => setFormData({ ...formData, quantity_per_unit: e.target.value })}
                           />
                         </div>
-
                       </div>
 
                       {formData.unit_price && formData.quantity_per_unit && (
@@ -531,10 +531,12 @@ const handleImportMaterials = async (event) => {
                             ).toFixed(2)
                           }
                         </div>
-                      )}
+                        )}
 
                     </div>
-                  ) : formData.material_type !== 'UNIT' && (
+                  )}
+
+                  {formData.material_type !== 'UNIT' && formData.material_type !== 'INK' && (
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="thickness">Thickness (mm)</Label>
@@ -548,26 +550,23 @@ const handleImportMaterials = async (event) => {
                         />
                       </div>
 
-                      {formData.material_type !== 'UNIT' && (
-                        <div className="space-y-2">
-                          <Label htmlFor="sqm_price">Direct Cost per m² (ZAR)</Label>
-                          <Input
-                            id="sqm_price"
-                            type="number"
-                            step="0.01"
-                            value={formData.sqm_price}
-                            onChange={(e) => setFormData({ ...formData, sqm_price: e.target.value })}
-                            disabled={!!formData.unit_price}
-                            data-testid="material-price-input"
-                          />
+                      <div className="space-y-2">
+                        <Label htmlFor="sqm_price">Direct Cost per m² (ZAR)</Label>
+                        <Input
+                          id="sqm_price"
+                          type="number"
+                          step="0.01"
+                          value={formData.sqm_price}
+                          onChange={(e) => setFormData({ ...formData, sqm_price: e.target.value })}
+                          disabled={!!formData.unit_price}
+                          data-testid="material-price-input"
+                        />
                         <p className="text-xs text-slate-500">
                           Leave blank if you entered total price above. System will calculate automatically.
                         </p>
-                        </div>
-                      )}
+                      </div>
                     </div>
-                  )} 
-
+                  )}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="supplier">Supplier</Label>
