@@ -38,7 +38,6 @@ const role = user?.role;
       return [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/materials', icon: Package, label: 'Materials' },
-        { to: '/ink-profiles', icon: Droplet, label: 'Ink Profiles' },
         { to: '/labour-types', icon: Users, label: 'Labour Pricelist' },
         { to: '/install-types', icon: Wrench, label: 'Installation Pricelist' },
         { to: '/recipes', icon: BookOpen, label: 'Recipes' },
@@ -49,7 +48,6 @@ const role = user?.role;
       return [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/materials', icon: Package, label: 'Materials' },
-        { to: '/ink-profiles', icon: Droplet, label: 'Ink Profiles' },
         { to: '/labour-types', icon: Users, label: 'Labour Pricelist' },
         { to: '/install-types', icon: Wrench, label: 'Installation Pricelist' },
         { to: '/recipes', icon: BookOpen, label: 'Recipes' },
@@ -59,7 +57,6 @@ const role = user?.role;
       return [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/materials', icon: Package, label: 'Materials' },
-        { to: '/ink-profiles', icon: Droplet, label: 'Ink Profiles' },
       ];
     } else if (role === 'QUOTING_STAFF') {
       return [
@@ -71,7 +68,6 @@ const role = user?.role;
       return [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/materials', icon: Package, label: 'Materials' },
-        { to: '/ink-profiles', icon: Droplet, label: 'Ink Profiles' },
         { to: '/labour-types', icon: Users, label: 'Labour Pricelist' },
         { to: '/install-types', icon: Wrench, label: 'Installation Pricelist' },
         { to: '/recipes', icon: BookOpen, label: 'Recipes' },
