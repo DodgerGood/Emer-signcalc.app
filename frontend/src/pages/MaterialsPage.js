@@ -145,6 +145,7 @@ const handleImportMaterials = async (event) => {
       const unit_price = formData.unit_price ? parseFloat(formData.unit_price) : null;
       const volume_liters = formData.volume_liters ? parseFloat(formData.volume_liters) : null;
       const cc_per_sqm = formData.cc_per_sqm ? parseFloat(formData.cc_per_sqm) : null;
+      const quantity_per_unit = formData.quantity_per_unit ? parseFloat(formData.quantity_per_unit) : null;
       const waste_default_percent = parseFloat(formData.waste_default_percent);
 
       let total_sqm = null;
@@ -185,6 +186,7 @@ const handleImportMaterials = async (event) => {
        thickness,
        sqm_price,
        unit_price,
+       quantity_per_unit,
        supplier: formData.supplier || null,
        material_grade: formData.material_grade || null,
        product_specs: formData.product_specs || null,
