@@ -152,7 +152,7 @@ const handleImportMaterials = async (event) => {
 
       if (
         formData.material_type !== 'UNIT' &&
-        formData.material_type !== 'INK' &&
+        formData.material_type !== 'Ink / Paint / Liquid' &&
         width !== null &&
         height !== null
       ) {
@@ -169,7 +169,7 @@ const handleImportMaterials = async (event) => {
       }
 
       if (
-        formData.material_type === 'INK' &&
+        formData.material_type === 'Ink / Paint / Liquid' &&
         unit_price !== null &&
         volume_liters !== null &&
         cc_per_sqm !== null
@@ -295,7 +295,7 @@ const handleImportMaterials = async (event) => {
         return { width: 'Sheet Width (mm)', height: 'Sheet Length (mm)' };
       case 'BOARD':
         return { width: 'Board Width (mm)', height: 'Board Length (mm)' };
-      case 'INK':
+      case 'Ink / Paint / Liquid':
         return { width: 'Bottle Size Helper', height: 'Coverage Helper' };
       default:
         return { width: 'Width (mm)', height: 'Length (mm)' };
@@ -314,8 +314,8 @@ const handleImportMaterials = async (event) => {
         return 'Rigid board material priced by total area.';
       case 'UNIT':
         return 'Individual item priced per unit, not by area.';
-      case 'INK':
-        return 'Ink is priced from bottle cost, bottle volume in liters, and cc usage per square meter.';
+      case 'Ink / Paint / Liquid':
+        return 'Ink / Paint / Liquid is priced from bottle cost, bottle volume in liters, and cc usage per square meter.';
       default:
         return 'Choose the material category that best matches how this item is bought and costed.';
     }
@@ -389,14 +389,14 @@ const handleImportMaterials = async (event) => {
                         <SelectItem value="ROLL">Roll</SelectItem>
                         <SelectItem value="BOARD">Board</SelectItem>
                         <SelectItem value="UNIT">Pack (e.g., LED Modules)</SelectItem>
-                        <SelectItem value="INK">Ink</SelectItem>
+                        <SelectItem value="Ink / Paint / Liquid">Ink / Paint / Liquid</SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-slate-500">
                       {getCategoryHint()}
                     </p>
                  </div>
-                  {formData.material_type !== 'UNIT' && formData.material_type !== 'INK' && (
+                  {formData.material_type !== 'UNIT' && formData.material_type !== 'Ink / Paint / Liquid' && (
                     <div className="space-y-2">
                       <Label htmlFor="unit_price">Total Roll / Sheet / Board Price (ZAR)</Label>
                       <Input
@@ -409,7 +409,7 @@ const handleImportMaterials = async (event) => {
                       />
                     </div>
                   )}
-                  {formData.material_type !== 'UNIT' && formData.material_type !== 'INK' && (
+                  {formData.material_type !== 'UNIT' && formData.material_type !== 'Ink / Paint / Liquid' && (
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="width">{dimensionLabels.width}</Label>
@@ -442,7 +442,7 @@ const handleImportMaterials = async (event) => {
                       </div>
                     </div>
                     )}
-                  {formData.material_type === 'INK' && (
+                  {formData.material_type === 'Ink / Paint / Liquid' && (
                     <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <Label>Bottle Price (ZAR)</Label>
@@ -465,7 +465,7 @@ const handleImportMaterials = async (event) => {
                       </div>
 
                       <div className="space-y-2">
-                        <Label>CC per m²</Label>
+                        <Label>CC / ML per m²</Label>
                         <Input
                           type="number"
                           step="0.01"
@@ -527,7 +527,7 @@ const handleImportMaterials = async (event) => {
                     </div>
                   )}
 
-                  {formData.material_type !== 'UNIT' && formData.material_type !== 'INK' && (
+                  {formData.material_type !== 'UNIT' && formData.material_type !== 'Ink / Paint / Liquid' && (
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="thickness">Thickness (mm)</Label>
@@ -646,7 +646,7 @@ const handleImportMaterials = async (event) => {
                 <SelectItem value="ROLL">Roll</SelectItem>
                 <SelectItem value="BOARD">Board</SelectItem>
                 <SelectItem value="UNIT">Unit</SelectItem>
-                <SelectItem value="INK">Ink</SelectItem>
+                <SelectItem value="Ink / Paint / Liquid">Ink</SelectItem>
               </SelectContent>
             </Select>
           </div>
