@@ -371,7 +371,7 @@ const handleImportMaterials = async (event) => {
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Material Name *</Label>
+                    <Label htmlFor="name">{formData.material_type === 'UNIT' ? 'Product Name *' : 'Material Name *'}</Label>
                     <Input
                       id="name"
                       value={formData.name}
@@ -490,15 +490,6 @@ const handleImportMaterials = async (event) => {
 
                   {formData.material_type === 'UNIT' && (
                     <div className="space-y-4">
-
-                      <div className="space-y-2">
-                        <Label>Product</Label>
-                        <Input
-                          value={formData.name}
-                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          placeholder="e.g., LED Module Pack"
-                        />
-                      </div>
 
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
