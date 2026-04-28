@@ -484,6 +484,54 @@ const handleImportMaterials = async (event) => {
                         </div>
                       )}
                     </div>
+                  ) : formData.material_type === 'UNIT' ? (
+                    <div className="space-y-4">
+
+                      <div className="space-y-2">
+                        <Label>Product</Label>
+                        <Input
+                          value={formData.name}
+                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                          placeholder="e.g., LED Module Pack"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+
+                        <div className="space-y-2">
+                          <Label>Unit Price (ZAR)</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={formData.unit_price}
+                            onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Quantity per Unit</Label>
+                          <Input
+                            type="number"
+                            step="1"
+                            value={formData.quantity_per_unit}
+                            onChange={(e) => setFormData({ ...formData, quantity_per_unit: e.target.value })}
+                          />
+                        </div>
+
+                      </div>
+
+                      {formData.unit_price && formData.quantity_per_unit && (
+                        <div className="text-sm text-green-600 font-medium">
+                          Price per Individual: R {
+                            (
+                              parseFloat(formData.unit_price) /
+                              parseFloat(formData.quantity_per_unit)
+                            ).toFixed(2)
+                          }
+                        </div>
+                      )}
+
+                    </div>
                   ) : formData.material_type !== 'UNIT' && (
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
