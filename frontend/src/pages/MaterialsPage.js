@@ -433,7 +433,7 @@ const handleImportMaterials = async (event) => {
                         <SelectItem value="ROLL">Roll</SelectItem>
                         <SelectItem value="BOARD">Board</SelectItem>
                         <SelectItem value="UNIT">Pack (e.g., LED Modules)</SelectItem>
-                        <SelectItem value="Ink / Paint / Liquid">Ink / Paint / Liquid</SelectItem>
+                        <SelectItem value="INK">Ink / Paint / Liquid</SelectItem>
                         <SelectItem value="PROFILE">Profiles & Structural</SelectItem> 
                      </SelectContent>
                     </Select>
@@ -454,7 +454,7 @@ const handleImportMaterials = async (event) => {
                       />
                     </div>
                   )}
-                  {formData.material_type !== 'UNIT' && formData.material_type !== 'Ink / Paint / Liquid' && (
+                  {formData.material_type !== 'UNIT' && formData.material_type !== 'INK' && formData.material_type !== 'PROFILE' && (
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="width">{dimensionLabels.width}</Label>
