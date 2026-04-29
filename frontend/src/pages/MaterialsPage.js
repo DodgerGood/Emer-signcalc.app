@@ -488,17 +488,19 @@ const handleImportMaterials = async (event) => {
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="thickness">Thickness (mm)</Label>
-                          <Input
-                            id="thickness"
-                            type="text"
-                            value={formData.thickness}
-                            onChange={(e) => setFormData({ ...formData, thickness: e.target.value })}
-                            data-testid="material-thickness-input"
-                            placeholder="e.g., 3, 3mm"
-                          />
-                        </div>
+                        {formData.material_type !== 'ROLL' && (
+                          <div className="space-y-2">
+                            <Label htmlFor="thickness">Thickness (mm)</Label>
+                            <Input
+                              id="thickness"
+                              type="text"
+                              value={formData.thickness}
+                              onChange={(e) => setFormData({ ...formData, thickness: e.target.value })}
+                              data-testid="material-thickness-input"
+                              placeholder="e.g., 3, 3mm"
+                            />
+                          </div>
+                        )}
 
                         <div className="space-y-2">
                           <Label htmlFor="sqm_price">Direct Cost per m² (ZAR)</Label>
@@ -581,7 +583,10 @@ const handleImportMaterials = async (event) => {
                             value={formData.unit_price}
                             onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
                           />
-                        </div>
+                        <p className="text-xs text-slate-500">
+                          Total cost of the full pack, box, bag, or bundle you buy. 
+                        </p> 
+                       </div>
 
                         <div className="space-y-2">
                           <Label>Quantity in Pack</Label>
@@ -591,6 +596,9 @@ const handleImportMaterials = async (event) => {
                             value={formData.quantity_per_unit}
                             onChange={(e) => setFormData({ ...formData, quantity_per_unit: e.target.value })}
                           />
+                        <p className="text-xs text-slate-500">
+                          Number of individual items inside the pack.
+                        </p>
                         </div>
                       </div>
 
