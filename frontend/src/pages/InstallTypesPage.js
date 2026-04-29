@@ -141,6 +141,11 @@ export default function InstallTypesPage() {
   };
 
   const handleEdit = (item) => {
+    if (
+      !window.confirm(
+        'Editing this item will affect the costing of every recipe where it is used.\n\nClick OK to continue editing this item.'
+      )
+    ) return;
     setEditingId(item.id);
     setFormData({ 
       name: item.name, 
@@ -155,7 +160,11 @@ export default function InstallTypesPage() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this install type?')) return;
+    if (
+      !window.confirm(
+        'Deleting this item will affect your recipe builds. Any recipe using this install type may become incomplete or cost incorrectly.\n\nClick OK to permanently delete this item.'
+      )
+    ) return;
     try {
       await api.delete(`/install-types/${id}`);
       toast.success('Install type deleted');
