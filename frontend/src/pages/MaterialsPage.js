@@ -305,7 +305,7 @@ const handleImportMaterials = async (event) => {
   try {
     await api.delete(`/materials/${id}`);
     toast.success('Material deleted');
-    fetchMaterials();
+    loadMaterials();
   } catch (err) {
     const data = err?.response?.data?.detail;
 
