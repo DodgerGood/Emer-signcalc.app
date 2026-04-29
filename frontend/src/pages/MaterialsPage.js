@@ -441,95 +441,127 @@ const handleImportMaterials = async (event) => {
                       {getCategoryHint()}
                     </p>
                  </div>
-                  {formData.material_type !== 'UNIT' && formData.material_type !== 'INK' && formData.material_type !== 'PROFILE' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="unit_price">Total Roll / Sheet / Board Price (ZAR)</Label>
-                      <Input
-                        id="unit_price"
-                        type="number"
-                        step="0.01"
-                        value={formData.unit_price}
-                        onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
-                        data-testid="material-unit-price-input"
-                      />
-                    </div>
-                  )}
-                  {formData.material_type !== 'UNIT' && formData.material_type !== 'INK' && formData.material_type !== 'PROFILE' && (
-                    <div className="grid grid-cols-2 gap-4">
+                  {['SHEET', 'ROLL', 'BOARD'].includes(formData.material_type) && (
+                    <>
                       <div className="space-y-2">
-                        <Label htmlFor="width">{dimensionLabels.width}</Label>
+                        <Label htmlFor="unit_price">Total Roll / Sheet / Board Price (ZAR)</Label>
                         <Input
-                          id="width"
-                          type="text"
-                          step="0.1"
-                          value={formData.width}
-                          onChange={(e) => setFormData({ ...formData, width: e.target.value })}
-                          data-testid="material-width-input"
-                          placeholder="e.g., 1370"
-                        />
-                        <p className="text-xs text-slate-500">
-                          Accepts mm, cm, or m (e.g., 6000, 6000mm, 600cm, 6m)
-                        </p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="height">{dimensionLabels.height}</Label>
-                        <Input
-                          id="height"
-                          type="text"
-                          step="0.1"
-                          value={formData.height}
-                          onChange={(e) => setFormData({ ...formData, height: e.target.value })}
-                          data-testid="material-height-input"
-                          placeholder="e.g., 50000"
-                        />
-                        <p className="text-xs text-slate-500">
-                          Accepts mm, cm, or m (e.g., 6000, 6000mm, 600cm, 6m)
-                        </p>
-                        )}
-                      </div>
-                    </div>
-                    )}
-                  {formData.material_type === 'Ink / Paint / Liquid' && (
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label>Bottle Price (ZAR)</Label>
-                        <Input
+                          id="unit_price"
                           type="number"
                           step="0.01"
                           value={formData.unit_price}
                           onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
+                          data-testid="material-unit-price-input"
                         />
                       </div>
 
-                      <div className="space-y-2">
-                        <Label>Liters per Bottle</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={formData.volume_liters || ''}
-                          onChange={(e) => setFormData({ ...formData, volume_liters: e.target.value })}
-                        />
-                        <p className="text-xs text-slate-500">
-                          Accepts L, ml, or cc (e.g., 5, 5L, 5000ml)
-                        </p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="width">{dimensionLabels.width}</Label>
+                          <Input
+                            id="width"
+                            type="text"
+                            value={formData.width}
+                            onChange={(e) => setFormData({ ...formData, width: e.target.value })}
+                            data-testid="material-width-input"
+                            placeholder="e.g., 1370, 1370mm, 137cm, 1.37m"
+                          />
+                          <p className="text-xs text-slate-500">
+                            Accepts mm, cm, or m.
+                          </p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="height">{dimensionLabels.height}</Label>
+                          <Input
+                            id="height"
+                            type="text"
+                            value={formData.height}
+                            onChange={(e) => setFormData({ ...formData, height: e.target.value })}
+                            data-testid="material-height-input"
+                            placeholder="e.g., 50000, 50000mm, 5000cm, 50m"
+                          />
+                          <p className="text-xs text-slate-500">
+                            Accepts mm, cm, or m.
+                          </p>
+                        </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label>CC / ML  per m²</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={formData.cc_per_sqm || ''}
-                          onChange={(e) => setFormData({ ...formData, cc_per_sqm: e.target.value })}
-                        />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="thickness">Thickness (mm)</Label>
+                          <Input
+                            id="thickness"
+                            type="text"
+                            value={formData.thickness}
+                            onChange={(e) => setFormData({ ...formData, thickness: e.target.value })}
+                            data-testid="material-thickness-input"
+                            placeholder="e.g., 3, 3mm"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="sqm_price">Direct Cost per m² (ZAR)</Label>
+                          <Input
+                            id="sqm_price"
+                            type="number"
+                            step="0.01"
+                            value={formData.sqm_price}
+                            onChange={(e) => setFormData({ ...formData, sqm_price: e.target.value })}
+                            disabled={!!formData.unit_price}
+                            data-testid="material-price-input"
+                          />
+                          <p className="text-xs text-slate-500">
+                            Leave blank if total price is entered. System will calculate automatically.
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {formData.material_type === 'INK' && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label>Container Price (ZAR)</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={formData.unit_price}
+                            onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Liters per Container</Label>
+                          <Input
+                            type="text"
+                            value={formData.volume_liters || ''}
+                            onChange={(e) => setFormData({ ...formData, volume_liters: e.target.value })}
+                            placeholder="e.g., 5, 5L, 5000ml"
+                          />
+                          <p className="text-xs text-slate-500">
+                            Accepts L, ml, or cc.
+                          </p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>CC / ML per m²</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={formData.cc_per_sqm || ''}
+                            onChange={(e) => setFormData({ ...formData, cc_per_sqm: e.target.value })}
+                          />
+                        </div>
                       </div>
 
                       {formData.unit_price && formData.volume_liters && formData.cc_per_sqm && (
-                        <div className="col-span-3 text-sm text-green-600 font-medium">
+                        <div className="text-sm text-green-600 font-medium">
                           Estimated Cost per m²: R {
                             (
                               (parseFloat(formData.unit_price) /
-                                (parseFloat(formData.volume_liters) * 1000)) *
+                                (parseVolumeToLiters(formData.volume_liters) * 1000)) *
                               parseFloat(formData.cc_per_sqm)
                             ).toFixed(2)
                           }
@@ -540,7 +572,6 @@ const handleImportMaterials = async (event) => {
 
                   {formData.material_type === 'UNIT' && (
                     <div className="space-y-4">
-
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label>Pack Price (ZAR)</Label>
@@ -572,10 +603,10 @@ const handleImportMaterials = async (event) => {
                             ).toFixed(2)
                           }
                         </div>
-                        )}
-
+                      )}
                     </div>
-                  )} 
+                  )}
+
                   {formData.material_type === 'PROFILE' && (
                     <div className="space-y-4">
                       <div className="space-y-2">
@@ -587,60 +618,41 @@ const handleImportMaterials = async (event) => {
                         />
                       </div>
 
-                      <div className="space-y-2">
-                        <Label>Profile Length</Label>
-                        <Input
-                          type="text"
-                          value={formData.length_mm || ''}
-                          onChange={(e) => setFormData({ ...formData, length_mm: e.target.value })}
-                          placeholder="e.g., 6000, 6000mm, 600cm, 6m"
-                        />
-                        <p className="text-xs text-slate-500">
-                          Accepts mm, cm, or m (e.g., 6000, 6000mm, 600cm, 6m)
-                        </p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Profile Length</Label>
+                          <Input
+                            type="text"
+                            value={formData.length_mm || ''}
+                            onChange={(e) => setFormData({ ...formData, length_mm: e.target.value })}
+                            placeholder="e.g., 6000, 6000mm, 600cm, 6m"
+                          />
+                          <p className="text-xs text-slate-500">
+                            Accepts mm, cm, or m.
+                          </p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Total Price (ZAR)</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={formData.unit_price}
+                            onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
+                          />
+                        </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label>Per Meter Price (ZAR)</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={formData.sqm_price}
-                          onChange={(e) => setFormData({ ...formData, sqm_price: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {formData.material_type !== 'UNIT' && formData.material_type !== 'Ink / Paint / Liquid' && (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="thickness">Thickness (mm)</Label>
-                        <Input
-                          id="thickness"
-                          type="number"
-                          step="0.01"
-                          value={formData.thickness}
-                          onChange={(e) => setFormData({ ...formData, thickness: e.target.value })}
-                          data-testid="material-thickness-input"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="sqm_price">Direct Cost per m² (ZAR)</Label>
-                        <Input
-                          id="sqm_price"
-                          type="number"
-                          step="0.01"
-                          value={formData.sqm_price}
-                          onChange={(e) => setFormData({ ...formData, sqm_price: e.target.value })}
-                          disabled={!!formData.unit_price}
-                          data-testid="material-price-input"
-                        />
-                        <p className="text-xs text-slate-500">
-                          Leave blank if you entered total price above. System will calculate automatically.
-                        </p>
-                      </div>
+                      {formData.length_mm && formData.unit_price && (
+                        <div className="text-sm text-green-600 font-medium">
+                          Calculated Price per Meter: R {
+                            (
+                              parseFloat(formData.unit_price) /
+                              (parseLengthToMm(formData.length_mm) / 1000)
+                            ).toFixed(2)
+                          }
+                        </div>
+                      )}
                     </div>
                   )}
                   <div className="grid grid-cols-2 gap-4">
