@@ -173,7 +173,7 @@ const handleImportMaterials = async (event) => {
       const thickness = parseLengthToMm(formData.thickness);
       let sqm_price = formData.sqm_price ? parseFloat(formData.sqm_price) : null;
       const unit_price = formData.unit_price ? parseFloat(formData.unit_price) : null;
-      const volume_liters = formData.volume_liters ? parseFloat(formData.volume_liters) : null;
+      const volume_liters = parseVolumeToLiters(formData.volume_liters);
       const cc_per_sqm = formData.cc_per_sqm ? parseFloat(formData.cc_per_sqm) : null;
       const quantity_per_unit = formData.quantity_per_unit ? parseFloat(formData.quantity_per_unit) : null;
       const length_mm = parseLengthToMm(formData.length_mm);
@@ -507,6 +507,9 @@ const handleImportMaterials = async (event) => {
                           value={formData.volume_liters || ''}
                           onChange={(e) => setFormData({ ...formData, volume_liters: e.target.value })}
                         />
+                        <p className="text-xs text-slate-500">
+                          Accepts L, ml, or cc (e.g., 5, 5L, 5000ml)
+                        </p>
                       </div>
 
                       <div className="space-y-2">
