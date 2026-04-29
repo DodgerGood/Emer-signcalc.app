@@ -9,7 +9,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Info } from 'lucide-react';
 import { toast } from 'sonner';
 
 const parseLengthToMm = (value) => {
@@ -283,6 +283,22 @@ const handleImportMaterials = async (event) => {
       cc_per_sqm: material.cc_per_sqm?.toString() || ''
     });
     setDialogOpen(true);
+  };
+
+  const handleShowUsage = async (id) => {
+    try {
+      const response = await api.get(`/item-usage/${id}`);
+      const recipes = response.data.used_in || [];
+
+      if (recipes.length === 0) {
+        alert('This item is not currently used in any recipes.');
+        return;
+      }
+
+      alert(`This item is used in the following recipes:\n\n${recipes.join('\n')}`);
+    } catch (error) {
+      toast.error('Failed to check recipe usage');
+    }
   };
 
   const handleDelete = async (id) => {
@@ -930,7 +946,16 @@ const handleImportMaterials = async (event) => {
                         </TableCell>
                         {canEdit && (
                           <TableCell className="text-right whitespace-nowrap">
-                            <Button
+                           <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleShowUsage(material.id)}
+                              data-testid={`usage-material-${material.id}`}
+                              title="Show recipe usage"
+                            >
+                              <Info size={16} />
+                            </Button>
+                           <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleEdit(material)}
