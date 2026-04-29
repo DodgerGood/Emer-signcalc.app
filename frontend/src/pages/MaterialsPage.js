@@ -12,6 +12,21 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+const parseLengthToMm = (value) => {
+  if (value === null || value === undefined || value === '') return null;
+
+  const raw = value.toString().toLowerCase().trim().replace(/\s+/g, '');
+  const number = parseFloat(raw);
+
+  if (Number.isNaN(number)) return null;
+
+  if (raw.endsWith('mm')) return number;
+  if (raw.endsWith('cm')) return number * 10;
+  if (raw.endsWith('m')) return number * 1000;
+
+  return number; // default = mm
+};
+
 export default function MaterialsPage() {
   const { user } = useAuth();
   const [materials, setMaterials] = useState([]);
