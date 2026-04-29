@@ -699,6 +699,7 @@ const handleImportMaterials = async (event) => {
                 <SelectItem value="BOARD">Board</SelectItem>
                 <SelectItem value="UNIT">Pack</SelectItem>
                 <SelectItem value="INK">Ink / Paint / Liquid</SelectItem>
+                <SelectItem value="PROFILE">Profiles & Structural</SelectItem>
               </SelectContent>
             </Select>
           </div>
