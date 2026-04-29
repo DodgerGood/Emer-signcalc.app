@@ -27,6 +27,21 @@ const parseLengthToMm = (value) => {
   return number; // default = mm
 };
 
+const parseVolumeToLiters = (value) => {
+  if (value === null || value === undefined || value === '') return null;
+
+  const raw = value.toString().toLowerCase().trim().replace(/\s+/g, '');
+  const number = parseFloat(raw);
+
+  if (Number.isNaN(number)) return null;
+
+  if (raw.endsWith('ml')) return number / 1000;
+  if (raw.endsWith('cc')) return number / 1000;
+  if (raw.endsWith('l')) return number;
+
+  return number; // default = liters
+};
+
 export default function MaterialsPage() {
   const { user } = useAuth();
   const [materials, setMaterials] = useState([]);
