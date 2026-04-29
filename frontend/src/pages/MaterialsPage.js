@@ -411,7 +411,7 @@ const handleImportMaterials = async (event) => {
                       {getCategoryHint()}
                     </p>
                  </div>
-                  {formData.material_type !== 'UNIT' && formData.material_type !== 'Ink / Paint / Liquid' && (
+                  {formData.material_type !== 'UNIT' && formData.material_type !== 'INK' && formData.material_type !== 'PROFILE' && (
                     <div className="space-y-2">
                       <Label htmlFor="unit_price">Total Roll / Sheet / Board Price (ZAR)</Label>
                       <Input
@@ -541,43 +541,28 @@ const handleImportMaterials = async (event) => {
 
                     </div>
                   )} 
-                {formData.material_type === 'PROFILE' && (
-                   <div className="space-y-4">
+                  {formData.material_type === 'PROFILE' && (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Profile Dimensions</Label>
+                        <Input
+                          value={formData.product_specs}
+                          onChange={(e) => setFormData({ ...formData, product_specs: e.target.value })}
+                          placeholder="e.g., 50 x 50mm"
+                        />
+                      </div>
 
-                     <div className="space-y-2">
-                       <Label>Profile Length (mm)</Label>
-                       <Input
-                         type="number"
-                         step="1"
-                         value={formData.length_mm || ''}
-                         onChange={(e) => setFormData({ ...formData, length_mm: e.target.value })}
-                         placeholder="e.g., 6000"
-                       />
-                     </div>
-
-                     <div className="space-y-2">
-                       <Label>Total Price (ZAR)</Label>
-                       <Input
-                         type="number"
-                         step="0.01"
-                         value={formData.unit_price}
-                         onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
-                       />
-                     </div>
-
-                     {formData.length_mm && formData.unit_price && (
-                       <div className="text-sm text-green-600 font-medium">
-                         Cost per meter: R {
-                           (
-                             parseFloat(formData.unit_price) /
-                             (parseFloat(formData.length_mm) / 1000)
-                           ).toFixed(2)
-                         }
-                       </div>
-                     )}
-
-                   </div>
-                 )}
+                      <div className="space-y-2">
+                        <Label>Per Meter Price (ZAR)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.sqm_price}
+                          onChange={(e) => setFormData({ ...formData, sqm_price: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   {formData.material_type !== 'UNIT' && formData.material_type !== 'Ink / Paint / Liquid' && (
                     <div className="grid grid-cols-2 gap-4">
