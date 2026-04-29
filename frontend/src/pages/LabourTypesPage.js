@@ -6,7 +6,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Info } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function LabourTypesPage() {
@@ -132,6 +132,22 @@ export default function LabourTypesPage() {
     setDialogOpen(true);
   };
 
+  const handleShowUsage = async (id) => {
+    try {
+      const response = await api.get(`/item-usage/${id}`);
+      const recipes = response.data.used_in || [];
+
+      if (recipes.length === 0) {
+        alert('This item is not currently used in any recipes.');
+        return;
+      }
+
+      alert(`This item is used in the following recipes:\n\n${recipes.join('\n')}`);
+    } catch {
+      toast.error('Failed to check recipe usage');
+    }
+  };
+
   const handleDelete = async (id) => {
     if (
     !window.confirm(
@@ -142,8 +158,16 @@ export default function LabourTypesPage() {
       await api.delete(`/labour-types/${id}`);
       toast.success('Labour type deleted');
       loadItems();
-    } catch (error) {
-      toast.error('Failed to delete labour type');
+    } catch (err) {
+      const data = err?.response?.data?.detail;
+
+      if (data?.recipes) {
+        alert(
+          `This item cannot be deleted because it is used in the following recipes:\n\n${data.recipes.join('\n')}`
+        );
+      } else {
+        toast.error('Delete failed');
+      }
     }
   };
 
