@@ -286,19 +286,22 @@ const handleImportMaterials = async (event) => {
   };
 
   const handleDelete = async (id) => {
-    if (
-        !window.confirm(
-          'Deleting this item will affect your recipe builds. Any recipe using this item may become incomplete or cost incorrectly.\n\nClick OK to permanently delete this item.'
-       )
-     ) return;
-    try {
-      await api.delete(`/materials/${id}`);
-      toast.success('Material deleted');
-      loadMaterials();
-    } catch (error) {
-      toast.error('Failed to delete material');
+  try {
+    await api.delete(`/materials/${id}`);
+    toast.success('Material deleted');
+    fetchMaterials();
+  } catch (err) {
+    const data = err?.response?.data?.detail;
+
+    if (data?.recipes) {
+      alert(
+        `This item cannot be deleted because it is used in the following recipes:\n\n${data.recipes.join('\n')}`
+      );
+    } else {
+      toast.error('Delete failed');
     }
-  };
+  }
+};
 
   const resetForm = () => {
     setEditingId(null);
