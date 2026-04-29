@@ -588,6 +588,19 @@ const handleImportMaterials = async (event) => {
                       </div>
 
                       <div className="space-y-2">
+                        <Label>Profile Length</Label>
+                        <Input
+                          type="text"
+                          value={formData.length_mm || ''}
+                          onChange={(e) => setFormData({ ...formData, length_mm: e.target.value })}
+                          placeholder="e.g., 6000, 6000mm, 600cm, 6m"
+                        />
+                        <p className="text-xs text-slate-500">
+                          Accepts mm, cm, or m (e.g., 6000, 6000mm, 600cm, 6m)
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
                         <Label>Per Meter Price (ZAR)</Label>
                         <Input
                           type="number"
