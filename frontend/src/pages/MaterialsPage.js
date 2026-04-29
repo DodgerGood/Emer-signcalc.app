@@ -281,7 +281,11 @@ const handleImportMaterials = async (event) => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this material?')) return;
+    if (
+        !window.confirm(
+          'Deleting this item will affect your recipe builds. Any recipe using this item may become incomplete or cost incorrectly.\n\nClick OK to permanently delete this item.'
+       )
+     ) return;
     try {
       await api.delete(`/materials/${id}`);
       toast.success('Material deleted');
