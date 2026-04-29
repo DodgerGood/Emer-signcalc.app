@@ -460,29 +460,31 @@ const handleImportMaterials = async (event) => {
                         <Label htmlFor="width">{dimensionLabels.width}</Label>
                         <Input
                           id="width"
-                          type="number"
+                          type="text"
                           step="0.1"
                           value={formData.width}
                           onChange={(e) => setFormData({ ...formData, width: e.target.value })}
                           data-testid="material-width-input"
                           placeholder="e.g., 1370"
                         />
+                        <p className="text-xs text-slate-500">
+                          Accepts mm, cm, or m (e.g., 6000, 6000mm, 600cm, 6m)
+                        </p>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="height">{dimensionLabels.height}</Label>
                         <Input
                           id="height"
-                          type="number"
+                          type="text"
                           step="0.1"
                           value={formData.height}
                           onChange={(e) => setFormData({ ...formData, height: e.target.value })}
                           data-testid="material-height-input"
                           placeholder="e.g., 50000"
                         />
-                        {formData.width && formData.height && (
-                          <p className="text-xs text-slate-500">
-                            Total area: {((parseFloat(formData.width) * parseFloat(formData.height)) / 1000000).toFixed(2)} m²
-                          </p>
+                        <p className="text-xs text-slate-500">
+                          Accepts mm, cm, or m (e.g., 6000, 6000mm, 600cm, 6m)
+                        </p>
                         )}
                       </div>
                     </div>
