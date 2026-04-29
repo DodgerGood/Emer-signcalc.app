@@ -1122,6 +1122,23 @@ async def get_support_request(case_id: str):
 
     return SupportRequestRecord(**support_request)
 
+@api_router.get("/item-usage/{item_id}")
+async def get_item_usage(item_id: str, user: dict = Depends(get_current_user)):
+    recipes = await db.recipes.find(
+        {"company_id": user["company_id"], "archived_at": None},
+        {"_id": 0, "name": 1, "lines": 1}
+    ).to_list(1000)
+
+    used_in = []
+
+    for recipe in recipes:
+        for line in recipe.get("lines", []):
+            if line.get("reference_id") == item_id:
+                used_in.append(recipe["name"])
+                break
+
+    return {"used_in": used_in}
+
 @api_router.post("/admin/support-requests/{case_id}/action")
 async def action_support_request(case_id: str, req: AdminSupportActionRequest):
     support_request = await db.support_requests.find_one(
@@ -2904,6 +2921,16 @@ async def update_material(material_id: str, material: MaterialCreate, user: dict
 
 @api_router.delete("/materials/{material_id}")
 async def delete_material(material_id: str, user: dict = Depends(can_edit_materials)):
+    # check usage first
+    usage = await get_item_usage(material_id, user)
+    if usage["used_in"]:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "Item is used in recipes",
+                "recipes": usage["used_in"]
+            }
+        )
     result = await db.materials.delete_one({"id": material_id, "company_id": user["company_id"]})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Material not found")
@@ -3209,6 +3236,16 @@ async def update_labour_type(labour_id: str, labour: LabourTypeCreate, user: dic
 
 @api_router.delete("/labour-types/{labour_id}")
 async def delete_labour_type(labour_id: str, user: dict = Depends(require_manager)):
+    usage = await get_item_usage(labour_id, user)
+    if usage["used_in"]:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "Item is used in recipes",
+                "recipes": usage["used_in"]
+            }
+        )
+
     result = await db.labour_types.delete_one({"id": labour_id, "company_id": user["company_id"]})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Labour type not found")
@@ -3373,6 +3410,16 @@ async def update_install_type(install_id: str, install: InstallTypeCreate, user:
 
 @api_router.delete("/install-types/{install_id}")
 async def delete_install_type(install_id: str, user: dict = Depends(require_manager)):
+    usage = await get_item_usage(install_id, user)
+    if usage["used_in"]:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "Item is used in recipes",
+                "recipes": usage["used_in"]
+            }
+        )
+
     result = await db.install_types.delete_one({"id": install_id, "company_id": user["company_id"]})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Install type not found")
