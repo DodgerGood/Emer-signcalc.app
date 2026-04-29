@@ -7,7 +7,7 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Info } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function InstallTypesPage() {
@@ -159,6 +159,22 @@ export default function InstallTypesPage() {
     setDialogOpen(true);
   };
 
+  const handleShowUsage = async (id) => {
+    try {
+      const response = await api.get(`/item-usage/${id}`);
+      const recipes = response.data.used_in || [];
+
+      if (recipes.length === 0) {
+        alert('This item is not currently used in any recipes.');
+        return;
+      }
+
+      alert(`This item is used in the following recipes:\n\n${recipes.join('\n')}`);
+    } catch {
+      toast.error('Failed to check recipe usage');
+    }
+  };
+
   const handleDelete = async (id) => {
     if (
       !window.confirm(
@@ -169,9 +185,17 @@ export default function InstallTypesPage() {
       await api.delete(`/install-types/${id}`);
       toast.success('Install type deleted');
       loadItems();
-    } catch (error) {
-      toast.error('Failed to delete install type');
-    }
+    } catch (err) {
+          const data = err?.response?.data?.detail;
+
+          if (data?.recipes) {
+            alert(
+              `This item cannot be deleted because it is used in the following recipes:\n\n${data.recipes.join('\n')}`
+            );
+          } else {
+            toast.error('Delete failed');
+          }
+        }
   };
 
   const resetForm = () => {
@@ -416,6 +440,14 @@ return (
                         <TableCell className="text-sm">{item.equipment || '-'}</TableCell>
                         <TableCell className="data-mono">R {item.equipment_rate.toFixed(2)}</TableCell>
                         <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleShowUsage(item.id)}
+                            title="Show recipe usage"
+                          >
+                            <Info size={16} />
+                          </Button>
                           <Button variant="ghost" size="sm" onClick={() => handleEdit(item)}>
                             <Pencil size={16} />
                           </Button>
