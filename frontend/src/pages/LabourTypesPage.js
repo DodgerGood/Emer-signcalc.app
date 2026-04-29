@@ -122,13 +122,22 @@ export default function LabourTypesPage() {
   };
 
   const handleEdit = (item) => {
+    if (
+      !window.confirm(
+        'Editing this item will affect the costing of every recipe where it is used.\n\nClick OK to continue editing this item.'
+      )
+    ) return;
     setEditingId(item.id);
     setFormData({ name: item.name, rate_per_hour: item.rate_per_hour.toString(), number_of_people: item.number_of_people.toString() });
     setDialogOpen(true);
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this labour type?')) return;
+    if (
+    !window.confirm(
+      'Deleting this item will affect your recipe builds. Any recipe using this labour type may become incomplete or cost incorrectly.\n\nClick OK to permanently delete this item.'
+    )
+  ) return;
     try {
       await api.delete(`/labour-types/${id}`);
       toast.success('Labour type deleted');
