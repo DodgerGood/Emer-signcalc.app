@@ -260,6 +260,11 @@ const handleImportMaterials = async (event) => {
   };
 
   const handleEdit = (material) => {
+    if (
+      !window.confirm(
+        'Editing this item will affect the costing of every recipe where it is used.\n\nClick OK to continue editing this item.'
+      )
+    ) return;
     setEditingId(material.id);
     setFormData({
       name: material.name,
