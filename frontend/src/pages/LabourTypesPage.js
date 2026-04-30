@@ -737,7 +737,6 @@ export default function LabourTypesPage() {
                     <TableHead>Category</TableHead>
                     <TableHead className="data-mono">Cost / m² (ZAR)</TableHead>
                     <TableHead className="data-mono">Type</TableHead>
-                    <TableHead className="data-mono">Hourly Cost</TableHead>
                     <TableHead className="data-mono">m² / hr</TableHead><TableHead className="data-mono">m² / hr</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -746,7 +745,7 @@ export default function LabourTypesPage() {
                 <TableBody>
                   {filteredItems.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="py-12">
+                      <TableCell colSpan={6} className="py-12">
                         <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto">
                           <div className="text-lg font-semibold text-slate-900">
                             No labour rates found
@@ -812,9 +811,6 @@ export default function LabourTypesPage() {
                           </TableCell>
                           <TableCell className="data-mono">
                             {isMachine ? 'Machine' : 'Labour'}
-                          </TableCell>
-                          <TableCell className="data-mono">
-                            R {hourlyTotal.toFixed(2)}
                           </TableCell>
                           <TableCell className="data-mono">
                             {item.sqm_per_hour ? item.sqm_per_hour : '-'}
