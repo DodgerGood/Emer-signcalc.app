@@ -744,9 +744,9 @@ export default function LabourTypesPage() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Category</TableHead>
-                    <TableHead className="data-mono">Rate/Hour (ZAR)</TableHead>
-                    <TableHead className="data-mono">People</TableHead>
-                    <TableHead className="data-mono">Team Rate/Hour</TableHead>
+                    <TableHead className="data-mono">Cost / m² (ZAR)</TableHead>
+                    <TableHead className="data-mono">Type</TableHead>
+                    <TableHead className="data-mono">Hourly Cost</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -792,27 +792,37 @@ export default function LabourTypesPage() {
                       const hourlyRate = isMachine
                         ? (autoMachineRate !== null ? autoMachineRate : manualRate)
                         : manualRate;
-                      const teamRate =
-                        !isMachine &&
-                        item.rate_per_hour !== null &&
-                        item.rate_per_hour !== undefined &&
-                        item.number_of_people !== null &&  
-                        item.number_of_people !== undefined
-                          ? Number(item.rate_per_hour) * Number(item.number_of_people)
-                          : null;
+                      const people = Number(item.number_of_people) || 1;
+                      const sqmPerHour = Number(item.sqm_per_hour) || 0;
+
+                      const toolsRate = (item.tools || []).reduce((sum, tool) => {
+                        return sum + ((Number(tool.quantity) || 0) * (Number(tool.cost_per_hour) || 0));
+                      }, 0);
+
+                      const electricityPerHour =
+                        ((Number(item.machine_watts) || 0) / 1000) *  
+                        (Number(item.electricity_cost_per_kwh) || 0);
+
+                      const operatorRate = Number(item.operator_hourly_rate) || 0;
+
+                      const hourlyTotal = isMachine
+                        ? hourlyRate + electricityPerHour + operatorRate 
+                        : (Number(item.rate_per_hour) || 0) * people + toolsRate;
+
+                      const costPerSqm = sqmPerHour > 0 ? hourlyTotal / sqmPerHour : null;
 
                       return (
                         <TableRow key={item.id}>
                           <TableCell className="font-medium">{item.name}</TableCell>
                           <TableCell>{item.category || '-'}</TableCell>
                           <TableCell className="data-mono">
-                            {hourlyRate !== null && hourlyRate !== undefined ? `R ${hourlyRate.toFixed(2)}` : '-'}
+                            {costPerSqm !== null ? `R ${costPerSqm.toFixed(2)}` : '-'}
                           </TableCell>
                           <TableCell className="data-mono">
-                            {isMachine ? '-' : item.number_of_people}
+                            {isMachine ? 'Machine' : 'Labour'}
                           </TableCell>
                           <TableCell className="data-mono">
-                            {teamRate !== null ? `R ${teamRate.toFixed(2)}` : '-'}
+                            R {hourlyTotal.toFixed(2)}
                           </TableCell>
                           <TableCell className="text-right whitespace-nowrap">
                             <Button
