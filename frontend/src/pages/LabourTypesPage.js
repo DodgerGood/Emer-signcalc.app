@@ -678,16 +678,7 @@ export default function LabourTypesPage() {
                     );
                   })()}
 
-                  {formData.rate_per_hour && formData.number_of_people && (
-                    <div className="text-sm text-green-600 font-medium">
-                      Team rate per hour: R {
-                        (
-                          parseFloat(formData.rate_per_hour) *
-                          parseInt(formData.number_of_people || '1')
-                        ).toFixed(2)
-                      }
-                    </div>
-                  )}
+                  
 
                   <div className="flex gap-2 pt-4">
                     <Button
@@ -747,6 +738,7 @@ export default function LabourTypesPage() {
                     <TableHead className="data-mono">Cost / m² (ZAR)</TableHead>
                     <TableHead className="data-mono">Type</TableHead>
                     <TableHead className="data-mono">Hourly Cost</TableHead>
+                    <TableHead className="data-mono">m² / hr</TableHead><TableHead className="data-mono">m² / hr</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -754,7 +746,7 @@ export default function LabourTypesPage() {
                 <TableBody>
                   {filteredItems.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-12">
+                      <TableCell colSpan={7} className="py-12">
                         <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto">
                           <div className="text-lg font-semibold text-slate-900">
                             No labour rates found
@@ -823,6 +815,9 @@ export default function LabourTypesPage() {
                           </TableCell>
                           <TableCell className="data-mono">
                             R {hourlyTotal.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="data-mono">
+                            {item.sqm_per_hour ? item.sqm_per_hour : '-'}
                           </TableCell>
                           <TableCell className="text-right whitespace-nowrap">
                             <Button
