@@ -326,14 +326,16 @@ export default function LabourTypesPage() {
                     </p>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="name">Labour Type *</Label>
+                    <Label htmlFor="name">
+                      {formData.cost_type === 'MACHINE' ? 'Machine Name *' : 'Labour Type *'}
+                    </Label>
                     <Input
                       id="name"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       required
                       data-testid="labour-name-input"
-                      placeholder="e.g., Vinyl Application"
+                      placeholder={formData.cost_type === 'MACHINE' ? 'e.g., CNC Router' : 'e.g., Vinyl Application'}
                     />
                     <p className="text-xs text-slate-500">
                       Name of the labour activity (e.g., Vinyl Application, Welding, Installation).
