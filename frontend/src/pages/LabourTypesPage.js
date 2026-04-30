@@ -427,7 +427,73 @@ export default function LabourTypesPage() {
                         How many square meters this team can complete per hour.
                       </p>
                     </div>
-                 </div>
+                  {formData.cost_type === 'MACHINE' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                      <div className="space-y-2">
+                        <Label>Machine Dimensions</Label>
+                        <Input
+                          value={formData.machine_dimensions}
+                          onChange={(e) => setFormData({ ...formData, machine_dimensions: e.target.value })}
+                          placeholder="e.g., 1600mm print width"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Machine Watts</Label>
+                        <Input
+                          type="number"
+                          value={formData.machine_watts}
+                          onChange={(e) => setFormData({ ...formData, machine_watts: e.target.value })}
+                          placeholder="e.g., 2500"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Electricity Cost per kWh</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.electricity_cost_per_kwh}
+                          onChange={(e) => setFormData({ ...formData, electricity_cost_per_kwh: e.target.value })}
+                          placeholder="e.g., 2.50"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Setup Time (minutes)</Label>
+                        <Input
+                          type="number"
+                          value={formData.setup_time_minutes}
+                          onChange={(e) => setFormData({ ...formData, setup_time_minutes: e.target.value })}
+                          placeholder="e.g., 15"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Waste Factor (%)</Label>
+                        <Input
+                          type="number"
+                          value={formData.waste_factor_percent}
+                          onChange={(e) => setFormData({ ...formData, waste_factor_percent: e.target.value })}
+                          placeholder="e.g., 5"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Operator Hourly Rate</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.operator_hourly_rate}
+                          onChange={(e) => setFormData({ ...formData, operator_hourly_rate: e.target.value })}
+                          placeholder="e.g., 120"
+                        />
+                      </div>
+
+                    </div>
+                  )} 
+                </div>
 
                   <div className="space-y-2">
                     <Label>Tools</Label>
