@@ -423,18 +423,27 @@ class InkProfile(BaseModel):
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 # Labour Type Models
+class LabourTool(BaseModel):
+    name: str
+    quantity: float = 1
+    cost_per_hour: float = 0
+
 class LabourTypeCreate(BaseModel):
     name: str
+    category: Optional[str] = "GENERAL"
     rate_per_hour: float  # in ZAR
     number_of_people: int
+    tools: List[LabourTool] = []
 
 class LabourType(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     company_id: str
     name: str
+    category: Optional[str] = "GENERAL"
     rate_per_hour: float
     number_of_people: int
+    tools: List[LabourTool] = []
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 # Install Type Models
