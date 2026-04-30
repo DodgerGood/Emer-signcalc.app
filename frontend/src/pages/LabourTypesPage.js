@@ -16,6 +16,7 @@ export default function LabourTypesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('ALL');
   const importFileRef = useRef(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -45,7 +46,7 @@ export default function LabourTypesPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, categoryFilter]);
 
   const loadItems = async () => {
     try {
@@ -58,10 +59,16 @@ export default function LabourTypesPage() {
     }
   };
 
-  const filteredItems = items.filter((item) =>
-    item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.category?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredItems = items.filter((item) => {
+    const matchesSearch =
+      item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.category?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesCategory =
+      categoryFilter === 'ALL' || item.category === categoryFilter;
+
+    return matchesSearch && matchesCategory;
+  });
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -721,7 +728,24 @@ export default function LabourTypesPage() {
               data-testid="labour-search-input"
             />
           </div>
-        </div>
+       <div className="w-full md:max-w-xs space-y-2">
+         <Label>Category</Label>
+         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+           <SelectTrigger>
+             <SelectValue />
+           </SelectTrigger>
+           <SelectContent>
+             <SelectItem value="ALL">All Categories</SelectItem>
+             <SelectItem value="APPLICATION">Application</SelectItem>
+             <SelectItem value="FABRICATION">Fabrication</SelectItem>
+             <SelectItem value="PRINTING">Printing</SelectItem>
+             <SelectItem value="MACHINE">Machine</SelectItem>
+             <SelectItem value="INSTALLATION">Installation</SelectItem>
+             <SelectItem value="GENERAL">General</SelectItem>
+           </SelectContent>
+         </Select>
+       </div>
+       </div>
 
         {loading ? (
           <div className="flex justify-center p-12">
