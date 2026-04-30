@@ -291,7 +291,7 @@ export default function LabourTypesPage() {
                         <SelectItem value="APPLICATION">Application</SelectItem>
                         <SelectItem value="FABRICATION">Fabrication</SelectItem>
                         <SelectItem value="PRINTING">Printing</SelectItem>
-                        <SelectItem value="INSTALL">Install</SelectItem>
+                        <SelectItem value="INSTALLATION">Installation</SelectItem>
                         <SelectItem value="GENERAL">General</SelectItem>
                       </SelectContent>
                     </Select>
