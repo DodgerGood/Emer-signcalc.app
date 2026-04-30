@@ -34,6 +34,9 @@ export default function LabourTypesPage() {
     setup_time_minutes: '',
     waste_factor_percent: '',
     operator_hourly_rate: '',
+    machine_value: '',
+    depreciation_years: '',
+    working_hours_per_year: '',
   });
 
   useEffect(() => {
@@ -162,6 +165,9 @@ export default function LabourTypesPage() {
         setup_time_minutes: formData.setup_time_minutes ? parseFloat(formData.setup_time_minutes) : null,
         waste_factor_percent: formData.waste_factor_percent ? parseFloat(formData.waste_factor_percent) : null,
         operator_hourly_rate: formData.operator_hourly_rate ? parseFloat(formData.operator_hourly_rate) : null,
+        machine_value: formData.machine_value ? parseFloat(formData.machine_value) : null,
+        depreciation_years: formData.depreciation_years ? parseFloat(formData.depreciation_years) : null,
+        working_hours_per_year: formData.working_hours_per_year ? parseFloat(formData.working_hours_per_year) : null,
         tools: (formData.tools || []).map((tool) => ({
           name: tool.name,
           quantity: parseFloat(tool.quantity) || 0,
@@ -441,6 +447,35 @@ export default function LabourTypesPage() {
                       <div className="md:col-span-2 w-full bg-slate-50 p-4 rounded-lg border border-slate-200">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2 w-full">
+                        <div className="space-y-2">
+                          <Label>Machine Value (ZAR)</Label>
+                          <Input
+                            type="number"
+                            value={formData.machine_value}
+                            onChange={(e) => setFormData({ ...formData, machine_value: e.target.value })}
+                            placeholder="e.g., 250000"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Depreciation Years</Label>
+                          <Input
+                            type="number"
+                            value={formData.depreciation_years}
+                            onChange={(e) => setFormData({ ...formData, depreciation_years: e.target.value })}
+                            placeholder="e.g., 5"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Working Hours per Year</Label>
+                          <Input
+                            type="number"
+                            value={formData.working_hours_per_year}
+                            onChange={(e) => setFormData({ ...formData, working_hours_per_year: e.target.value })}
+                            placeholder="e.g., 2000"
+                          />
+                        </div>
                         <Label>Machine Dimensions</Label>
                         <Input
                           value={formData.machine_dimensions}
@@ -560,7 +595,18 @@ export default function LabourTypesPage() {
                       return sum + qty * cost;
                     }, 0);
 
-                    const machineRate = parseFloat(formData.rate_per_hour) || 0;
+                    const machineValue = parseFloat(formData.machine_value) || 0;
+                    const depreciationYears = parseFloat(formData.depreciation_years) || 0;
+                    const hoursPerYear = parseFloat(formData.working_hours_per_year) || 0;
+
+                    const autoMachineRate =
+                      depreciationYears > 0 && hoursPerYear > 0
+                        ? machineValue / depreciationYears / hoursPerYear
+                        : 0;
+
+                    const manualRate = parseFloat(formData.rate_per_hour) || 0;
+
+                    const machineRate = autoMachineRate > 0 ? autoMachineRate : manualRate;
 
                     const watts = parseFloat(formData.machine_watts) || 0;
                     const electricityCost = parseFloat(formData.electricity_cost_per_kwh) || 0;
@@ -592,7 +638,10 @@ export default function LabourTypesPage() {
                           </>
                         ) : (
                           <>
-                            <div>Machine cost/hour: R {machineRate.toFixed(2)}</div>
+                            <div>
+                              Machine cost/hour: R {machineRate.toFixed(2)}
+                              {autoMachineRate > 0 ? ' (auto-calculated)' : ' (manual)'}
+                            </div>
                             <div>Electricity/hour: R {electricityPerHour.toFixed(2)}</div>
                             <div>Operator/hour: R {operatorRate.toFixed(2)}</div>
 
