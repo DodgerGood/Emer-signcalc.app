@@ -432,8 +432,8 @@ export default function LabourTypesPage() {
                       </p>
                     </div>
                     {formData.cost_type === 'MACHINE' && (
-                      <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="w-full bg-slate-50 p-4 rounded-lg border border-slate-200">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2 w-full">
                         <Label>Machine Dimensions</Label>
                         <Input
