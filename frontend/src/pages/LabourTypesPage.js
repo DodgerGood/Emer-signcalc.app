@@ -763,28 +763,27 @@ export default function LabourTypesPage() {
                     paginatedItems.map((item) => {
                       const isMachine = item.cost_type === 'MACHINE';
 
-                      const machineValue = item.machine_value || 0;
-                      const depreciationYears = item.depreciation_years || 0;
-                      const workingHoursPerYear = item.working_hours_per_year || 0;
+                      const machineValue = Number(item.machine_value) || 0;
+                      const depreciationYears = Number(item.depreciation_years) || 0;
+                      const workingHoursPerYear = Number(item.working_hours_per_year) || 0;
 
                       const autoMachineRate =
                         depreciationYears > 0 && workingHoursPerYear > 0
                           ? machineValue / depreciationYears / workingHoursPerYear
                           : null;
 
-                      const manualRate = item.rate_per_hour || 0;
+                      const manualRate = Number(item.rate_per_hour) || 0;
 
                       const hourlyRate = isMachine
                         ? (autoMachineRate !== null ? autoMachineRate : manualRate)
                         : manualRate;
-
                       const teamRate =
                         !isMachine &&
                         item.rate_per_hour !== null &&
                         item.rate_per_hour !== undefined &&
                         item.number_of_people !== null &&  
                         item.number_of_people !== undefined
-                          ? item.rate_per_hour * item.number_of_people
+                          ? Number(item.rate_per_hour) * Number(item.number_of_people)
                           : null;
 
                       return (
