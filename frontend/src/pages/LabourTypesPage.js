@@ -27,7 +27,13 @@ export default function LabourTypesPage() {
     rate_per_hour: '',
     number_of_people: '1',
     sqm_per_hour: '',
-    tools: []
+    tools: [],
+    machine_dimensions: '',
+    machine_watts: '',
+    electricity_cost_per_kwh: '',
+    setup_time_minutes: '',
+    waste_factor_percent: '',
+    operator_hourly_rate: '',
   });
 
   useEffect(() => {
