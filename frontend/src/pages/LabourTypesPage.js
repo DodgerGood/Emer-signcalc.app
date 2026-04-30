@@ -308,6 +308,24 @@ export default function LabourTypesPage() {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
+                    <Label>Cost Type</Label>
+                    <Select
+                      value={formData.cost_type}
+                      onValueChange={(v) => setFormData({ ...formData, cost_type: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="LABOUR">Labour</SelectItem>
+                        <SelectItem value="MACHINE">Machine Time</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-slate-500">
+                      Select whether this is labour work or machine production time.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="name">Labour Type *</Label>
                     <Input
                       id="name"
