@@ -127,6 +127,12 @@ export default function LabourTypesPage() {
   };
 
   const removeTool = (index) => {
+    if (
+      !window.confirm(
+        'Removing this tool will affect the costing of this labour type and every recipe where it is used.\n\nClick OK to remove this tool.'
+      )
+    ) return;
+
     const updated = [...formData.tools];
     updated.splice(index, 1);
     setFormData({ ...formData, tools: updated });
