@@ -323,6 +323,22 @@ export default function LabourTypesPage() {
                       />
                     </div>
                   </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Tools Required</Label>
+                    <textarea
+                      value={formData.tools_required || ''}
+                      onChange={(e) => setFormData({ ...formData, tools_required: e.target.value })}
+                      placeholder={`Example:
+Squeegee x2
+Heat gun x1
+Knife x3`}
+                      className="w-full min-h-[120px] rounded-md border border-slate-300 px-3 py-2 text-sm"
+                    />
+                    <p className="text-xs text-slate-500">
+                      List each tool needed for this labour type. We will add tool quantities and costing next.
+                    </p>
+                  </div>
 
                   {formData.rate_per_hour && formData.number_of_people && (
                     <div className="text-sm text-green-600 font-medium">
