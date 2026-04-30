@@ -156,6 +156,12 @@ export default function LabourTypesPage() {
         rate_per_hour: parseFloat(formData.rate_per_hour),
         number_of_people: parseInt(formData.number_of_people),
         sqm_per_hour: formData.sqm_per_hour ? parseFloat(formData.sqm_per_hour) : null,
+        machine_dimensions: formData.machine_dimensions || null,
+        machine_watts: formData.machine_watts ? parseFloat(formData.machine_watts) : null,   
+        electricity_cost_per_kwh: formData.electricity_cost_per_kwh ? parseFloat(formData.electricity_cost_per_kwh) : null,
+        setup_time_minutes: formData.setup_time_minutes ? parseFloat(formData.setup_time_minutes) : null,
+        waste_factor_percent: formData.waste_factor_percent ? parseFloat(formData.waste_factor_percent) : null,
+        operator_hourly_rate: formData.operator_hourly_rate ? parseFloat(formData.operator_hourly_rate) : null,
         tools: (formData.tools || []).map((tool) => ({
           name: tool.name,
           quantity: parseFloat(tool.quantity) || 0,
@@ -195,6 +201,12 @@ export default function LabourTypesPage() {
       number_of_people: item.number_of_people?.toString() || '1',
       sqm_per_hour: item.sqm_per_hour?.toString() || '',
       tools: item.tools || [],
+      machine_dimensions: item.machine_dimensions || '',
+      machine_watts: item.machine_watts?.toString() || '',
+      electricity_cost_per_kwh: item.electricity_cost_per_kwh?.toString() || '',
+      setup_time_minutes: item.setup_time_minutes?.toString() || '',
+      waste_factor_percent: item.waste_factor_percent?.toString() || '',
+      operator_hourly_rate: item.operator_hourly_rate?.toString() || '',
     });
     setDialogOpen(true);
   };
