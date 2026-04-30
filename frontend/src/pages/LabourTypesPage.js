@@ -761,10 +761,26 @@ export default function LabourTypesPage() {
                     </TableRow>
                   ) : (
                     paginatedItems.map((item) => {
+                      const isMachine = item.cost_type === 'MACHINE';
+
+                      const machineValue = item.machine_value || 0;
+                      const depreciationYears = item.depreciation_years || 0;
+                      const workingHoursPerYear = item.working_hours_per_year || 0;
+
+                      const autoMachineRate =
+                        depreciationYears > 0 && workingHoursPerYear > 0
+                          ? machineValue / depreciationYears / workingHoursPerYear
+                          : null;
+
+                      const hourlyRate = isMachine
+                        ? autoMachineRate
+                        : item.rate_per_hour;
+
                       const teamRate =
+                        !isMachine &&
                         item.rate_per_hour !== null &&
                         item.rate_per_hour !== undefined &&
-                        item.number_of_people !== null &&
+                        item.number_of_people !== null &&  
                         item.number_of_people !== undefined
                           ? item.rate_per_hour * item.number_of_people
                           : null;
@@ -773,8 +789,12 @@ export default function LabourTypesPage() {
                         <TableRow key={item.id}>
                           <TableCell className="font-medium">{item.name}</TableCell>
                           <TableCell>{item.category || '-'}</TableCell>
-                          <TableCell className="data-mono">R {item.rate_per_hour.toFixed(2)}</TableCell>
-                          <TableCell className="data-mono">{item.number_of_people}</TableCell>
+                          <TableCell className="data-mono">
+                            {hourlyRate !== null && hourlyRate !== undefined ? `R ${hourlyRate.toFixed(2)}` : '-'}
+                          </TableCell>
+                          <TableCell className="data-mono">
+                            {isMachine ? '-' : item.number_of_people}
+                          </TableCell>
                           <TableCell className="data-mono">
                             {teamRate !== null ? `R ${teamRate.toFixed(2)}` : '-'}
                           </TableCell>
