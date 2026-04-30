@@ -442,7 +442,9 @@ class LabourTypeCreate(BaseModel):
     setup_time_minutes: Optional[float] = None
     waste_factor_percent: Optional[float] = None
     operator_hourly_rate: Optional[float] = None
-
+    machine_value: Optional[float] = None
+    depreciation_years: Optional[float] = None
+    working_hours_per_year: Optional[float] = None
 
 class LabourType(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -462,6 +464,9 @@ class LabourType(BaseModel):
     waste_factor_percent: Optional[float] = None
     operator_hourly_rate: Optional[float] = None
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    machine_value: Optional[float] = None
+    depreciation_years: Optional[float] = None
+    working_hours_per_year: Optional[float] = None
 
 # Install Type Models
 class InstallTypeCreate(BaseModel):

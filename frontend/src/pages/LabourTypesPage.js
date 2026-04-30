@@ -213,6 +213,9 @@ export default function LabourTypesPage() {
       setup_time_minutes: item.setup_time_minutes?.toString() || '',
       waste_factor_percent: item.waste_factor_percent?.toString() || '',
       operator_hourly_rate: item.operator_hourly_rate?.toString() || '',
+      machine_value: item.machine_value?.toString() || '',
+      depreciation_years: item.depreciation_years?.toString() || '',
+      working_hours_per_year: item.working_hours_per_year?.toString() || '',
     });
     setDialogOpen(true);
   };
@@ -267,6 +270,9 @@ export default function LabourTypesPage() {
       number_of_people: '1',
       sqm_per_hour: '',
       tools: [],
+      machine_value: '',
+      depreciation_years: '',
+      working_hours_per_year: '',
     });
   };
 
