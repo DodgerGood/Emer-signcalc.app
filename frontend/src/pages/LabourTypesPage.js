@@ -384,7 +384,7 @@ export default function LabourTypesPage() {
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
+                    <div className="space-y-2 w-full">
                       <Label htmlFor="rate">Rate per Hour (ZAR) *</Label>
                       <Input
                         id="rate"
@@ -417,7 +417,7 @@ export default function LabourTypesPage() {
                       </div>
                     )}
 
-                    <div className="space-y-2">
+                    <div className="space-y-2 w-full">
                       <Label htmlFor="sqm_per_hour">m² per Hour</Label>
                       <Input
                         id="sqm_per_hour"
@@ -431,10 +431,10 @@ export default function LabourTypesPage() {
                         How many square meters this team can complete per hour.
                       </p>
                     </div>
-                  {formData.cost_type === 'MACHINE' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                      <div className="space-y-2">
+                    {formData.cost_type === 'MACHINE' && (
+                      <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="space-y-2 w-full">
                         <Label>Machine Dimensions</Label>
                         <Input
                           value={formData.machine_dimensions}
@@ -443,7 +443,7 @@ export default function LabourTypesPage() {
                         />
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="space-y-2 w-full">
                         <Label>Machine Watts</Label>
                         <Input
                           type="number"
@@ -453,7 +453,7 @@ export default function LabourTypesPage() {
                         />
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="space-y-2 w-full">
                         <Label>Electricity Cost per kWh</Label>
                         <Input
                           type="number"
@@ -464,7 +464,7 @@ export default function LabourTypesPage() {
                         />
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="space-y-2 w-full">
                         <Label>Setup Time (minutes)</Label>
                         <Input
                           type="number"
@@ -474,7 +474,7 @@ export default function LabourTypesPage() {
                         />
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="space-y-2 w-full">
                         <Label>Waste Factor (%)</Label>
                         <Input
                           type="number"
@@ -484,7 +484,7 @@ export default function LabourTypesPage() {
                         />
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="space-y-2 w-full">
                         <Label>Operator Hourly Rate</Label>
                         <Input
                           type="number"
@@ -494,13 +494,13 @@ export default function LabourTypesPage() {
                           placeholder="e.g., 120"
                         />
                       </div>
-
+                    </div>
                     </div>
                   )} 
                 </div>
 
                   {formData.cost_type === 'LABOUR' && (
-                    <div className="space-y-2">
+                    <div className="space-y-2 w-full">
                       <Label>Tools</Label>
 
                       {(formData.tools || []).map((tool, index) => (
@@ -579,27 +579,23 @@ export default function LabourTypesPage() {
                           <>
                             <div>Labour team cost/hour: R {labourRate.toFixed(2)}</div>
                             <div>Tools cost/hour: R {toolsRate.toFixed(2)}</div>
+
+                            <div className="font-semibold text-green-700">
+                              Total labour + tools/hour: R {totalRate.toFixed(2)}
+                            </div>
                           </>
                         ) : (
                           <>
                             <div>Machine cost/hour: R {machineRate.toFixed(2)}</div>
                             <div>Electricity/hour: R {electricityPerHour.toFixed(2)}</div>
                             <div>Operator/hour: R {operatorRate.toFixed(2)}</div>
+
+                            <div className="font-semibold text-green-700">
+                              Total machine cost/hour: R {totalRate.toFixed(2)}
+                            </div>
                           </>
                         )}
 
-                        <div className="font-semibold text-green-700">
-                          Total cost/hour: R {totalRate.toFixed(2)}
-                        </div>
-
-                        {costPerSqm !== null && (
-                          <div className="font-semibold text-blue-700">
-                            Cost per m²: R {costPerSqm.toFixed(2)}
-                          </div>
-                        )}
-                        <div className="font-semibold text-green-700">
-                          Total labour + tools/hour: R {totalRate.toFixed(2)}
-                        </div>
                         {costPerSqm !== null && (
                           <div className="font-semibold text-blue-700">
                             Cost per m²: R {costPerSqm.toFixed(2)}
