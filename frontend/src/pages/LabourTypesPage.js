@@ -363,7 +363,14 @@ return (
                         <TableCell className="data-mono">R {item.rate_per_hour.toFixed(2)}</TableCell>
                         <TableCell className="data-mono">{item.number_of_people}</TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(item)}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleShowUsage(item.id)}
+                            title="Show recipe usage"
+                          >
+                            <Info size={16} />
+                          </Button><Button variant="ghost" size="sm" onClick={() => handleEdit(item)}>
                             <Pencil size={16} />
                           </Button>
                           <Button
