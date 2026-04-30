@@ -737,7 +737,7 @@ export default function LabourTypesPage() {
                     <TableHead>Category</TableHead>
                     <TableHead className="data-mono">Cost / m² (ZAR)</TableHead>
                     <TableHead className="data-mono">Type</TableHead>
-                    <TableHead className="data-mono">m² / hr</TableHead><TableHead className="data-mono">m² / hr</TableHead>
+                    <TableHead className="data-mono">m² / hr</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
