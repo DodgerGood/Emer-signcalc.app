@@ -433,7 +433,10 @@ class LabourTypeCreate(BaseModel):
     category: Optional[str] = "GENERAL"
     rate_per_hour: float  # in ZAR
     number_of_people: int
+    sqm_per_hour: Optional[float] = None
     tools: List[LabourTool] = []
+
+
 
 class LabourType(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -443,6 +446,7 @@ class LabourType(BaseModel):
     category: Optional[str] = "GENERAL"
     rate_per_hour: float
     number_of_people: int
+    sqm_per_hour: Optional[float] = None
     tools: List[LabourTool] = []
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 

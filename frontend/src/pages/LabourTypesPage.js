@@ -25,7 +25,8 @@ export default function LabourTypesPage() {
     category: 'GENERAL',
     rate_per_hour: '',
     number_of_people: '1',
-    tools: [] 
+    sqm_per_hour: '',
+    tools: []
   });
 
   useEffect(() => {
@@ -140,6 +141,7 @@ export default function LabourTypesPage() {
         category: formData.category,
         rate_per_hour: parseFloat(formData.rate_per_hour),
         number_of_people: parseInt(formData.number_of_people),
+        sqm_per_hour: formData.sqm_per_hour ? parseFloat(formData.sqm_per_hour) : null,
         tools: (formData.tools || []).map((tool) => ({
           name: tool.name,
           quantity: parseFloat(tool.quantity) || 0,
@@ -176,6 +178,7 @@ export default function LabourTypesPage() {
       category: item.category || 'GENERAL',
       rate_per_hour: item.rate_per_hour?.toString() || '',
       number_of_people: item.number_of_people?.toString() || '1',
+      sqm_per_hour: item.sqm_per_hour?.toString() || '',
       tools: item.tools || [],
     });
     setDialogOpen(true);
@@ -228,6 +231,7 @@ export default function LabourTypesPage() {
       category: 'GENERAL',
       rate_per_hour: '',
       number_of_people: '1',
+      sqm_per_hour: '',
       tools: [],
     });
   };
