@@ -772,9 +772,11 @@ export default function LabourTypesPage() {
                           ? machineValue / depreciationYears / workingHoursPerYear
                           : null;
 
+                      const manualRate = item.rate_per_hour || 0;
+
                       const hourlyRate = isMachine
-                        ? autoMachineRate
-                        : item.rate_per_hour;
+                        ? (autoMachineRate !== null ? autoMachineRate : manualRate)
+                        : manualRate;
 
                       const teamRate =
                         !isMachine &&
