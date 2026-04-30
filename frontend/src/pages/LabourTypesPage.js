@@ -4,6 +4,7 @@ import api from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Plus, Pencil, Trash2, Info } from 'lucide-react';
@@ -12,16 +13,23 @@ import { toast } from 'sonner';
 export default function LabourTypesPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const [dialogOpen, setDialogOpen] = useState(false);
-    const [editingId, setEditingId] = useState(null);
-    const [searchTerm, setSearchTerm] = useState('');
-    const importFileRef = useRef(null);
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 10;
-    const [formData, setFormData] = useState({ name: '', rate_per_hour: '', number_of_people: '1' });
+  const [editingId, setEditingId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const importFileRef = useRef(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
-  useEffect(() => { loadItems(); }, []);
+  const [formData, setFormData] = useState({
+    name: '',
+    category: 'GENERAL',
+    rate_per_hour: '',
+    number_of_people: '1',
+  });
+
+  useEffect(() => {
+    loadItems();
+  }, []);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -39,7 +47,8 @@ export default function LabourTypesPage() {
   };
 
   const filteredItems = items.filter((item) =>
-    item.name?.toLowerCase().includes(searchTerm.toLowerCase())
+    item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.category?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / itemsPerPage));
@@ -104,8 +113,15 @@ export default function LabourTypesPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     try {
-      const data = { name: formData.name, rate_per_hour: parseFloat(formData.rate_per_hour), number_of_people: parseInt(formData.number_of_people) };
+      const data = {
+        name: formData.name,
+        category: formData.category,
+        rate_per_hour: parseFloat(formData.rate_per_hour),
+        number_of_people: parseInt(formData.number_of_people),
+      };
+
       if (editingId) {
         await api.put(`/labour-types/${editingId}`, data);
         toast.success('Labour type updated');
@@ -113,6 +129,7 @@ export default function LabourTypesPage() {
         await api.post('/labour-types', data);
         toast.success('Labour type created');
       }
+
       setDialogOpen(false);
       resetForm();
       loadItems();
@@ -127,8 +144,14 @@ export default function LabourTypesPage() {
         'Editing this item will affect the costing of every recipe where it is used.\n\nClick OK to continue editing this item.'
       )
     ) return;
+
     setEditingId(item.id);
-    setFormData({ name: item.name, rate_per_hour: item.rate_per_hour.toString(), number_of_people: item.number_of_people.toString() });
+    setFormData({
+      name: item.name || '',
+      category: item.category || 'GENERAL',
+      rate_per_hour: item.rate_per_hour?.toString() || '',
+      number_of_people: item.number_of_people?.toString() || '1',
+    });
     setDialogOpen(true);
   };
 
@@ -150,10 +173,11 @@ export default function LabourTypesPage() {
 
   const handleDelete = async (id) => {
     if (
-    !window.confirm(
-      'Deleting this item will affect your recipe builds. Any recipe using this labour type may become incomplete or cost incorrectly.\n\nClick OK to permanently delete this item.'
-    )
-  ) return;
+      !window.confirm(
+        'Deleting this item will affect your recipe builds. Any recipe using this labour type may become incomplete or cost incorrectly.\n\nClick OK to permanently delete this item.'
+      )
+    ) return;
+
     try {
       await api.delete(`/labour-types/${id}`);
       toast.success('Labour type deleted');
@@ -173,16 +197,26 @@ export default function LabourTypesPage() {
 
   const resetForm = () => {
     setEditingId(null);
-    setFormData({ name: '', rate_per_hour: '', number_of_people: '1' });
+    setFormData({
+      name: '',
+      category: 'GENERAL',
+      rate_per_hour: '',
+      number_of_people: '1',
+    });
   };
 
-return (
+  const handleOpenCreate = () => {
+    resetForm();
+    setDialogOpen(true);
+  };
+
+  return (
     <Layout>
       <div className="space-y-6 fade-in">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-4xl font-black tracking-tight leading-none">Labour Pricelist</h1>
-            <p className="text-slate-600 mt-2">Manage labour rates (ZAR)</p>
+            <p className="text-slate-600 mt-2">Manage labour rates and costing categories (ZAR)</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -217,7 +251,7 @@ return (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button
-                  onClick={resetForm}
+                  onClick={handleOpenCreate}
                   data-testid="add-labour-btn"
                   className="bg-[#2563EB] text-white hover:bg-[#1d4ed8]"
                 >
@@ -240,7 +274,27 @@ return (
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       required
                       data-testid="labour-name-input"
+                      placeholder="e.g., Vinyl Application"
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Category</Label>
+                    <Select
+                      value={formData.category || 'GENERAL'}
+                      onValueChange={(v) => setFormData({ ...formData, category: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="APPLICATION">Application</SelectItem>
+                        <SelectItem value="FABRICATION">Fabrication</SelectItem>
+                        <SelectItem value="PRINTING">Printing</SelectItem>
+                        <SelectItem value="INSTALL">Install</SelectItem>
+                        <SelectItem value="GENERAL">General</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -269,6 +323,17 @@ return (
                       />
                     </div>
                   </div>
+
+                  {formData.rate_per_hour && formData.number_of_people && (
+                    <div className="text-sm text-green-600 font-medium">
+                      Team rate per hour: R {
+                        (
+                          parseFloat(formData.rate_per_hour) *
+                          parseInt(formData.number_of_people || '1')
+                        ).toFixed(2)
+                      }
+                    </div>
+                  )}
 
                   <div className="flex gap-2 pt-4">
                     <Button
@@ -307,7 +372,7 @@ return (
               id="labour-search"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by labour type name"
+              placeholder="Search by name or category"
               data-testid="labour-search-input"
             />
           </div>
@@ -324,8 +389,10 @@ return (
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
+                    <TableHead>Category</TableHead>
                     <TableHead className="data-mono">Rate/Hour (ZAR)</TableHead>
                     <TableHead className="data-mono">People</TableHead>
+                    <TableHead className="data-mono">Team Rate/Hour</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -333,7 +400,7 @@ return (
                 <TableBody>
                   {filteredItems.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="py-12">
+                      <TableCell colSpan={6} className="py-12">
                         <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto">
                           <div className="text-lg font-semibold text-slate-900">
                             No labour rates found
@@ -344,10 +411,7 @@ return (
 
                           <button
                             type="button"
-                            onClick={() => {
-                              resetForm();
-                              setDialogOpen(true);
-                            }}
+                            onClick={handleOpenCreate}
                             data-testid="add-first-labour-btn"
                             className="mt-4 inline-flex items-center rounded bg-[#2563EB] px-4 py-2 text-sm text-white hover:bg-[#1d4ed8]"
                           >
@@ -357,33 +421,54 @@ return (
                       </TableCell>
                     </TableRow>
                   ) : (
-                    paginatedItems.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium">{item.name}</TableCell>
-                        <TableCell className="data-mono">R {item.rate_per_hour.toFixed(2)}</TableCell>
-                        <TableCell className="data-mono">{item.number_of_people}</TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleShowUsage(item.id)}
-                            title="Show recipe usage"
-                          >
-                            <Info size={16} />
-                          </Button><Button variant="ghost" size="sm" onClick={() => handleEdit(item)}>
-                            <Pencil size={16} />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(item.id)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 size={16} />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    paginatedItems.map((item) => {
+                      const teamRate =
+                        item.rate_per_hour !== null &&
+                        item.rate_per_hour !== undefined &&
+                        item.number_of_people !== null &&
+                        item.number_of_people !== undefined
+                          ? item.rate_per_hour * item.number_of_people
+                          : null;
+
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.name}</TableCell>
+                          <TableCell>{item.category || '-'}</TableCell>
+                          <TableCell className="data-mono">R {item.rate_per_hour.toFixed(2)}</TableCell>
+                          <TableCell className="data-mono">{item.number_of_people}</TableCell>
+                          <TableCell className="data-mono">
+                            {teamRate !== null ? `R ${teamRate.toFixed(2)}` : '-'}
+                          </TableCell>
+                          <TableCell className="text-right whitespace-nowrap">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleShowUsage(item.id)}
+                              title="Show recipe usage"
+                            >
+                              <Info size={16} />
+                            </Button>
+
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(item)}
+                            >
+                              <Pencil size={16} />
+                            </Button>
+
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(item.id)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 size={16} />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
@@ -391,7 +476,9 @@ return (
 
             <div className="flex flex-col gap-3 text-sm text-slate-600 md:flex-row md:items-center md:justify-between">
               <div>
-                Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredItems.length)} of {filteredItems.length} labour types
+                Showing {filteredItems.length === 0 ? 0 : startIndex + 1} to{' '}
+                {Math.min(startIndex + itemsPerPage, filteredItems.length)} of{' '}
+                {filteredItems.length} labour types
               </div>
 
               <div className="flex items-center gap-2">
