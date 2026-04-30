@@ -152,15 +152,30 @@ export default function LabourTypesPage() {
     e.preventDefault();
 
     try {
+      const machineValue = parseFloat(formData.machine_value) || 0;
+      const depreciationYears = parseFloat(formData.depreciation_years) || 0;
+      const workingHoursPerYear = parseFloat(formData.working_hours_per_year) || 0;
+
+      const autoMachineRate =
+        depreciationYears > 0 && workingHoursPerYear > 0
+          ? machineValue / depreciationYears / workingHoursPerYear
+          : 0;
+
       const data = {
         cost_type: formData.cost_type,
         name: formData.name,
         category: formData.category,
-        rate_per_hour: parseFloat(formData.rate_per_hour),
-        number_of_people: parseInt(formData.number_of_people),
+        rate_per_hour:
+          formData.cost_type === 'MACHINE'
+            ? autoMachineRate
+            : parseFloat(formData.rate_per_hour),
+        number_of_people:
+          formData.cost_type === 'MACHINE'
+            ? 1
+            : parseInt(formData.number_of_people),
         sqm_per_hour: formData.sqm_per_hour ? parseFloat(formData.sqm_per_hour) : null,
         machine_dimensions: formData.machine_dimensions || null,
-        machine_watts: formData.machine_watts ? parseFloat(formData.machine_watts) : null,   
+        machine_watts: formData.machine_watts ? parseFloat(formData.machine_watts) : null,
         electricity_cost_per_kwh: formData.electricity_cost_per_kwh ? parseFloat(formData.electricity_cost_per_kwh) : null,
         setup_time_minutes: formData.setup_time_minutes ? parseFloat(formData.setup_time_minutes) : null,
         waste_factor_percent: formData.waste_factor_percent ? parseFloat(formData.waste_factor_percent) : null,
@@ -172,15 +187,15 @@ export default function LabourTypesPage() {
           name: tool.name,
           quantity: parseFloat(tool.quantity) || 0,
           cost_per_hour: parseFloat(tool.cost_per_hour) || 0,
-      })),
+        })),
       };
 
       if (editingId) {
         await api.put(`/labour-types/${editingId}`, data);
-        toast.success('Labour type updated');
+        toast.success('Cost type updated');
       } else {
         await api.post('/labour-types', data);
-        toast.success('Labour type created');
+        toast.success('Cost type created');
       }
 
       setDialogOpen(false);
