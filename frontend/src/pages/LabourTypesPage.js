@@ -21,6 +21,7 @@ export default function LabourTypesPage() {
   const itemsPerPage = 10;
 
   const [formData, setFormData] = useState({
+    cost_type: 'LABOUR',
     name: '',
     category: 'GENERAL',
     rate_per_hour: '',
@@ -143,6 +144,7 @@ export default function LabourTypesPage() {
 
     try {
       const data = {
+        cost_type: formData.cost_type,
         name: formData.name,
         category: formData.category,
         rate_per_hour: parseFloat(formData.rate_per_hour),
@@ -180,6 +182,7 @@ export default function LabourTypesPage() {
 
     setEditingId(item.id);
     setFormData({
+      cost_type: item.cost_type || 'LABOUR',
       name: item.name || '',
       category: item.category || 'GENERAL',
       rate_per_hour: item.rate_per_hour?.toString() || '',
@@ -233,6 +236,7 @@ export default function LabourTypesPage() {
   const resetForm = () => {
     setEditingId(null);
     setFormData({
+      cost_type: 'LABOUR',
       name: '',
       category: 'GENERAL',
       rate_per_hour: '',

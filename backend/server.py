@@ -429,6 +429,7 @@ class LabourTool(BaseModel):
     cost_per_hour: float = 0
 
 class LabourTypeCreate(BaseModel):
+    cost_type: Optional[str] = "LABOUR"
     name: str
     category: Optional[str] = "GENERAL"
     rate_per_hour: float  # in ZAR
@@ -442,6 +443,7 @@ class LabourType(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     company_id: str
+    cost_type: Optional[str] = "LABOUR"
     name: str
     category: Optional[str] = "GENERAL"
     rate_per_hour: float
