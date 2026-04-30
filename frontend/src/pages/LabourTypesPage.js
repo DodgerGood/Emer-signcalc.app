@@ -385,7 +385,11 @@ export default function LabourTypesPage() {
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="space-y-2 w-full">
-                      <Label htmlFor="rate">Rate per Hour (ZAR) *</Label>
+                      <Label htmlFor="rate">
+                        {formData.cost_type === 'MACHINE'
+                        ? 'Machine Base Rate per Hour (ZAR) *'
+                        : 'Rate per Hour (ZAR) *'}
+                      </Label>
                       <Input
                         id="rate"
                         type="number"
@@ -396,7 +400,9 @@ export default function LabourTypesPage() {
                         data-testid="labour-rate-input"
                       />
                       <p className="text-xs text-slate-500">
-                        Cost per person per hour (before team multiplication).
+                        {formData.cost_type === 'MACHINE'
+                          ? 'Base machine running cost per hour before electricity and operator cost (can include depreciation, maintenance, and servicing).'
+                          : 'Cost per person per hour (before team multiplication).'}
                       </p>
                     </div>
 
