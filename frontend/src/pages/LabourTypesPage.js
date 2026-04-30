@@ -399,20 +399,23 @@ export default function LabourTypesPage() {
                       </p>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="number_of_people">Number of People *</Label>
-                      <Input
-                        id="number_of_people"
-                        type="number"
-                        value={formData.number_of_people}
-                        onChange={(e) => setFormData({ ...formData, number_of_people: e.target.value })}
-                        required
-                        data-testid="labour-people-input"
-                      />
-                      <p className="text-xs text-slate-500">
-                        Number of workers required for this task.
-                      </p>
-                    </div>
+                    {formData.cost_type === 'LABOUR' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="number_of_people">Number of People *</Label>
+                        <Input
+                          id="number_of_people"
+                          type="number"
+                          value={formData.number_of_people}
+                          onChange={(e) => setFormData({ ...formData, number_of_people: e.target.value })}
+                          required
+                          data-testid="labour-people-input"
+                        />
+                        <p className="text-xs text-slate-500">
+                          Number of workers required for this task.
+                        </p>
+                      </div>
+                    )}
+
                     <div className="space-y-2">
                       <Label htmlFor="sqm_per_hour">m² per Hour</Label>
                       <Input
@@ -495,47 +498,49 @@ export default function LabourTypesPage() {
                   )} 
                 </div>
 
-                  <div className="space-y-2">
-                    <Label>Tools</Label>
+                  {formData.cost_type === 'LABOUR' && (
+                    <div className="space-y-2">
+                      <Label>Tools</Label>
 
-                    {(formData.tools || []).map((tool, index) => (
-                      <div key={index} className="grid grid-cols-4 gap-2 items-center">
-                        <Input
-                          placeholder="e.g., Heat Gun"
-                          value={tool.name}
-                          onChange={(e) => updateTool(index, 'name', e.target.value)}
-                        />
-                        <p className="text-xs text-slate-500">
-                          Add tools used and their hourly cost contribution.
-                        </p>
-                        <Input
-                          type="number"
-                          placeholder="Qty used"
-                          value={tool.quantity}
-                          onChange={(e) => updateTool(index, 'quantity', e.target.value)}
-                        />
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="Cost per hour (ZAR)"
-                          value={tool.cost_per_hour}
-                          onChange={(e) => updateTool(index, 'cost_per_hour', e.target.value)}
-                        />
-                        <Button
-                          type="button"
-                          size="sm" 
-                          onClick={() => removeTool(index)}
-                          className="bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-700"
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    ))}
+                      {(formData.tools || []).map((tool, index) => (
+                        <div key={index} className="grid grid-cols-4 gap-2 items-center">
+                          <Input
+                            placeholder="e.g., Heat Gun"
+                            value={tool.name}
+                            onChange={(e) => updateTool(index, 'name', e.target.value)}
+                          />
+                          <p className="text-xs text-slate-500">
+                            Add tools used and their hourly cost contribution.
+                          </p>
+                          <Input
+                            type="number"
+                            placeholder="Qty used"
+                            value={tool.quantity}
+                            onChange={(e) => updateTool(index, 'quantity', e.target.value)}
+                          />
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="Cost per hour (ZAR)"
+                            value={tool.cost_per_hour}
+                            onChange={(e) => updateTool(index, 'cost_per_hour', e.target.value)}
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => removeTool(index)}
+                            className="bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-700"
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      ))}
 
-                    <Button type="button" variant="outline" onClick={addTool}>
-                      + Add Tool
-                    </Button>
-                  </div>
+                      <Button type="button" variant="outline" onClick={addTool}>
+                        + Add Tool
+                      </Button>
+                    </div>
+                  )}
 
                   {(() => {
                     const labourRate =
