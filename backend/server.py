@@ -436,7 +436,12 @@ class LabourTypeCreate(BaseModel):
     number_of_people: int
     sqm_per_hour: Optional[float] = None
     tools: List[LabourTool] = []
-
+    machine_dimensions: Optional[str] = None
+    machine_watts: Optional[float] = None
+    electricity_cost_per_kwh: Optional[float] = None
+    setup_time_minutes: Optional[float] = None
+    waste_factor_percent: Optional[float] = None
+    operator_hourly_rate: Optional[float] = None
 
 
 class LabourType(BaseModel):
@@ -450,6 +455,12 @@ class LabourType(BaseModel):
     number_of_people: int
     sqm_per_hour: Optional[float] = None
     tools: List[LabourTool] = []
+    machine_dimensions: Optional[str] = None
+    machine_watts: Optional[float] = None
+    electricity_cost_per_kwh: Optional[float] = None
+    setup_time_minutes: Optional[float] = None
+    waste_factor_percent: Optional[float] = None
+    operator_hourly_rate: Optional[float] = None
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 # Install Type Models
