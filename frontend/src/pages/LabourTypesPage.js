@@ -390,6 +390,30 @@ export default function LabourTypesPage() {
                     </Button>
                   </div>
 
+                  {(() => {
+                    const labourRate =
+                      (parseFloat(formData.rate_per_hour) || 0) *
+                      (parseInt(formData.number_of_people || '1') || 1);
+
+                    const toolsRate = (formData.tools || []).reduce((sum, tool) => {
+                      const qty = parseFloat(tool.quantity) || 0;
+                      const cost = parseFloat(tool.cost_per_hour) || 0;
+                      return sum + qty * cost;
+                    }, 0);
+
+                    const totalRate = labourRate + toolsRate;
+
+                    return (
+                      <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm space-y-1">
+                        <div>Labour team cost/hour: R {labourRate.toFixed(2)}</div>
+                        <div>Tools cost/hour: R {toolsRate.toFixed(2)}</div>
+                        <div className="font-semibold text-green-700">
+                          Total labour + tools/hour: R {totalRate.toFixed(2)}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {formData.rate_per_hour && formData.number_of_people && (
                     <div className="text-sm text-green-600 font-medium">
                       Team rate per hour: R {
