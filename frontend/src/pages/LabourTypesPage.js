@@ -539,7 +539,7 @@ export default function LabourTypesPage() {
 
                   {(() => {
                     const labourRate =
-                      (parseFloat(formData.rate_per_hour) || 0) *
+                      (parseFloat(formData.rate_per_hour) || 0) * 
                       (parseInt(formData.number_of_people || '1') || 1);
 
                     const toolsRate = (formData.tools || []).reduce((sum, tool) => {
@@ -548,15 +548,49 @@ export default function LabourTypesPage() {
                       return sum + qty * cost;
                     }, 0);
 
-                    const totalRate = labourRate + toolsRate;
+                    const machineRate = parseFloat(formData.rate_per_hour) || 0;
+
+                    const watts = parseFloat(formData.machine_watts) || 0;
+                    const electricityCost = parseFloat(formData.electricity_cost_per_kwh) || 0;
+                    const electricityPerHour = (watts / 1000) * electricityCost;
+
+                    const operatorRate = parseFloat(formData.operator_hourly_rate) || 0;
+
+                    let totalRate = 0;
+
+                    if (formData.cost_type === 'LABOUR') {
+                      totalRate = labourRate + toolsRate;
+                    } else {
+                      totalRate = machineRate + electricityPerHour + operatorRate;
+                    }
 
                     const sqmPerHour = parseFloat(formData.sqm_per_hour) || 0;
                     const costPerSqm = sqmPerHour > 0 ? totalRate / sqmPerHour : null;
 
                     return (
                       <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm space-y-1">
-                        <div>Labour team cost/hour: R {labourRate.toFixed(2)}</div>
-                        <div>Tools cost/hour: R {toolsRate.toFixed(2)}</div>
+                        {formData.cost_type === 'LABOUR' ? (
+                          <>
+                            <div>Labour team cost/hour: R {labourRate.toFixed(2)}</div>
+                            <div>Tools cost/hour: R {toolsRate.toFixed(2)}</div>
+                          </>
+                        ) : (
+                          <>
+                            <div>Machine cost/hour: R {machineRate.toFixed(2)}</div>
+                            <div>Electricity/hour: R {electricityPerHour.toFixed(2)}</div>
+                            <div>Operator/hour: R {operatorRate.toFixed(2)}</div>
+                          </>
+                        )}
+
+                        <div className="font-semibold text-green-700">
+                          Total cost/hour: R {totalRate.toFixed(2)}
+                        </div>
+
+                        {costPerSqm !== null && (
+                          <div className="font-semibold text-blue-700">
+                            Cost per m²: R {costPerSqm.toFixed(2)}
+                          </div>
+                        )}
                         <div className="font-semibold text-green-700">
                           Total labour + tools/hour: R {totalRate.toFixed(2)}
                         </div>
