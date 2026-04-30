@@ -25,6 +25,7 @@ export default function LabourTypesPage() {
     category: 'GENERAL',
     rate_per_hour: '',
     number_of_people: '1',
+    tools: [] 
   });
 
   useEffect(() => {
@@ -111,6 +112,25 @@ export default function LabourTypesPage() {
     }
   };
 
+  const addTool = () => {
+    setFormData({
+      ...formData,
+      tools: [...(formData.tools || []), { name: '', quantity: 1, cost_per_hour: 0 }]
+    });
+  };
+
+  const updateTool = (index, field, value) => {
+    const updated = [...formData.tools];
+    updated[index][field] = value;
+    setFormData({ ...formData, tools: updated });
+  };
+
+  const removeTool = (index) => {
+    const updated = [...formData.tools];
+    updated.splice(index, 1);
+    setFormData({ ...formData, tools: updated });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -120,6 +140,11 @@ export default function LabourTypesPage() {
         category: formData.category,
         rate_per_hour: parseFloat(formData.rate_per_hour),
         number_of_people: parseInt(formData.number_of_people),
+        tools: (formData.tools || []).map((tool) => ({
+          name: tool.name,
+          quantity: parseFloat(tool.quantity) || 0,
+          cost_per_hour: parseFloat(tool.cost_per_hour) || 0,
+      })),
       };
 
       if (editingId) {
@@ -151,6 +176,7 @@ export default function LabourTypesPage() {
       category: item.category || 'GENERAL',
       rate_per_hour: item.rate_per_hour?.toString() || '',
       number_of_people: item.number_of_people?.toString() || '1',
+      tools: item.tools || [],
     });
     setDialogOpen(true);
   };
@@ -202,6 +228,7 @@ export default function LabourTypesPage() {
       category: 'GENERAL',
       rate_per_hour: '',
       number_of_people: '1',
+      tools: [],
     });
   };
 
@@ -323,21 +350,44 @@ export default function LabourTypesPage() {
                       />
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
-                    <Label>Tools Required</Label>
-                    <textarea
-                      value={formData.tools_required || ''}
-                      onChange={(e) => setFormData({ ...formData, tools_required: e.target.value })}
-                      placeholder={`Example:
-Squeegee x2
-Heat gun x1
-Knife x3`}
-                      className="w-full min-h-[120px] rounded-md border border-slate-300 px-3 py-2 text-sm"
-                    />
-                    <p className="text-xs text-slate-500">
-                      List each tool needed for this labour type. We will add tool quantities and costing next.
-                    </p>
+                    <Label>Tools</Label>
+
+                    {(formData.tools || []).map((tool, index) => (
+                      <div key={index} className="grid grid-cols-4 gap-2 items-center">
+                        <Input
+                          placeholder="Tool name"
+                          value={tool.name}
+                          onChange={(e) => updateTool(index, 'name', e.target.value)}
+                        />
+                        <Input
+                          type="number"
+                          placeholder="Qty"
+                          value={tool.quantity}
+                          onChange={(e) => updateTool(index, 'quantity', e.target.value)}
+                        />
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="Cost/hr"
+                          value={tool.cost_per_hour}
+                          onChange={(e) => updateTool(index, 'cost_per_hour', e.target.value)}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeTool(index)}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+
+                    <Button type="button" variant="outline" onClick={addTool}>
+                      + Add Tool
+                    </Button>
                   </div>
 
                   {formData.rate_per_hour && formData.number_of_people && (
