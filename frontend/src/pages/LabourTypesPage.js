@@ -307,6 +307,9 @@ export default function LabourTypesPage() {
                       data-testid="labour-name-input"
                       placeholder="e.g., Vinyl Application"
                     />
+                    <p className="text-xs text-slate-500">
+                      Name of the labour activity (e.g., Vinyl Application, Welding, Installation).
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -326,6 +329,9 @@ export default function LabourTypesPage() {
                         <SelectItem value="GENERAL">General</SelectItem>
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-slate-500">
+                      Group this labour type for reporting and filtering.
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -340,6 +346,9 @@ export default function LabourTypesPage() {
                         required
                         data-testid="labour-rate-input"
                       />
+                      <p className="text-xs text-slate-500">
+                        Cost per person per hour (before team multiplication).
+                      </p>
                     </div>
 
                     <div className="space-y-2">
@@ -352,8 +361,25 @@ export default function LabourTypesPage() {
                         required
                         data-testid="labour-people-input"
                       />
+                      <p className="text-xs text-slate-500">
+                        Number of workers required for this task.
+                      </p>
                     </div>
-                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="sqm_per_hour">m² per Hour</Label>
+                      <Input
+                        id="sqm_per_hour"
+                        type="number"
+                        step="0.01"
+                        value={formData.sqm_per_hour}
+                        onChange={(e) => setFormData({ ...formData, sqm_per_hour: e.target.value })}
+                        placeholder="e.g., 12"
+                      />
+                      <p className="text-xs text-slate-500">
+                        How many square meters this team can complete per hour.
+                      </p>
+                    </div>
+                 </div>
 
                   <div className="space-y-2">
                     <Label>Tools</Label>
@@ -361,20 +387,23 @@ export default function LabourTypesPage() {
                     {(formData.tools || []).map((tool, index) => (
                       <div key={index} className="grid grid-cols-4 gap-2 items-center">
                         <Input
-                          placeholder="Tool name"
+                          placeholder="e.g., Heat Gun"
                           value={tool.name}
                           onChange={(e) => updateTool(index, 'name', e.target.value)}
                         />
+                        <p className="text-xs text-slate-500">
+                          Add tools used and their hourly cost contribution.
+                        </p>
                         <Input
                           type="number"
-                          placeholder="Qty"
+                          placeholder="Qty used"
                           value={tool.quantity}
                           onChange={(e) => updateTool(index, 'quantity', e.target.value)}
                         />
                         <Input
                           type="number"
                           step="0.01"
-                          placeholder="Cost/hr"
+                          placeholder="Cost per hour (ZAR)"
                           value={tool.cost_per_hour}
                           onChange={(e) => updateTool(index, 'cost_per_hour', e.target.value)}
                         />
