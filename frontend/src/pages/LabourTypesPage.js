@@ -252,7 +252,7 @@ export default function LabourTypesPage() {
       <div className="space-y-6 fade-in">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-4xl font-black tracking-tight leading-none">Labour Pricelist</h1>
+            <h1 className="text-4xl font-black tracking-tight leading-none">Labour & Machine Pricelist</h1>
             <p className="text-slate-600 mt-2">Manage labour rates and costing categories (ZAR)</p>
           </div>
 
@@ -293,13 +293,13 @@ export default function LabourTypesPage() {
                   className="bg-[#2563EB] text-white hover:bg-[#1d4ed8]"
                 >
                   <Plus size={18} className="mr-2" />
-                  Add Labour Type
+                  Add Cost Type
                 </Button>
               </DialogTrigger>
 
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>{editingId ? 'Edit Labour Type' : 'Add New Labour Type'}</DialogTitle>
+                  <DialogTitle>{editingId ? 'Edit Cost Type' : 'Add New Cost Type'}</DialogTitle>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-4">

@@ -38,7 +38,7 @@ const role = user?.role;
       return [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/materials', icon: Package, label: 'Materials' },
-        { to: '/labour-types', icon: Users, label: 'Labour Pricelist' },
+        { to: '/labour-types', icon: Users, label: 'Labour & Machine' },
         { to: '/install-types', icon: Wrench, label: 'Installation Pricelist' },
         { to: '/recipes', icon: BookOpen, label: 'Recipes' },
         { to: '/quotes', icon: FileText, label: 'Quotes' },
@@ -48,7 +48,7 @@ const role = user?.role;
       return [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/materials', icon: Package, label: 'Materials' },
-        { to: '/labour-types', icon: Users, label: 'Labour Pricelist' },
+        { to: '/labour-types', icon: Users, label: 'Labour & Machine' },
         { to: '/install-types', icon: Wrench, label: 'Installation Pricelist' },
         { to: '/recipes', icon: BookOpen, label: 'Recipes' },
         { to: '/approvals', icon: CheckCircle, label: 'Approvals' },
@@ -68,7 +68,7 @@ const role = user?.role;
       return [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/materials', icon: Package, label: 'Materials' },
-        { to: '/labour-types', icon: Users, label: 'Labour Pricelist' },
+        { to: '/labour-types', icon: Users, label: 'Labour & Machine' },
         { to: '/install-types', icon: Wrench, label: 'Installation Pricelist' },
         { to: '/recipes', icon: BookOpen, label: 'Recipes' },
         { to: '/quotes', icon: FileText, label: 'Quotes' },
