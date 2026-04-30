@@ -409,9 +409,9 @@ export default function LabourTypesPage() {
                         />
                         <Button
                           type="button"
-                          variant="ghost"
-                          size="sm"
+                          size="sm" 
                           onClick={() => removeTool(index)}
+                          className="bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-700"
                         >
                           Remove
                         </Button>
