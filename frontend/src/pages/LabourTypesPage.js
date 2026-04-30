@@ -436,6 +436,9 @@ export default function LabourTypesPage() {
 
                     const totalRate = labourRate + toolsRate;
 
+                    const sqmPerHour = parseFloat(formData.sqm_per_hour) || 0;
+                    const costPerSqm = sqmPerHour > 0 ? totalRate / sqmPerHour : null;
+
                     return (
                       <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm space-y-1">
                         <div>Labour team cost/hour: R {labourRate.toFixed(2)}</div>
@@ -443,7 +446,12 @@ export default function LabourTypesPage() {
                         <div className="font-semibold text-green-700">
                           Total labour + tools/hour: R {totalRate.toFixed(2)}
                         </div>
-                      </div>
+                        {costPerSqm !== null && (
+                          <div className="font-semibold text-blue-700">
+                            Cost per m²: R {costPerSqm.toFixed(2)}
+                          </div>
+                        )}
+                     </div>
                     );
                   })()}
 
