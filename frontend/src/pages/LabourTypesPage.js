@@ -396,27 +396,23 @@ export default function LabourTypesPage() {
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div className="space-y-2 w-full">
-                      <Label htmlFor="rate">
-                        {formData.cost_type === 'MACHINE'
-                        ? 'Machine Base Rate per Hour (ZAR) *'
-                        : 'Rate per Hour (ZAR) *'}
-                      </Label>
-                      <Input
-                        id="rate"
-                        type="number"
-                        step="0.01"
-                        value={formData.rate_per_hour}
-                        onChange={(e) => setFormData({ ...formData, rate_per_hour: e.target.value })}
-                        required
-                        data-testid="labour-rate-input"
-                      />
-                      <p className="text-xs text-slate-500">
-                        {formData.cost_type === 'MACHINE'
-                          ? 'Base machine running cost per hour before electricity and operator cost (can include depreciation, maintenance, and servicing).'
-                          : 'Cost per person per hour (before team multiplication).'}
-                      </p>
-                    </div>
+                    {formData.cost_type === 'LABOUR' && (
+                      <div className="space-y-2 w-full">
+                        <Label htmlFor="rate">Rate per Hour (ZAR) *</Label>
+                        <Input
+                          id="rate"
+                          type="number"
+                          step="0.01"
+                          value={formData.rate_per_hour}
+                          onChange={(e) => setFormData({ ...formData, rate_per_hour: e.target.value })}
+                          required
+                          data-testid="labour-rate-input"
+                        />
+                        <p className="text-xs text-slate-500">
+                          Cost per person per hour (before team multiplication).
+                        </p>
+                      </div>
+                    )}
 
                     {formData.cost_type === 'LABOUR' && (
                       <div className="space-y-2">
@@ -452,98 +448,99 @@ export default function LabourTypesPage() {
                     {formData.cost_type === 'MACHINE' && (
                       <div className="md:col-span-2 w-full bg-slate-50 p-4 rounded-lg border border-slate-200">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2 w-full">
-                        <div className="space-y-2">
-                          <Label>Machine Value (ZAR)</Label>
-                          <Input
-                            type="number"
-                            value={formData.machine_value}
-                            onChange={(e) => setFormData({ ...formData, machine_value: e.target.value })}
-                            placeholder="e.g., 250000"
-                          />
+                          <div className="space-y-2">
+                            <Label>Machine Value (ZAR)</Label>
+                            <Input
+                              type="number"
+                              value={formData.machine_value}
+                              onChange={(e) => setFormData({ ...formData, machine_value: e.target.value })}
+                              placeholder="e.g., 250000"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Depreciation Years</Label>
+                            <Input
+                              type="number"
+                              value={formData.depreciation_years}
+                              onChange={(e) => setFormData({ ...formData, depreciation_years: e.target.value })}
+                              placeholder="e.g., 5"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Working Hours per Year</Label>
+                            <Input
+                              type="number"
+                              value={formData.working_hours_per_year}
+                              onChange={(e) => setFormData({ ...formData, working_hours_per_year: e.target.value })}
+                              placeholder="e.g., 2000"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Machine Dimensions</Label>
+                            <Input
+                              value={formData.machine_dimensions}
+                              onChange={(e) => setFormData({ ...formData, machine_dimensions: e.target.value })}
+                              placeholder="e.g., 1600mm print width"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Machine Watts</Label>
+                            <Input
+                              type="number"
+                              value={formData.machine_watts}
+                              onChange={(e) => setFormData({ ...formData, machine_watts: e.target.value })}
+                              placeholder="e.g., 2500"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Electricity Cost per kWh</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={formData.electricity_cost_per_kwh}
+                              onChange={(e) => setFormData({ ...formData, electricity_cost_per_kwh: e.target.value })}
+                              placeholder="e.g., 2.50"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Setup Time (minutes)</Label>
+                            <Input
+                              type="number"
+                              value={formData.setup_time_minutes}
+                              onChange={(e) => setFormData({ ...formData, setup_time_minutes: e.target.value })}
+                              placeholder="e.g., 15"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Waste Factor (%)</Label>
+                            <Input
+                              type="number"
+                              value={formData.waste_factor_percent}
+                              onChange={(e) => setFormData({ ...formData, waste_factor_percent: e.target.value })}
+                              placeholder="e.g., 5"
+                            />
+                          </div>
+
+                          <div className="space-y-2 md:col-span-2">
+                            <Label>Operator Hourly Rate</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={formData.operator_hourly_rate}
+                              onChange={(e) => setFormData({ ...formData, operator_hourly_rate: e.target.value })}
+                              placeholder="e.g., 120"
+                            />
+                          </div>
                         </div>
-
-                        <div className="space-y-2">
-                          <Label>Depreciation Years</Label>
-                          <Input
-                            type="number"
-                            value={formData.depreciation_years}
-                            onChange={(e) => setFormData({ ...formData, depreciation_years: e.target.value })}
-                            placeholder="e.g., 5"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Working Hours per Year</Label>
-                          <Input
-                            type="number"
-                            value={formData.working_hours_per_year}
-                            onChange={(e) => setFormData({ ...formData, working_hours_per_year: e.target.value })}
-                            placeholder="e.g., 2000"
-                          />
-                        </div>
-                        <Label>Machine Dimensions</Label>
-                        <Input
-                          value={formData.machine_dimensions}
-                          onChange={(e) => setFormData({ ...formData, machine_dimensions: e.target.value })}
-                          placeholder="e.g., 1600mm print width"
-                        />
                       </div>
-
-                      <div className="space-y-2 w-full">
-                        <Label>Machine Watts</Label>
-                        <Input
-                          type="number"
-                          value={formData.machine_watts}
-                          onChange={(e) => setFormData({ ...formData, machine_watts: e.target.value })}
-                          placeholder="e.g., 2500"
-                        />
-                      </div>
-
-                      <div className="space-y-2 w-full">
-                        <Label>Electricity Cost per kWh</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={formData.electricity_cost_per_kwh}
-                          onChange={(e) => setFormData({ ...formData, electricity_cost_per_kwh: e.target.value })}
-                          placeholder="e.g., 2.50"
-                        />
-                      </div>
-
-                      <div className="space-y-2 w-full">
-                        <Label>Setup Time (minutes)</Label>
-                        <Input
-                          type="number"
-                          value={formData.setup_time_minutes}
-                          onChange={(e) => setFormData({ ...formData, setup_time_minutes: e.target.value })}
-                          placeholder="e.g., 15"
-                        />
-                      </div>
-
-                      <div className="space-y-2 w-full">
-                        <Label>Waste Factor (%)</Label>
-                        <Input
-                          type="number"
-                          value={formData.waste_factor_percent}
-                          onChange={(e) => setFormData({ ...formData, waste_factor_percent: e.target.value })}
-                          placeholder="e.g., 5"
-                        />
-                      </div>
-
-                      <div className="space-y-2 w-full">
-                        <Label>Operator Hourly Rate</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={formData.operator_hourly_rate}
-                          onChange={(e) => setFormData({ ...formData, operator_hourly_rate: e.target.value })}
-                          placeholder="e.g., 120"
-                        />
-                      </div>
-                    </div>
-                    </div>
-                  )} 
+                    )}
                 </div>
 
                   {formData.cost_type === 'LABOUR' && (
