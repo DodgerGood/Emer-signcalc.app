@@ -4,7 +4,6 @@ import api from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Textarea } from '../components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Plus, Pencil, Trash2, Info } from 'lucide-react';
@@ -13,24 +12,29 @@ import { toast } from 'sonner';
 export default function InstallTypesPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const importFileRef = useRef(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
   const [formData, setFormData] = useState({
     name: '',
     quantity_of_people: '2',
     rate_per_hour: '',
-    tools_required: '',
-    equipment: '',
-    equipment_supplier: '',
-    equipment_rate: '0'
+    sqm_per_hour: '',
+    tools: [],
+    travel_km: '',
+    travel_rate_per_km: '',
+    hire_machine_name: '',
+    hire_machine_supplier: '',
+    hire_machine_rate_per_hour: '',
   });
 
-  useEffect(() => { loadItems(); }, []);
+  useEffect(() => {
+    loadItems();
+  }, []);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -40,8 +44,8 @@ export default function InstallTypesPage() {
     try {
       const response = await api.get('/install-types');
       setItems(response.data);
-    } catch (error) {
-      toast.error('Failed to load install types');
+    } catch {
+      toast.error('Failed to load installation types');
     } finally {
       setLoading(false);
     }
@@ -49,89 +53,91 @@ export default function InstallTypesPage() {
 
   const filteredItems = items.filter((item) =>
     item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.equipment?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.equipment_supplier?.toLowerCase().includes(searchTerm.toLowerCase())
+    item.hire_machine_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.hire_machine_supplier?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedItems = filteredItems.slice(startIndex, startIndex + itemsPerPage);
 
-  const handleExportInstallTypes = async () => {
-    try {
-      const response = await api.get('/install-types/export', {
-        responseType: 'blob',
-      });
-
-      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', 'install_types_export.csv');
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-
-      toast.success('Install types export downloaded');
-    } catch (error) {
-      toast.error('Failed to export install types');
-    }
+  const addTool = () => {
+    setFormData({
+      ...formData,
+      tools: [...(formData.tools || []), { name: '', quantity: 1, cost_per_hour: 0 }],
+    });
   };
 
-  const handleImportInstallTypes = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const updateTool = (index, field, value) => {
+    const updated = [...(formData.tools || [])];
+    updated[index][field] = value;
+    setFormData({ ...formData, tools: updated });
+  };
 
-    try {
-      const formDataUpload = new FormData();
-      formDataUpload.append('file', file);
+  const removeTool = (index) => {
+    if (
+      !window.confirm(
+        'Removing this tool will affect the costing of this installation type and every recipe where it is used.\n\nClick OK to remove this tool.'
+      )
+    ) return;
 
-      const response = await api.post('/install-types/import', formDataUpload, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+    const updated = [...(formData.tools || [])];
+    updated.splice(index, 1);
+    setFormData({ ...formData, tools: updated });
+  };
 
-      const result = response.data;
+  const resetForm = () => {
+    setEditingId(null);
+    setFormData({
+      name: '',
+      quantity_of_people: '2',
+      rate_per_hour: '',
+      sqm_per_hour: '',
+      tools: [],
+      travel_km: '',
+      travel_rate_per_km: '',
+      hire_machine_name: '',
+      hire_machine_supplier: '',
+      hire_machine_rate_per_hour: '',
+    });
+  };
 
-      toast.success(
-        `Import complete: ${result.imported_count} added, ${result.updated_count} updated`
-      );
-
-      if (result.error_count > 0) {
-        toast.error(`${result.error_count} row(s) had errors`);
-        console.log('Install type import errors:', result.errors);
-      }
-
-      loadItems();
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to import install types');
-    } finally {
-      if (importFileRef.current) {
-        importFileRef.current.value = '';
-      }
-    }
+  const handleOpenCreate = () => {
+    resetForm();
+    setDialogOpen(true);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     try {
       const data = {
         name: formData.name,
         quantity_of_people: parseInt(formData.quantity_of_people),
         rate_per_hour: parseFloat(formData.rate_per_hour),
-        tools_required: formData.tools_required || null,
-        equipment: formData.equipment || null,
-        equipment_supplier: formData.equipment_supplier || null,
-        equipment_rate: parseFloat(formData.equipment_rate)
+        sqm_per_hour: formData.sqm_per_hour ? parseFloat(formData.sqm_per_hour) : null,
+        tools: (formData.tools || []).map((tool) => ({
+          name: tool.name,
+          quantity: parseFloat(tool.quantity) || 0,
+          cost_per_hour: parseFloat(tool.cost_per_hour) || 0,
+        })),
+        travel_km: formData.travel_km ? parseFloat(formData.travel_km) : null,
+        travel_rate_per_km: formData.travel_rate_per_km ? parseFloat(formData.travel_rate_per_km) : null,
+        hire_machine_name: formData.hire_machine_name || null,
+        hire_machine_supplier: formData.hire_machine_supplier || null,
+        hire_machine_rate_per_hour: formData.hire_machine_rate_per_hour
+          ? parseFloat(formData.hire_machine_rate_per_hour)
+          : null,
       };
+
       if (editingId) {
         await api.put(`/install-types/${editingId}`, data);
-        toast.success('Install type updated');
+        toast.success('Installation type updated');
       } else {
         await api.post('/install-types', data);
-        toast.success('Install type created');
+        toast.success('Installation type created');
       }
+
       setDialogOpen(false);
       resetForm();
       loadItems();
@@ -146,15 +152,19 @@ export default function InstallTypesPage() {
         'Editing this item will affect the costing of every recipe where it is used.\n\nClick OK to continue editing this item.'
       )
     ) return;
+
     setEditingId(item.id);
-    setFormData({ 
-      name: item.name, 
-      quantity_of_people: item.quantity_of_people.toString(), 
-      rate_per_hour: item.rate_per_hour.toString(), 
-      tools_required: item.tools_required || '', 
-      equipment: item.equipment || '', 
-      equipment_supplier: item.equipment_supplier || '', 
-      equipment_rate: item.equipment_rate.toString() 
+    setFormData({
+      name: item.name || '',
+      quantity_of_people: item.quantity_of_people?.toString() || '2',
+      rate_per_hour: item.rate_per_hour?.toString() || '',
+      sqm_per_hour: item.sqm_per_hour?.toString() || '',
+      tools: item.tools || [],
+      travel_km: item.travel_km?.toString() || '',
+      travel_rate_per_km: item.travel_rate_per_km?.toString() || '',
+      hire_machine_name: item.hire_machine_name || '',
+      hire_machine_supplier: item.hire_machine_supplier || '',
+      hire_machine_rate_per_hour: item.hire_machine_rate_per_hour?.toString() || '',
     });
     setDialogOpen(true);
   };
@@ -178,38 +188,54 @@ export default function InstallTypesPage() {
   const handleDelete = async (id) => {
     if (
       !window.confirm(
-        'Deleting this item will affect your recipe builds. Any recipe using this install type may become incomplete or cost incorrectly.\n\nClick OK to permanently delete this item.'
+        'Deleting this item will affect your recipe builds. Any recipe using this installation type may become incomplete or cost incorrectly.\n\nClick OK to permanently delete this item.'
       )
     ) return;
+
     try {
       await api.delete(`/install-types/${id}`);
-      toast.success('Install type deleted');
+      toast.success('Installation type deleted');
       loadItems();
     } catch (err) {
-          const data = err?.response?.data?.detail;
+      const data = err?.response?.data?.detail;
 
-          if (data?.recipes) {
-            alert(
-              `This item cannot be deleted because it is used in the following recipes:\n\n${data.recipes.join('\n')}`
-            );
-          } else {
-            toast.error('Delete failed');
-          }
-        }
+      if (data?.recipes) {
+        alert(
+          `This item cannot be deleted because it is used in the following recipes:\n\n${data.recipes.join('\n')}`
+        );
+      } else {
+        toast.error('Delete failed');
+      }
+    }
   };
 
-  const resetForm = () => {
-    setEditingId(null);
-    setFormData({ name: '', quantity_of_people: '2', rate_per_hour: '', tools_required: '', equipment: '', equipment_supplier: '', equipment_rate: '0' });
+  const calculateItemCost = (item) => {
+    const people = Number(item.quantity_of_people) || 1;
+    const labourRate = (Number(item.rate_per_hour) || 0) * people;
+
+    const toolsRate = (item.tools || []).reduce((sum, tool) => {
+      return sum + ((Number(tool.quantity) || 0) * (Number(tool.cost_per_hour) || 0));
+    }, 0);
+
+    const hireMachineRate = Number(item.hire_machine_rate_per_hour) || 0;
+    const hourlyTotal = labourRate + toolsRate + hireMachineRate;
+
+    const sqmPerHour = Number(item.sqm_per_hour) || 0;
+    const costPerSqm = sqmPerHour > 0 ? hourlyTotal / sqmPerHour : null;
+
+    const travelCost =
+      (Number(item.travel_km) || 0) * (Number(item.travel_rate_per_km) || 0);
+
+    return { hourlyTotal, costPerSqm, travelCost };
   };
 
-return (
+  return (
     <Layout>
       <div className="space-y-6 fade-in">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-4xl font-black tracking-tight leading-none">Installation Pricelist</h1>
-            <p className="text-slate-600 mt-2">Manage installation types and pricing (ZAR)</p>
+            <p className="text-slate-600 mt-2">Manage installation rates, tools, travel, and hire equipment.</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -218,61 +244,45 @@ return (
               type="file"
               accept=".csv"
               className="hidden"
-              onChange={handleImportInstallTypes}
               data-testid="import-install-types-file-input"
             />
-
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => importFileRef.current?.click()}
-              data-testid="import-install-types-btn"
-              className="border-slate-300 text-slate-700 bg-slate-100 hover:bg-slate-200"
-            >
-              Import Installation CSV
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleExportInstallTypes}
-              data-testid="export-install-types-btn"
-            >
-              Export Installation CSV
-            </Button>
 
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button
-                  onClick={resetForm}
+                  onClick={handleOpenCreate}
                   data-testid="add-install-btn"
                   className="bg-[#2563EB] text-white hover:bg-[#1d4ed8]"
                 >
                   <Plus size={18} className="mr-2" />
-                  Add Install Type
+                  Add Installation Type
                 </Button>
               </DialogTrigger>
 
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>{editingId ? 'Edit Install Type' : 'Add New Install Type'}</DialogTitle>
+                  <DialogTitle>{editingId ? 'Edit Installation Type' : 'Add New Installation Type'}</DialogTitle>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Install Type *</Label>
+                    <Label htmlFor="name">Installation Type *</Label>
                     <Input
                       id="name"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       required
                       data-testid="install-name-input"
+                      placeholder="e.g., On-site vinyl installation"
                     />
+                    <p className="text-xs text-slate-500">
+                      Name of the installation activity.
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="quantity_of_people">Quantity of People *</Label>
+                      <Label htmlFor="quantity_of_people">Number of People *</Label>
                       <Input
                         id="quantity_of_people"
                         type="number"
@@ -281,6 +291,9 @@ return (
                         required
                         data-testid="install-people-input"
                       />
+                      <p className="text-xs text-slate-500">
+                        Number of installers required for this installation type.
+                      </p>
                     </div>
 
                     <div className="space-y-2">
@@ -294,54 +307,180 @@ return (
                         required
                         data-testid="install-rate-input"
                       />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="tools_required">Tools Required</Label>
-                    <Textarea
-                      id="tools_required"
-                      value={formData.tools_required}
-                      onChange={(e) => setFormData({ ...formData, tools_required: e.target.value })}
-                      data-testid="install-tools-input"
-                      rows={2}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="equipment">Equipment</Label>
-                    <Input
-                      id="equipment"
-                      value={formData.equipment}
-                      onChange={(e) => setFormData({ ...formData, equipment: e.target.value })}
-                      data-testid="install-equipment-input"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="equipment_supplier">Equipment Supplier</Label>
-                      <Input
-                        id="equipment_supplier"
-                        value={formData.equipment_supplier}
-                        onChange={(e) => setFormData({ ...formData, equipment_supplier: e.target.value })}
-                        data-testid="install-supplier-input"
-                      />
+                      <p className="text-xs text-slate-500">
+                        Cost per person per hour.
+                      </p>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="equipment_rate">Equipment Rate (ZAR) *</Label>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="sqm_per_hour">m² per Hour</Label>
                       <Input
-                        id="equipment_rate"
+                        id="sqm_per_hour"
                         type="number"
                         step="0.01"
-                        value={formData.equipment_rate}
-                        onChange={(e) => setFormData({ ...formData, equipment_rate: e.target.value })}
-                        required
-                        data-testid="install-equip-rate-input"
+                        value={formData.sqm_per_hour}
+                        onChange={(e) => setFormData({ ...formData, sqm_per_hour: e.target.value })}
+                        placeholder="e.g., 8"
                       />
+                      <p className="text-xs text-slate-500">
+                        How many square meters this installation team can complete per hour.
+                      </p>
                     </div>
                   </div>
+
+                  <div className="space-y-2 w-full">
+                    <Label>Tools</Label>
+                    <p className="text-xs text-slate-500">
+                      Add tools used and their hourly cost contribution.
+                    </p>
+
+                    {(formData.tools || []).map((tool, index) => (
+                      <div key={index} className="grid grid-cols-4 gap-2 items-center">
+                        <Input
+                          placeholder="e.g., Ladder"
+                          value={tool.name}
+                          onChange={(e) => updateTool(index, 'name', e.target.value)}
+                        />
+
+                        <Input
+                          type="number"
+                          placeholder="Qty used"
+                          value={tool.quantity}
+                          onChange={(e) => updateTool(index, 'quantity', e.target.value)}
+                        />
+
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="Cost per hour (ZAR)"
+                          value={tool.cost_per_hour}
+                          onChange={(e) => updateTool(index, 'cost_per_hour', e.target.value)}
+                        />
+
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => removeTool(index)}
+                          className="bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-700"
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+
+                    <Button type="button" variant="outline" onClick={addTool}>
+                      + Add Tool
+                    </Button>
+                  </div>
+
+                  <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-4">
+                    <h3 className="font-semibold text-slate-900">Travel</h3>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Travel Distance (km)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.travel_km}
+                          onChange={(e) => setFormData({ ...formData, travel_km: e.target.value })}
+                          placeholder="e.g., 35"
+                        />
+                        <p className="text-xs text-slate-500">
+                          Estimated distance travelled for this installation.
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Rate per km (ZAR)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.travel_rate_per_km}
+                          onChange={(e) => setFormData({ ...formData, travel_rate_per_km: e.target.value })}
+                          placeholder="e.g., 6.50"
+                        />
+                        <p className="text-xs text-slate-500">
+                          Vehicle/travel cost charged per kilometre.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-4">
+                    <h3 className="font-semibold text-slate-900">Hire Machine / Equipment</h3>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Hire Machine / Equipment</Label>
+                        <Input
+                          value={formData.hire_machine_name}
+                          onChange={(e) => setFormData({ ...formData, hire_machine_name: e.target.value })}
+                          placeholder="e.g., Cherry picker"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Supplier</Label>
+                        <Input
+                          value={formData.hire_machine_supplier}
+                          onChange={(e) => setFormData({ ...formData, hire_machine_supplier: e.target.value })}
+                          placeholder="e.g., ABC Hire"
+                        />
+                      </div>
+
+                      <div className="space-y-2 md:col-span-2">
+                        <Label>Hire Rate per Hour (ZAR)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.hire_machine_rate_per_hour}
+                          onChange={(e) => setFormData({ ...formData, hire_machine_rate_per_hour: e.target.value })}
+                          placeholder="e.g., 450"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {(() => {
+                    const people = parseInt(formData.quantity_of_people || '1') || 1;
+                    const labourRate = (parseFloat(formData.rate_per_hour) || 0) * people;
+
+                    const toolsRate = (formData.tools || []).reduce((sum, tool) => {
+                      return sum + ((parseFloat(tool.quantity) || 0) * (parseFloat(tool.cost_per_hour) || 0));
+                    }, 0);
+
+                    const hireRate = parseFloat(formData.hire_machine_rate_per_hour) || 0;
+                    const totalHourly = labourRate + toolsRate + hireRate;
+
+                    const sqmPerHour = parseFloat(formData.sqm_per_hour) || 0;
+                    const costPerSqm = sqmPerHour > 0 ? totalHourly / sqmPerHour : null;
+
+                    const travelCost =
+                      (parseFloat(formData.travel_km) || 0) *
+                      (parseFloat(formData.travel_rate_per_km) || 0);
+
+                    return (
+                      <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm space-y-1">
+                        <div>Installation labour/hour: R {labourRate.toFixed(2)}</div>
+                        <div>Tools/hour: R {toolsRate.toFixed(2)}</div>
+                        <div>Hire machine/hour: R {hireRate.toFixed(2)}</div>
+                        <div className="font-semibold text-green-700">
+                          Total installation/hour: R {totalHourly.toFixed(2)}
+                        </div>
+
+                        {costPerSqm !== null && (
+                          <div className="font-semibold text-blue-700">
+                            Cost per m²: R {costPerSqm.toFixed(2)}
+                          </div>
+                        )}
+
+                        <div className="font-semibold text-slate-700">
+                          Travel cost: R {travelCost.toFixed(2)}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   <div className="flex gap-2 pt-4">
                     <Button
@@ -369,10 +508,6 @@ return (
           </div>
         </div>
 
-        <p className="text-sm text-slate-500">
-          Use the exported CSV as your template. Matching names update existing installation types, new names are added.
-        </p>
-
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div className="w-full md:max-w-sm space-y-2">
             <Label htmlFor="install-search">Search Installation Types</Label>
@@ -380,7 +515,7 @@ return (
               id="install-search"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by name, equipment, or supplier"
+              placeholder="Search by installation, machine, or supplier"
               data-testid="install-search-input"
             />
           </div>
@@ -397,10 +532,10 @@ return (
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
-                    <TableHead className="data-mono">People</TableHead>
-                    <TableHead className="data-mono">Rate/Hour (ZAR)</TableHead>
-                    <TableHead>Equipment</TableHead>
-                    <TableHead className="data-mono">Equip. Rate (ZAR)</TableHead>
+                    <TableHead className="data-mono">Cost / m² (ZAR)</TableHead>
+                    <TableHead className="data-mono">m² / hr</TableHead>
+                    <TableHead className="data-mono">Travel</TableHead>
+                    <TableHead>Hire Machine</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -419,10 +554,7 @@ return (
 
                           <button
                             type="button"
-                            onClick={() => {
-                              resetForm();
-                              setDialogOpen(true);
-                            }}
+                            onClick={handleOpenCreate}
                             data-testid="add-first-install-btn"
                             className="mt-4 inline-flex items-center rounded bg-[#2563EB] px-4 py-2 text-sm text-white hover:bg-[#1d4ed8]"
                           >
@@ -432,36 +564,54 @@ return (
                       </TableCell>
                     </TableRow>
                   ) : (
-                    paginatedItems.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium">{item.name}</TableCell>
-                        <TableCell className="data-mono">{item.quantity_of_people}</TableCell>
-                        <TableCell className="data-mono">R {item.rate_per_hour.toFixed(2)}</TableCell>
-                        <TableCell className="text-sm">{item.equipment || '-'}</TableCell>
-                        <TableCell className="data-mono">R {item.equipment_rate.toFixed(2)}</TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleShowUsage(item.id)}
-                            title="Show recipe usage"
-                          >
-                            <Info size={16} />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(item)}>
-                            <Pencil size={16} />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(item.id)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 size={16} />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    paginatedItems.map((item) => {
+                      const { costPerSqm, travelCost } = calculateItemCost(item);
+
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.name}</TableCell>
+                          <TableCell className="data-mono">
+                            {costPerSqm !== null ? `R ${costPerSqm.toFixed(2)}` : '-'}
+                          </TableCell>
+                          <TableCell className="data-mono">
+                            {item.sqm_per_hour || '-'}
+                          </TableCell>
+                          <TableCell className="data-mono">
+                            R {travelCost.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {item.hire_machine_name || '-'}
+                          </TableCell>
+                          <TableCell className="text-right whitespace-nowrap">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleShowUsage(item.id)}
+                              title="Show recipe usage"
+                            >
+                              <Info size={16} />
+                            </Button>
+
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(item)}
+                            >
+                              <Pencil size={16} />
+                            </Button>
+
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(item.id)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 size={16} />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
@@ -469,7 +619,9 @@ return (
 
             <div className="flex flex-col gap-3 text-sm text-slate-600 md:flex-row md:items-center md:justify-between">
               <div>
-                Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredItems.length)} of {filteredItems.length} installation types
+                Showing {filteredItems.length === 0 ? 0 : startIndex + 1} to{' '}
+                {Math.min(startIndex + itemsPerPage, filteredItems.length)} of{' '}
+                {filteredItems.length} installation types
               </div>
 
               <div className="flex items-center gap-2">
