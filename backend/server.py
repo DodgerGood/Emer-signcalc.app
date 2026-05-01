@@ -486,7 +486,9 @@ class InstallTypeCreate(BaseModel):
     hire_machine_rate_per_hour: Optional[float] = None
 
 class InstallType(BaseModel):
-    id: str
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    company_id: str
     name: str
     quantity_of_people: int
     rate_per_hour: float
@@ -501,6 +503,7 @@ class InstallType(BaseModel):
     hire_machine_name: Optional[str] = None
     hire_machine_supplier: Optional[str] = None
     hire_machine_rate_per_hour: Optional[float] = None
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 # Travel Settings Models (now per-quote)
 class QuoteTravelCreate(BaseModel):

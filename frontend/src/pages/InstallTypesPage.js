@@ -198,7 +198,12 @@ export default function InstallTypesPage() {
       resetForm();
       loadItems();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Operation failed');
+      console.log('Install submit error:', error.response?.data || error);
+      toast.error(
+        typeof error.response?.data?.detail === 'string'
+          ? error.response.data.detail
+          : JSON.stringify(error.response?.data?.detail || 'Operation failed')
+      );
     }
   };
 
