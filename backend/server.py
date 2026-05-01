@@ -472,24 +472,35 @@ class LabourType(BaseModel):
 class InstallTypeCreate(BaseModel):
     name: str
     quantity_of_people: int
-    rate_per_hour: float  # in ZAR
-    tools_required: Optional[str] = None
-    equipment: Optional[str] = None
-    equipment_supplier: Optional[str] = None
-    equipment_rate: float = 0.0
+    rate_per_hour: float
+
+    sqm_per_hour: Optional[float] = None
+
+    tools: List[LabourTool] = []
+
+    travel_km: Optional[float] = None
+    travel_rate_per_km: Optional[float] = None
+
+    hire_machine_name: Optional[str] = None
+    hire_machine_supplier: Optional[str] = None
+    hire_machine_rate_per_hour: Optional[float] = None
 
 class InstallType(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    company_id: str
+    id: str
     name: str
     quantity_of_people: int
     rate_per_hour: float
-    tools_required: Optional[str] = None
-    equipment: Optional[str] = None
-    equipment_supplier: Optional[str] = None
-    equipment_rate: float
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+    sqm_per_hour: Optional[float] = None
+
+    tools: List[LabourTool] = []
+
+    travel_km: Optional[float] = None
+    travel_rate_per_km: Optional[float] = None
+
+    hire_machine_name: Optional[str] = None
+    hire_machine_supplier: Optional[str] = None
+    hire_machine_rate_per_hour: Optional[float] = None
 
 # Travel Settings Models (now per-quote)
 class QuoteTravelCreate(BaseModel):
