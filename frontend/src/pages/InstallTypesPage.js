@@ -61,6 +61,62 @@ export default function InstallTypesPage() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedItems = filteredItems.slice(startIndex, startIndex + itemsPerPage);
 
+  const handleExportInstallTypes = async () => {
+    try {
+      const response = await api.get('/install-types/export', {
+        responseType: 'blob',
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'install_types_export.csv');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Installation export downloaded');
+    } catch {
+      toast.error('Failed to export installation types');
+    }
+  };
+
+  const handleImportInstallTypes = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', file);
+
+      const response = await api.post('/install-types/import', formDataUpload, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      const result = response.data;
+
+      toast.success(
+        `Import complete: ${result.imported_count} added, ${result.updated_count} updated`
+      );
+
+      if (result.error_count > 0) {
+        toast.error(`${result.error_count} row(s) had errors`);
+        console.log('Installation import errors:', result.errors);
+      }
+
+      loadItems();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to import installation types');
+    } finally {
+      if (importFileRef.current) {
+        importFileRef.current.value = '';
+      }
+    }
+  };
+
   const addTool = () => {
     setFormData({
       ...formData,
@@ -244,8 +300,28 @@ export default function InstallTypesPage() {
               type="file"
               accept=".csv"
               className="hidden"
+              onChange={handleImportInstallTypes}
               data-testid="import-install-types-file-input"
             />
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => importFileRef.current?.click()}
+              data-testid="import-install-types-btn"
+              className="border-slate-300 text-slate-700 bg-slate-100 hover:bg-slate-200"
+            >
+              Import Installation CSV
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleExportInstallTypes}
+              data-testid="export-install-types-btn"
+            >
+              Export Installation CSV
+            </Button>
 
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
@@ -275,9 +351,7 @@ export default function InstallTypesPage() {
                       data-testid="install-name-input"
                       placeholder="e.g., On-site vinyl installation"
                     />
-                    <p className="text-xs text-slate-500">
-                      Name of the installation activity.
-                    </p>
+                    <p className="text-xs text-slate-500">Name of the installation activity.</p>
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -291,9 +365,7 @@ export default function InstallTypesPage() {
                         required
                         data-testid="install-people-input"
                       />
-                      <p className="text-xs text-slate-500">
-                        Number of installers required for this installation type.
-                      </p>
+                      <p className="text-xs text-slate-500">Number of installers required for this installation type.</p>
                     </div>
 
                     <div className="space-y-2">
@@ -307,9 +379,7 @@ export default function InstallTypesPage() {
                         required
                         data-testid="install-rate-input"
                       />
-                      <p className="text-xs text-slate-500">
-                        Cost per person per hour.
-                      </p>
+                      <p className="text-xs text-slate-500">Cost per person per hour.</p>
                     </div>
 
                     <div className="space-y-2 md:col-span-2">
@@ -323,39 +393,45 @@ export default function InstallTypesPage() {
                         placeholder="e.g., 8"
                       />
                       <p className="text-xs text-slate-500">
-                        How many square meters this installation team can complete per hour.
+                        How many square meters the full installation team can complete per hour, based on the number of people entered above.
                       </p>
                     </div>
                   </div>
 
                   <div className="space-y-2 w-full">
                     <Label>Tools</Label>
-                    <p className="text-xs text-slate-500">
-                      Add tools used and their hourly cost contribution.
-                    </p>
 
                     {(formData.tools || []).map((tool, index) => (
-                      <div key={index} className="grid grid-cols-4 gap-2 items-center">
-                        <Input
-                          placeholder="e.g., Ladder"
-                          value={tool.name}
-                          onChange={(e) => updateTool(index, 'name', e.target.value)}
-                        />
+                      <div key={index} className="grid grid-cols-1 gap-2 md:grid-cols-4 md:items-start">
+                        <div className="space-y-1">
+                          <Input
+                            placeholder="e.g., Ladder"
+                            value={tool.name}
+                            onChange={(e) => updateTool(index, 'name', e.target.value)}
+                          />
+                          <p className="text-xs text-slate-500">Tool name.</p>
+                        </div>
 
-                        <Input
-                          type="number"
-                          placeholder="Qty used"
-                          value={tool.quantity}
-                          onChange={(e) => updateTool(index, 'quantity', e.target.value)}
-                        />
+                        <div className="space-y-1">
+                          <Input
+                            type="number"
+                            placeholder="Qty used"
+                            value={tool.quantity}
+                            onChange={(e) => updateTool(index, 'quantity', e.target.value)}
+                          />
+                          <p className="text-xs text-slate-500">How many of this tool are used.</p>
+                        </div>
 
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="Cost per hour (ZAR)"
-                          value={tool.cost_per_hour}
-                          onChange={(e) => updateTool(index, 'cost_per_hour', e.target.value)}
-                        />
+                        <div className="space-y-1">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="Cost per hour (ZAR)"
+                            value={tool.cost_per_hour}
+                            onChange={(e) => updateTool(index, 'cost_per_hour', e.target.value)}
+                          />
+                          <p className="text-xs text-slate-500">Hourly cost contribution for this tool.</p>
+                        </div>
 
                         <Button
                           type="button"
@@ -387,7 +463,7 @@ export default function InstallTypesPage() {
                           placeholder="e.g., 35"
                         />
                         <p className="text-xs text-slate-500">
-                          Estimated distance travelled for this installation.
+                          Total round-trip distance to the site and back.
                         </p>
                       </div>
 
@@ -400,9 +476,7 @@ export default function InstallTypesPage() {
                           onChange={(e) => setFormData({ ...formData, travel_rate_per_km: e.target.value })}
                           placeholder="e.g., 6.50"
                         />
-                        <p className="text-xs text-slate-500">
-                          Vehicle/travel cost charged per kilometre.
-                        </p>
+                        <p className="text-xs text-slate-500">Vehicle/travel cost charged per kilometre.</p>
                       </div>
                     </div>
                   </div>
@@ -483,11 +557,7 @@ export default function InstallTypesPage() {
                   })()}
 
                   <div className="flex gap-2 pt-4">
-                    <Button
-                      type="submit"
-                      data-testid="install-submit-btn"
-                      className="bg-[#2563EB] hover:bg-[#1e40af]"
-                    >
+                    <Button type="submit" data-testid="install-submit-btn" className="bg-[#2563EB] hover:bg-[#1e40af]">
                       {editingId ? 'Update' : 'Create'}
                     </Button>
 
@@ -545,9 +615,7 @@ export default function InstallTypesPage() {
                     <TableRow>
                       <TableCell colSpan={6} className="py-12">
                         <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto">
-                          <div className="text-lg font-semibold text-slate-900">
-                            No installation rates found
-                          </div>
+                          <div className="text-lg font-semibold text-slate-900">No installation rates found</div>
                           <div className="mt-2 text-sm text-slate-600">
                             Try adjusting your search, or add a new installation type.
                           </div>
@@ -573,30 +641,15 @@ export default function InstallTypesPage() {
                           <TableCell className="data-mono">
                             {costPerSqm !== null ? `R ${costPerSqm.toFixed(2)}` : '-'}
                           </TableCell>
-                          <TableCell className="data-mono">
-                            {item.sqm_per_hour || '-'}
-                          </TableCell>
-                          <TableCell className="data-mono">
-                            R {travelCost.toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {item.hire_machine_name || '-'}
-                          </TableCell>
+                          <TableCell className="data-mono">{item.sqm_per_hour || '-'}</TableCell>
+                          <TableCell className="data-mono">R {travelCost.toFixed(2)}</TableCell>
+                          <TableCell className="text-sm">{item.hire_machine_name || '-'}</TableCell>
                           <TableCell className="text-right whitespace-nowrap">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleShowUsage(item.id)}
-                              title="Show recipe usage"
-                            >
+                            <Button variant="ghost" size="sm" onClick={() => handleShowUsage(item.id)} title="Show recipe usage">
                               <Info size={16} />
                             </Button>
 
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEdit(item)}
-                            >
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(item)}>
                               <Pencil size={16} />
                             </Button>
 
@@ -620,32 +673,17 @@ export default function InstallTypesPage() {
             <div className="flex flex-col gap-3 text-sm text-slate-600 md:flex-row md:items-center md:justify-between">
               <div>
                 Showing {filteredItems.length === 0 ? 0 : startIndex + 1} to{' '}
-                {Math.min(startIndex + itemsPerPage, filteredItems.length)} of{' '}
-                {filteredItems.length} installation types
+                {Math.min(startIndex + itemsPerPage, filteredItems.length)} of {filteredItems.length} installation types
               </div>
 
               <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                >
+                <Button type="button" variant="outline" size="sm" onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage === 1}>
                   Previous
                 </Button>
 
-                <span>
-                  Page {currentPage} of {totalPages}
-                </span>
+                <span>Page {currentPage} of {totalPages}</span>
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                >
+                <Button type="button" variant="outline" size="sm" onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages}>
                   Next
                 </Button>
               </div>
