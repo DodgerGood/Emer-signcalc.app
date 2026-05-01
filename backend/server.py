@@ -478,9 +478,6 @@ class InstallTypeCreate(BaseModel):
 
     tools: List[LabourTool] = []
 
-    travel_km: Optional[float] = None
-    travel_rate_per_km: Optional[float] = None
-
     hire_machine_name: Optional[str] = None
     hire_machine_supplier: Optional[str] = None
     hire_machine_rate_per_hour: Optional[float] = None

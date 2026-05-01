@@ -25,8 +25,6 @@ export default function InstallTypesPage() {
     rate_per_hour: '',
     sqm_per_hour: '',
     tools: [],
-    travel_km: '',
-    travel_rate_per_km: '',
     hire_machine_name: '',
     hire_machine_supplier: '',
     hire_machine_rate_per_hour: '',
@@ -109,7 +107,13 @@ export default function InstallTypesPage() {
 
       loadItems();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to import installation types');
+      console.log('Install submit error:', error.response?.data || error);
+
+      toast.error(
+        typeof error.response?.data?.detail === 'string'
+          ? error.response.data.detail
+          : JSON.stringify(error.response?.data?.detail || error.message || 'Operation failed')
+      );
     } finally {
       if (importFileRef.current) {
         importFileRef.current.value = '';
@@ -150,8 +154,6 @@ export default function InstallTypesPage() {
       rate_per_hour: '',
       sqm_per_hour: '',
       tools: [],
-      travel_km: '',
-      travel_rate_per_km: '',
       hire_machine_name: '',
       hire_machine_supplier: '',
       hire_machine_rate_per_hour: '',
@@ -177,8 +179,6 @@ export default function InstallTypesPage() {
           quantity: parseFloat(tool.quantity) || 0,
           cost_per_hour: parseFloat(tool.cost_per_hour) || 0,
         })),
-        travel_km: formData.travel_km ? parseFloat(formData.travel_km) : null,
-        travel_rate_per_km: formData.travel_rate_per_km ? parseFloat(formData.travel_rate_per_km) : null,
         hire_machine_name: formData.hire_machine_name || null,
         hire_machine_supplier: formData.hire_machine_supplier || null,
         hire_machine_rate_per_hour: formData.hire_machine_rate_per_hour
@@ -221,8 +221,6 @@ export default function InstallTypesPage() {
       rate_per_hour: item.rate_per_hour?.toString() || '',
       sqm_per_hour: item.sqm_per_hour?.toString() || '',
       tools: item.tools || [],
-      travel_km: item.travel_km?.toString() || '',
-      travel_rate_per_km: item.travel_rate_per_km?.toString() || '',
       hire_machine_name: item.hire_machine_name || '',
       hire_machine_supplier: item.hire_machine_supplier || '',
       hire_machine_rate_per_hour: item.hire_machine_rate_per_hour?.toString() || '',
@@ -284,10 +282,6 @@ export default function InstallTypesPage() {
     const sqmPerHour = Number(item.sqm_per_hour) || 0;
     const costPerSqm = sqmPerHour > 0 ? hourlyTotal / sqmPerHour : null;
 
-    const travelCost =
-      (Number(item.travel_km) || 0) * (Number(item.travel_rate_per_km) || 0);
-
-    return { hourlyTotal, costPerSqm, travelCost };
   };
 
   return (
@@ -455,38 +449,6 @@ export default function InstallTypesPage() {
                   </div>
 
                   <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-4">
-                    <h3 className="font-semibold text-slate-900">Travel</h3>
-
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>Travel Distance (km)</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={formData.travel_km}
-                          onChange={(e) => setFormData({ ...formData, travel_km: e.target.value })}
-                          placeholder="e.g., 35"
-                        />
-                        <p className="text-xs text-slate-500">
-                          Total round-trip distance to the site and back.
-                        </p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Rate per km (ZAR)</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={formData.travel_rate_per_km}
-                          onChange={(e) => setFormData({ ...formData, travel_rate_per_km: e.target.value })}
-                          placeholder="e.g., 6.50"
-                        />
-                        <p className="text-xs text-slate-500">Vehicle/travel cost charged per kilometre.</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-4">
                     <h3 className="font-semibold text-slate-900">Hire Machine / Equipment</h3>
 
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -553,10 +515,6 @@ export default function InstallTypesPage() {
                             Cost per m²: R {costPerSqm.toFixed(2)}
                           </div>
                         )}
-
-                        <div className="font-semibold text-slate-700">
-                          Travel cost: R {travelCost.toFixed(2)}
-                        </div>
                       </div>
                     );
                   })()}
@@ -609,7 +567,6 @@ export default function InstallTypesPage() {
                     <TableHead>Name</TableHead>
                     <TableHead className="data-mono">Cost / m² (ZAR)</TableHead>
                     <TableHead className="data-mono">m² / hr</TableHead>
-                    <TableHead className="data-mono">Travel</TableHead>
                     <TableHead>Hire Machine</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -638,8 +595,7 @@ export default function InstallTypesPage() {
                     </TableRow>
                   ) : (
                     paginatedItems.map((item) => {
-                      const { costPerSqm, travelCost } = calculateItemCost(item);
-
+                    const { costPerSqm } = calculateItemCost(item);
                       return (
                         <TableRow key={item.id}>
                           <TableCell className="font-medium">{item.name}</TableCell>
@@ -647,7 +603,6 @@ export default function InstallTypesPage() {
                             {costPerSqm !== null ? `R ${costPerSqm.toFixed(2)}` : '-'}
                           </TableCell>
                           <TableCell className="data-mono">{item.sqm_per_hour || '-'}</TableCell>
-                          <TableCell className="data-mono">R {travelCost.toFixed(2)}</TableCell>
                           <TableCell className="text-sm">{item.hire_machine_name || '-'}</TableCell>
                           <TableCell className="text-right whitespace-nowrap">
                             <Button variant="ghost" size="sm" onClick={() => handleShowUsage(item.id)} title="Show recipe usage">
