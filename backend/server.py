@@ -3570,14 +3570,46 @@ async def calculate_quote_line(recipe: dict, width_mm: float, height_mm: float, 
                 cost_per_unit = ink["price_per_sqm_coverage"]
                 item_name = item_name or ink["name"]
         elif line_type in [LineType.LABOUR, LineType.SPRAY_LABOUR] and recipe_line.get("reference_id"):
-            labour = await db.labour_types.find_one({"id": recipe_line["reference_id"], "company_id": company_id}, {"_id": 0})
+            labour = await db.labour_types.find_one(
+                {"id": recipe_line["reference_id"], "company_id": company_id},
+                {"_id": 0}
+            )
             if labour:
-                cost_per_unit = labour["rate_per_hour"] * labour["number_of_people"]
+                people = labour.get("number_of_people", 1)
+                rate = labour.get("rate_per_hour", 0)
+
+                tools_rate = sum([
+                    (t.get("quantity", 0) * t.get("cost_per_hour", 0))
+                    for t in labour.get("tools", [])
+                ])
+
+                hourly_total = (rate * people) + tools_rate
+                sqm_per_hour = labour.get("sqm_per_hour") or 0
+
+                cost_per_unit = hourly_total / sqm_per_hour if sqm_per_hour > 0 else 0
+
                 item_name = item_name or labour["name"]
         elif line_type == LineType.INSTALL and recipe_line.get("reference_id"):
-            install = await db.install_types.find_one({"id": recipe_line["reference_id"], "company_id": company_id}, {"_id": 0})
+            install = await db.install_types.find_one(
+                {"id": recipe_line["reference_id"], "company_id": company_id},
+                {"_id": 0}
+            )
             if install:
-                cost_per_unit = (install["rate_per_hour"] * install["quantity_of_people"]) + install["equipment_rate"]
+                people = install.get("quantity_of_people", 1)
+                rate = install.get("rate_per_hour", 0)
+
+                tools_rate = sum([
+                    (t.get("quantity", 0) * t.get("cost_per_hour", 0))
+                    for t in install.get("tools", [])
+                ])
+
+                hire_rate = install.get("hire_machine_rate_per_hour") or 0
+
+                hourly_total = (rate * people) + tools_rate + hire_rate
+                sqm_per_hour = install.get("sqm_per_hour") or 0
+
+                cost_per_unit = hourly_total / sqm_per_hour if sqm_per_hour > 0 else 0
+
                 item_name = item_name or install["name"]
         elif line_type == LineType.TRAVEL:
             # Travel is now handled per-quote, not in recipe calculation
