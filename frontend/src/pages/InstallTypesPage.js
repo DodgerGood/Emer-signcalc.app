@@ -287,13 +287,13 @@ export default function InstallTypesPage() {
   return (
     <Layout>
       <div className="space-y-6 fade-in max-w-7xl">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h1 className="text-4xl font-black tracking-tight leading-none">Installation Pricelist</h1>
             <p className="text-slate-600 mt-2">Manage installation rates, tools, travel, and hire equipment.</p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
             <input
               ref={importFileRef}
               type="file"
