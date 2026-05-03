@@ -287,13 +287,13 @@ export default function InstallTypesPage() {
   return (
     <Layout>
       <div className="space-y-6 fade-in max-w-7xl">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-4xl font-black tracking-tight leading-none">Installation Pricelist</h1>
             <p className="text-slate-600 mt-2">Manage installation rates, tools, travel, and hire equipment.</p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+          <div className="flex shrink-0 items-center gap-2">
             <input
               ref={importFileRef}
               type="file"
@@ -310,7 +310,7 @@ export default function InstallTypesPage() {
               data-testid="import-install-types-btn"
               className="border-slate-300 text-slate-700 bg-slate-100 hover:bg-slate-200"
             >
-              Import Installation CSV
+              Import CSV
             </Button>
 
             <Button
@@ -319,7 +319,7 @@ export default function InstallTypesPage() {
               onClick={handleExportInstallTypes}
               data-testid="export-install-types-btn"
             >
-              Export Installation CSV
+              Export CSV
             </Button>
 
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
