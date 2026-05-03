@@ -286,7 +286,7 @@ export default function InstallTypesPage() {
 
   return (
     <Layout>
-      <div className="space-y-6 fade-in">
+      <div className="space-y-6 fade-in max-w-7xl">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-4xl font-black tracking-tight leading-none">Installation Pricelist</h1>
@@ -564,11 +564,11 @@ export default function InstallTypesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead className="data-mono">Cost / m² (ZAR)</TableHead>
-                    <TableHead className="data-mono">m² / hr</TableHead>
-                    <TableHead>Hire Machine</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="w-[25%]">Name</TableHead>
+                      <TableHead className="data-mono w-[20%]">Cost / m²</TableHead>
+                      <TableHead className="data-mono w-[15%]">m² / hr</TableHead>
+                      <TableHead className="w-[25%]">Hire Machine</TableHead>
+                      <TableHead className="text-right w-[15%]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
 
@@ -598,12 +598,16 @@ export default function InstallTypesPage() {
                     const { costPerSqm } = calculateItemCost(item);
                       return (
                         <TableRow key={item.id}>
-                          <TableCell className="font-medium">{item.name}</TableCell>
+                          <TableCell className="font-medium truncate max-w-[180px]">
+                            {item.name}
+                          </TableCell>
                           <TableCell className="data-mono">
                             {costPerSqm !== null ? `R ${costPerSqm.toFixed(2)}` : '-'}
                           </TableCell>
                           <TableCell className="data-mono">{item.sqm_per_hour || '-'}</TableCell>
-                          <TableCell className="text-sm">{item.hire_machine_name || '-'}</TableCell>
+                          <TableCell className="text-sm truncate max-w-[180px]">
+                            {item.hire_machine_name || '-'}
+                          </TableCell>
                           <TableCell className="text-right whitespace-nowrap">
                             <Button variant="ghost" size="sm" onClick={() => handleShowUsage(item.id)} title="Show recipe usage">
                               <Info size={16} />
