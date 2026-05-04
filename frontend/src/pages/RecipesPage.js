@@ -444,12 +444,12 @@ export default function RecipesPage() {
 
           {canManage && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"
-                  className="border-slate-300 text-slate-700 bg-slate-100 hover:bg-slate-200"
                   onClick={() => document.getElementById('recipe-import')?.click()}
+                  className="border-slate-300 text-slate-700 bg-slate-100 hover:bg-slate-200"
                 >
                   Import CSV
                 </Button>
@@ -457,7 +457,6 @@ export default function RecipesPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="border-slate-300 text-slate-700 bg-slate-100 hover:bg-slate-200"
                   onClick={async () => {
                     try {
                       const res = await api.get('/recipes/export', { responseType: 'blob' });

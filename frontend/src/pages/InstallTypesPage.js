@@ -296,7 +296,7 @@ export default function InstallTypesPage() {
   return (
     <Layout>
       <div className="space-y-6 fade-in max-w-7xl">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex justify-between items-center">
           <div>
             <h1 className="text-4xl font-black tracking-tight leading-none">Installation Pricelist</h1>
             <p className="text-slate-600 mt-2">
@@ -304,7 +304,7 @@ export default function InstallTypesPage() {
             </p>
           </div>
 
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="flex items-center gap-2">
             <input
               ref={importFileRef}
               type="file"
@@ -327,7 +327,6 @@ export default function InstallTypesPage() {
             <Button
               type="button"
               variant="outline"
-              className="border-slate-300 text-slate-700 bg-slate-100 hover:bg-slate-200"
               onClick={handleExportInstallTypes}
               data-testid="export-install-types-btn"
             >
@@ -343,7 +342,7 @@ export default function InstallTypesPage() {
                   className="bg-[#2563EB] text-white hover:bg-[#1d4ed8]"
                 >
                   <Plus size={18} className="mr-2" />
-                  Add Installation Type
+                  Add Install Type
                 </Button>
               </DialogTrigger>
 
