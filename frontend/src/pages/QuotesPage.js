@@ -1,192 +1,404 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Layout } from '../components/Layout';
-import { useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import api from '../lib/api';
 
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { Textarea } from '../components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Info, Pencil, Trash2, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function QuoteDetailPage() {
-  const { id } = useParams();
+const money = (value) => `R ${(Number(value) || 0).toFixed(2)}`;
 
-  const [recipes, setRecipes] = useState([]);
-  const [lines, setLines] = useState([]);
+export default function QuotesPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
+
+  const isEstimationsPage = location.pathname.startsWith('/estimations');
+
+  const [quotes, setQuotes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [infoQuote, setInfoQuote] = useState(null);
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [staffFilter, setStaffFilter] = useState('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const [formData, setFormData] = useState({
+    client_name: '',
+    client_email: '',
+    client_phone: '',
+    client_address: '',
+    description: '',
+  });
+
+  const itemsPerPage = 10;
+  const isQuotingStaff = user?.role === 'QUOTING_STAFF' || user?.role === 'MD_ADMIN';
 
   useEffect(() => {
-    loadRecipes();
+    loadQuotes();
   }, []);
 
-  const loadRecipes = async () => {
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, staffFilter]);
+
+  const loadQuotes = async () => {
     try {
-      const res = await api.get('/recipes');
-      setRecipes(res.data);
+      setLoading(true);
+      const response = await api.get('/quotes');
+      setQuotes(response.data || []);
     } catch {
-      toast.error('Failed to load recipes');
+      toast.error('Failed to load quotes');
     } finally {
       setLoading(false);
     }
   };
 
-  const addLine = () => {
-    setLines([
-      ...lines,
-      {
-        recipe_id: '',
-        width_mm: '',
-        height_mm: '',
-        quantity: 1,
-        price: 0,
-        total: 0,
-      }
-    ]);
-  };
+  const handleCreate = async (e) => {
+    e.preventDefault();
 
-  const removeLine = (index) => {
-    const updated = [...lines];
-    updated.splice(index, 1);
-    setLines(updated);
-  };
+    try {
+      const response = await api.post('/quotes', formData);
+      toast.success('Estimate created');
 
-  const updateLine = async (index, field, value) => {
-    const updated = [...lines];
-    updated[index][field] = value;
-    setLines(updated);
+      setDialogOpen(false);
+      setFormData({
+        client_name: '',
+        client_email: '',
+        client_phone: '',
+        client_address: '',
+        description: '',
+      });
 
-    const line = updated[index];
-
-    if (line.recipe_id && line.width_mm && line.height_mm) {
-      try {
-        const res = await api.post('/estimation/calculate-sign', {
-          recipe_id: line.recipe_id,
-          width_mm: parseFloat(line.width_mm),
-          height_mm: parseFloat(line.height_mm),
-          labour_hours: 0,
-          install_hours: 0,
-          travel_km: 0,
-          accommodation_days: 0,
-          custom_items: []
-        });
-
-        const selling = res.data.total_selling;
-
-        updated[index].price = selling;
-        updated[index].total = selling * (line.quantity || 1);
-
-        setLines([...updated]);
-
-      } catch {
-        toast.error('Calculation failed');
-      }
+      navigate(`/quotes/${response.data.id}`);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to create estimate');
     }
   };
 
-  const subtotal = lines.reduce((sum, l) => sum + (l.total || 0), 0);
-  const vat = subtotal * 0.15;
-  const total = subtotal + vat;
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this quote permanently?')) return;
+
+    try {
+      await api.delete(`/quotes/${id}`);
+      toast.success('Quote deleted');
+      loadQuotes();
+    } catch {
+      toast.error('Delete failed');
+    }
+  };
+
+  const handleApprove = async (id) => {
+    try {
+      await api.post(`/quotes/${id}/approve`);
+      toast.success('Quote approved');
+      loadQuotes();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Approval failed');
+    }
+  };
+
+  const getQuoteNumber = (index) => `Qu${String(index + 1).padStart(5, '0')}`;
+
+  const staffOptions = useMemo(() => {
+    return [...new Set(quotes.map((q) => q.created_by_name).filter(Boolean))];
+  }, [quotes]);
+
+  const filteredQuotes = quotes.filter((quote, index) => {
+    const quoteNumber = getQuoteNumber(index).toLowerCase();
+    const term = searchTerm.toLowerCase();
+
+    const matchesSearch =
+      quoteNumber.includes(term) ||
+      quote.client_name?.toLowerCase().includes(term) ||
+      quote.description?.toLowerCase().includes(term);
+
+    const matchesStaff =
+      staffFilter === 'ALL' || quote.created_by_name === staffFilter;
+
+    return matchesSearch && matchesStaff;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filteredQuotes.length / itemsPerPage));
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedQuotes = filteredQuotes.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <Layout>
-      <div className="space-y-6 max-w-7xl">
-
-        <h1 className="text-3xl font-black">Estimate Builder</h1>
-
-        <div className="bg-white border rounded-md">
-
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-slate-50">
-                <TableHead>Recipe</TableHead>
-                <TableHead>Width (mm)</TableHead>
-                <TableHead>Height (mm)</TableHead>
-                <TableHead>Qty</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-
-            <TableBody>
-              {lines.map((line, i) => (
-                <TableRow key={i}>
-
-                  <TableCell>
-                    <select
-                      className="border rounded px-2 py-1"
-                      value={line.recipe_id}
-                      onChange={(e) => updateLine(i, 'recipe_id', e.target.value)}
-                    >
-                      <option value="">Select</option>
-                      {recipes.map(r => (
-                        <option key={r.id} value={r.id}>{r.name}</option>
-                      ))}
-                    </select>
-                  </TableCell>
-
-                  <TableCell>
-                    <Input
-                      value={line.width_mm}
-                      onChange={(e) => updateLine(i, 'width_mm', e.target.value)}
-                    />
-                  </TableCell>
-
-                  <TableCell>
-                    <Input
-                      value={line.height_mm}
-                      onChange={(e) => updateLine(i, 'height_mm', e.target.value)}
-                    />
-                  </TableCell>
-
-                  <TableCell>
-                    <Input
-                      type="number"
-                      value={line.quantity}
-                      onChange={(e) => updateLine(i, 'quantity', parseInt(e.target.value))}
-                    />
-                  </TableCell>
-
-                  <TableCell className="font-mono">
-                    R {line.price.toFixed(2)}
-                  </TableCell>
-
-                  <TableCell className="font-mono font-bold text-blue-700">
-                    R {line.total.toFixed(2)}
-                  </TableCell>
-
-                  <TableCell>
-                    <Button variant="ghost" onClick={() => removeLine(i)}>
-                      <Trash2 size={16} />
-                    </Button>
-                  </TableCell>
-
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-
-          <div className="p-4">
-            <Button onClick={addLine} className="bg-[#2563EB] text-white">
-              <Plus size={16} className="mr-2" />
-              Add Line
-            </Button>
+      <div className="space-y-6 fade-in max-w-7xl">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-4xl font-black tracking-tight leading-none">
+              {isEstimationsPage ? 'Estimations' : 'Quotes'}
+            </h1>
+            <p className="text-slate-600 mt-2">
+              {isEstimationsPage
+                ? 'Create and manage internal estimates before converting them into client quotes.'
+                : 'Manage client-facing quotes.'}
+            </p>
           </div>
 
+          {isQuotingStaff && (
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  type="button"
+                  data-testid="new-quote-btn"
+                  className="bg-[#2563EB] text-white hover:bg-[#1d4ed8]"
+                >
+                  <Plus size={18} className="mr-2" />
+                  New Estimate
+                </Button>
+              </DialogTrigger>
+
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Create New Estimate</DialogTitle>
+                </DialogHeader>
+
+                <form onSubmit={handleCreate} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Client / Company Name *</Label>
+                    <Input
+                      value={formData.client_name}
+                      onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
+                      placeholder="e.g., ABC Retailers"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Email</Label>
+                      <Input
+                        type="email"
+                        value={formData.client_email}
+                        onChange={(e) => setFormData({ ...formData, client_email: e.target.value })}
+                        placeholder="client@example.com"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Phone</Label>
+                      <Input
+                        value={formData.client_phone}
+                        onChange={(e) => setFormData({ ...formData, client_phone: e.target.value })}
+                        placeholder="+27..."
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Address</Label>
+                    <Input
+                      value={formData.client_address}
+                      onChange={(e) => setFormData({ ...formData, client_address: e.target.value })}
+                      placeholder="Client address"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Project Description</Label>
+                    <Textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      placeholder="Brief project description..."
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <Button type="submit" className="bg-[#2563EB] hover:bg-[#1e40af]">
+                      Create & Estimate
+                    </Button>
+
+                    <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
-        {/* TOTALS */}
-        <div className="bg-slate-50 p-4 rounded border space-y-2 text-right">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end">
+          <div className="w-full md:max-w-sm space-y-2">
+            <Label>Search</Label>
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by client, project, or quote #"
+            />
+          </div>
 
-          <div>Subtotal: <b>R {subtotal.toFixed(2)}</b></div>
-          <div>VAT (15%): <b>R {vat.toFixed(2)}</b></div>
-          <div className="text-lg">Total: <b>R {total.toFixed(2)}</b></div>
-
+          <div className="w-full md:max-w-xs space-y-2">
+            <Label>Quoting Staff</Label>
+            <select
+              value={staffFilter}
+              onChange={(e) => setStaffFilter(e.target.value)}
+              className="w-full rounded border px-3 py-2"
+            >
+              <option value="ALL">All Staff</option>
+              {staffOptions.map((staff) => (
+                <option key={staff} value={staff}>
+                  {staff}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
+        {loading ? (
+          <div className="flex justify-center p-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto rounded-xl border bg-white">
+              <Table className="w-full min-w-[1000px] text-sm">
+                <TableHeader className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <TableRow>
+                    <TableHead className="px-4 py-3">Quote #</TableHead>
+                    <TableHead className="px-4 py-3">Client</TableHead>
+                    <TableHead className="px-4 py-3">Staff</TableHead>
+                    <TableHead className="px-4 py-3">Total</TableHead>
+                    <TableHead className="px-4 py-3">Date</TableHead>
+                    <TableHead className="px-4 py-3">Status</TableHead>
+                    <TableHead className="px-4 py-3 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+
+                <TableBody className="divide-y">
+                  {paginatedQuotes.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="py-12 text-center">
+                        No {isEstimationsPage ? 'estimates' : 'quotes'} found.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    paginatedQuotes.map((quote, index) => {
+                      const absoluteIndex = startIndex + index;
+                      const quoteNumber = getQuoteNumber(absoluteIndex);
+
+                      return (
+                        <TableRow key={quote.id}>
+                          <TableCell className="px-4 py-3 font-mono">{quoteNumber}</TableCell>
+                          <TableCell className="px-4 py-3 font-semibold">{quote.client_name}</TableCell>
+                          <TableCell className="px-4 py-3">{quote.created_by_name}</TableCell>
+                          <TableCell className="px-4 py-3 font-mono font-bold text-blue-700">
+                            {money(quote.total_amount)}
+                          </TableCell>
+                          <TableCell className="px-4 py-3">
+                            {quote.created_at ? new Date(quote.created_at).toLocaleDateString() : '-'}
+                          </TableCell>
+                          <TableCell className="px-4 py-3">
+                            {quote.quote_status || 'DRAFT'}
+                          </TableCell>
+                          <TableCell className="px-4 py-3">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setInfoQuote({ ...quote, quoteNumber })}
+                              >
+                                <Info size={16} />
+                              </Button>
+
+                              <Link to={`/quotes/${quote.id}`}>
+                                <Button type="button" variant="ghost" size="sm">
+                                  <Pencil size={16} />
+                                </Button>
+                              </Link>
+
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleApprove(quote.id)}
+                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                              >
+                                <CheckCircle size={16} />
+                              </Button>
+
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDelete(quote.id)}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 size={16} />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="flex flex-col gap-3 text-sm text-slate-600 md:flex-row md:items-center md:justify-between">
+              <div>
+                Showing {filteredQuotes.length === 0 ? 0 : startIndex + 1} to{' '}
+                {Math.min(startIndex + itemsPerPage, filteredQuotes.length)} of {filteredQuotes.length}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+
+                <span>Page {currentPage} of {totalPages}</span>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+
+        <Dialog open={!!infoQuote} onOpenChange={(open) => !open && setInfoQuote(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Quote Info</DialogTitle>
+            </DialogHeader>
+
+            {infoQuote && (
+              <div className="space-y-2 text-sm">
+                <div><strong>Quote #:</strong> {infoQuote.quoteNumber}</div>
+                <div><strong>Client:</strong> {infoQuote.client_name}</div>
+                <div><strong>Total:</strong> {money(infoQuote.total_amount)}</div>
+                <div><strong>Date:</strong> {infoQuote.created_at ? new Date(infoQuote.created_at).toLocaleDateString() : '-'}</div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
