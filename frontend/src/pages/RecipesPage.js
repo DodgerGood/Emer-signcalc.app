@@ -8,26 +8,14 @@ import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Plus, Trash2, Package, Droplet, Users, Wrench, Upload, Download } from 'lucide-react';
+import { Plus, Trash2, Package, Users, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
-
-const LINE_TYPES = [
-  'MATERIAL',
-  'INK',
-  'LABOUR',
-  'MACHINE',
-  'INSTALL',
-  'CUSTOM'
-];
-
-const QTY_DRIVERS = ['SQM', 'HOURS', 'PER_JOB'];
 
 export default function RecipesPage() {
   const { isManager, isMDAdmin } = useAuth();
 
   const [recipes, setRecipes] = useState([]);
   const [materials, setMaterials] = useState([]);
-  const [inks, setInks] = useState([]);
   const [labours, setLabours] = useState([]);
   const [installs, setInstalls] = useState([]);
 
@@ -41,7 +29,12 @@ export default function RecipesPage() {
 
   const [formData, setFormData] = useState({
     name: '',
-    lines: []
+    material_markup_percent: 30,
+    material_id: 'NA',
+    labour_id: 'NA',
+    machine_id: 'NA',
+    install_id: 'NA',
+    custom_lines: [],
   });
 
   useEffect(() => {
@@ -56,20 +49,18 @@ export default function RecipesPage() {
     try {
       setLoading(true);
 
-      const [recipesRes, materialsRes, inksRes, laboursRes, installsRes] = await Promise.all([
+      const [recipesRes, materialsRes, laboursRes, installsRes] = await Promise.all([
         api.get('/recipes'),
         api.get('/materials'),
-        api.get('/ink-profiles'),
         api.get('/labour-types'),
-        api.get('/install-types')
+        api.get('/install-types'),
       ]);
 
       setRecipes(recipesRes.data || []);
       setMaterials(materialsRes.data || []);
-      setInks(inksRes.data || []);
       setLabours(laboursRes.data || []);
       setInstalls(installsRes.data || []);
-    } catch (error) {
+    } catch {
       toast.error('Failed to load recipes data');
     } finally {
       setLoading(false);
@@ -87,7 +78,12 @@ export default function RecipesPage() {
   const resetForm = () => {
     setFormData({
       name: '',
-      lines: []
+      material_markup_percent: 30,
+      material_id: 'NA',
+      labour_id: 'NA',
+      machine_id: 'NA',
+      install_id: 'NA',
+      custom_lines: [],
     });
   };
 
@@ -96,95 +92,109 @@ export default function RecipesPage() {
     setDialogOpen(true);
   };
 
-  const addLine = () => {
+  const addCustomLine = () => {
     setFormData({
       ...formData,
-      lines: [
-        ...formData.lines,
+      custom_lines: [
+        ...formData.custom_lines,
         {
-          line_type: 'MATERIAL',
-          reference_id: '',
-          qty_driver: 'SQM',
+          custom_name: '',
+          custom_unit_cost: 0,
+        },
+      ],
+    });
+  };
+
+  const updateCustomLine = (index, field, value) => {
+    const updated = [...formData.custom_lines];
+    updated[index][field] = value;
+    setFormData({ ...formData, custom_lines: updated });
+  };
+
+  const removeCustomLine = (index) => {
+    setFormData({
+      ...formData,
+      custom_lines: formData.custom_lines.filter((_, i) => i !== index),
+    });
+  };
+
+  const buildRecipeLines = () => {
+    const lines = [];
+
+    if (formData.material_id !== 'NA') {
+      lines.push({
+        line_type: 'MATERIAL',
+        reference_id: formData.material_id,
+        qty_driver: 'SQM',
+        multiplier: 1,
+        waste_percent: 0,
+        default_markup_percent: parseFloat(formData.material_markup_percent) || 0,
+        markup_allowed: true,
+        override_requires_approval: false,
+        custom_name: null,
+      });
+    }
+
+    if (formData.labour_id !== 'NA') {
+      lines.push({
+        line_type: 'LABOUR',
+        reference_id: formData.labour_id,
+        qty_driver: 'SQM',
+        multiplier: 1,
+        waste_percent: 0,
+        default_markup_percent: 0,
+        markup_allowed: false,
+        override_requires_approval: false,
+        custom_name: null,
+      });
+    }
+
+    if (formData.machine_id !== 'NA') {
+      lines.push({
+        line_type: 'MACHINE',
+        reference_id: formData.machine_id,
+        qty_driver: 'SQM',
+        multiplier: 1,
+        waste_percent: 0,
+        default_markup_percent: 0,
+        markup_allowed: false,
+        override_requires_approval: false,
+        custom_name: null,
+      });
+    }
+
+    if (formData.install_id !== 'NA') {
+      lines.push({
+        line_type: 'INSTALL',
+        reference_id: formData.install_id,
+        qty_driver: 'SQM',
+        multiplier: 1,
+        waste_percent: 0,
+        default_markup_percent: 0,
+        markup_allowed: false,
+        override_requires_approval: false,
+        custom_name: null,
+      });
+    }
+
+    formData.custom_lines.forEach((line) => {
+      if (line.custom_name && Number(line.custom_unit_cost) > 0) {
+        lines.push({
+          line_type: 'CUSTOM',
+          reference_id: null,
+          qty_driver: 'PER_JOB',
           multiplier: 1,
           waste_percent: 0,
-          default_markup_percent: 30,
-          markup_allowed: true,
+          default_markup_percent: 0,
+          markup_allowed: false,
           override_requires_approval: false,
-          custom_name: '',
-          custom_unit_cost: 0
-        }
-      ]
-    });
-  };
-
-  const updateLine = (index, field, value) => {
-    const newLines = [...formData.lines];
-    newLines[index][field] = value;
-
-    if (field === 'line_type') {
-      newLines[index].reference_id = '';
-      newLines[index].custom_name = '';
-      newLines[index].custom_unit_cost = 0;
-
-      if (value === 'CUSTOM') {
-        newLines[index].qty_driver = 'PER_JOB';
+          custom_name: line.custom_name,
+          custom_unit_cost: parseFloat(line.custom_unit_cost) || 0,
+        });
       }
-
-      if (value === 'MACHINE') {
-        newLines[index].qty_driver = 'SQM';
-      }
-    }
-
-    setFormData({ ...formData, lines: newLines });
-  };
-
-  const removeLine = (index) => {
-    setFormData({
-      ...formData,
-      lines: formData.lines.filter((_, i) => i !== index)
     });
-  };
 
-  const getRefOptions = (lineType) => {
-    switch (lineType) {
-      case 'MATERIAL':
-        return materials;
-      case 'INK':
-        return inks;
-      case 'LABOUR':
-        return labours.filter((item) => item.cost_type !== 'MACHINE');
-      case 'MACHINE':
-        return labours.filter((item) => item.cost_type === 'MACHINE');
-      case 'INSTALL':
-        return installs;
-      default:
-        return [];
-    }
-  };
-
-  const getLineIcon = (type) => {
-    switch (type) {
-      case 'MATERIAL':
-        return <Package size={16} />;
-      case 'INK':
-        return <Droplet size={16} />;
-      case 'LABOUR':
-      case 'MACHINE':
-        return <Users size={16} />;
-      case 'INSTALL':
-        return <Wrench size={16} />;
-      default:
-        return <Plus size={16} />;
-    }
-  };
-
-  const getReferenceName = (line) => {
-    if (line.line_type === 'CUSTOM') {
-      return line.custom_name || 'Custom item';
-    }
-
-    const found = getRefOptions(line.line_type).find((item) => item.id === line.reference_id);
-    return found?.name || 'No item selected';
+    return lines;
   };
 
   const handleSubmit = async (e) => {
@@ -198,21 +208,7 @@ export default function RecipesPage() {
     try {
       const payload = {
         name: formData.name,
-        lines: formData.lines.map((line) => ({
-          line_type: line.line_type,
-          reference_id: line.line_type === 'CUSTOM' ? null : line.reference_id,
-          qty_driver: line.qty_driver,
-          multiplier: parseFloat(line.multiplier) || 0,
-          waste_percent: parseFloat(line.waste_percent) || 0,
-          default_markup_percent: parseFloat(line.default_markup_percent) || 0,
-          markup_allowed: !!line.markup_allowed,
-          override_requires_approval: !!line.override_requires_approval,
-          custom_name: line.custom_name || null,
-          custom_unit_cost:
-            line.line_type === 'CUSTOM'
-              ? parseFloat(line.custom_unit_cost) || 0
-              : null
-        }))
+        lines: buildRecipeLines(),
       };
 
       await api.post('/recipes', payload);
@@ -233,7 +229,7 @@ export default function RecipesPage() {
       await api.delete(`/recipes/${id}`);
       toast.success('Recipe deleted');
       loadData();
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete recipe');
     }
   };
@@ -241,7 +237,7 @@ export default function RecipesPage() {
   const handleExportRecipes = async () => {
     try {
       const response = await api.get('/recipes/export', {
-        responseType: 'blob'
+        responseType: 'blob',
       });
 
       const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }));
@@ -254,7 +250,7 @@ export default function RecipesPage() {
       window.URL.revokeObjectURL(url);
 
       toast.success('Recipes export downloaded');
-    } catch (error) {
+    } catch {
       toast.error('Recipe export endpoint not ready yet');
     }
   };
@@ -269,8 +265,8 @@ export default function RecipesPage() {
 
       const response = await api.post('/recipes/import', formDataUpload, {
         headers: {
-          'Content-Type': 'multipart/form-data'
-        }
+          'Content-Type': 'multipart/form-data',
+        },
       });
 
       const result = response.data;
@@ -279,18 +275,27 @@ export default function RecipesPage() {
         `Import complete: ${result.imported_count || 0} added, ${result.updated_count || 0} updated`
       );
 
-      if (result.error_count > 0) {
-        toast.error(`${result.error_count} row(s) had errors`);
-        console.log('Recipe import errors:', result.errors);
-      }
-
       loadData();
-    } catch (error) {
+    } catch {
       toast.error('Recipe import endpoint not ready yet');
     } finally {
       if (importFileRef.current) {
         importFileRef.current.value = '';
       }
+    }
+  };
+
+  const getLineIcon = (type) => {
+    switch (type) {
+      case 'MATERIAL':
+        return <Package size={16} />;
+      case 'LABOUR':
+      case 'MACHINE':
+        return <Users size={16} />;
+      case 'INSTALL':
+        return <Wrench size={16} />;
+      default:
+        return <Plus size={16} />;
     }
   };
 
@@ -301,7 +306,7 @@ export default function RecipesPage() {
           <div>
             <h1 className="text-4xl font-black tracking-tight leading-none">Recipes</h1>
             <p className="text-slate-600 mt-2">
-              Pricing assemblies that combine materials, labour, machines, installations, and custom line items.
+              Build reusable 1 m² pricing recipes from materials, labour, machines, installation, and custom items.
             </p>
           </div>
 
@@ -313,7 +318,6 @@ export default function RecipesPage() {
                 accept=".csv"
                 className="hidden"
                 onChange={handleImportRecipes}
-                data-testid="import-recipes-file-input"
               />
 
               <Button
@@ -322,16 +326,10 @@ export default function RecipesPage() {
                 onClick={() => importFileRef.current?.click()}
                 className="border-slate-300 text-slate-700 bg-slate-100 hover:bg-slate-200"
               >
-                <Upload size={16} className="mr-2" />
                 Import CSV
               </Button>
 
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleExportRecipes}
-              >
-                <Download size={16} className="mr-2" />
+              <Button type="button" variant="outline" onClick={handleExportRecipes}>
                 Export CSV
               </Button>
 
@@ -348,12 +346,17 @@ export default function RecipesPage() {
                   </Button>
                 </DialogTrigger>
 
-                <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>Create New Recipe</DialogTitle>
+                    <DialogTitle>Create New 1 m² Recipe</DialogTitle>
                   </DialogHeader>
 
                   <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="rounded-md border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
+                      This recipe represents the cost to produce <strong>1 m²</strong>. Materials, labour,
+                      machines, and installation should already be reduced to a 1 m² costing basis.
+                    </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="recipe-name">Recipe Name *</Label>
                       <Input
@@ -362,217 +365,172 @@ export default function RecipesPage() {
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         required
                         data-testid="recipe-name-input"
-                        placeholder="e.g., Standard ACM sign with print and installation"
+                        placeholder="e.g., Standard vinyl print and install per m²"
                       />
-                      <p className="text-xs text-slate-500">
-                        Give this recipe a clear name so it can be reused in quotes.
-                      </p>
                     </div>
 
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <h3 className="font-bold">Recipe Lines</h3>
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={addLine}
-                          data-testid="add-recipe-line-btn"
-                          variant="outline"
-                        >
-                          <Plus size={16} className="mr-2" />
-                          Add Line
-                        </Button>
-                      </div>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Required Recipe Components</CardTitle>
+                      </CardHeader>
 
-                      {formData.lines.length === 0 ? (
-                        <div className="rounded-md border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
-                          No recipe lines yet. Add materials, labour, machines, installations, or custom items.
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label>Material</Label>
+                            <Select
+                              value={formData.material_id}
+                              onValueChange={(v) => setFormData({ ...formData, material_id: v })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="NA">N/A</SelectItem>
+                                {materials.map((item) => (
+                                  <SelectItem key={item.id} value={item.id}>
+                                    {item.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Material Markup %</Label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={formData.material_markup_percent}
+                              onChange={(e) =>
+                                setFormData({ ...formData, material_markup_percent: e.target.value })
+                              }
+                            />
+                            <p className="text-xs text-slate-500">
+                              Markup applies to materials only. Labour, machines, installation, and custom items are not marked up.
+                            </p>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Labour</Label>
+                            <Select
+                              value={formData.labour_id}
+                              onValueChange={(v) => setFormData({ ...formData, labour_id: v })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="NA">N/A</SelectItem>
+                                {labours
+                                  .filter((item) => item.cost_type !== 'MACHINE')
+                                  .map((item) => (
+                                    <SelectItem key={item.id} value={item.id}>
+                                      {item.name}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Machine</Label>
+                            <Select
+                              value={formData.machine_id}
+                              onValueChange={(v) => setFormData({ ...formData, machine_id: v })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="NA">N/A</SelectItem>
+                                {labours
+                                  .filter((item) => item.cost_type === 'MACHINE')
+                                  .map((item) => (
+                                    <SelectItem key={item.id} value={item.id}>
+                                      {item.name}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2 md:col-span-2">
+                            <Label>Installation</Label>
+                            <Select
+                              value={formData.install_id}
+                              onValueChange={(v) => setFormData({ ...formData, install_id: v })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="NA">N/A</SelectItem>
+                                {installs.map((item) => (
+                                  <SelectItem key={item.id} value={item.id}>
+                                    {item.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
-                      ) : (
-                        formData.lines.map((line, index) => (
-                          <Card key={index} className="p-4">
-                            <div className="flex items-center justify-between mb-4">
-                              <div className="flex items-center gap-2 font-semibold">
-                                {getLineIcon(line.line_type)}
-                                Line {index + 1}
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Custom Line Items</CardTitle>
+                      </CardHeader>
+
+                      <CardContent className="space-y-4">
+                        {formData.custom_lines.length === 0 ? (
+                          <p className="text-sm text-slate-500">
+                            No custom items added. Use this for once-off extras that do not belong in materials, labour, machines, or installation.
+                          </p>
+                        ) : (
+                          formData.custom_lines.map((line, index) => (
+                            <div key={index} className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_180px_120px] md:items-start">
+                              <div className="space-y-1">
+                                <Input
+                                  value={line.custom_name}
+                                  onChange={(e) => updateCustomLine(index, 'custom_name', e.target.value)}
+                                  placeholder="e.g., Special brackets"
+                                />
+                                <p className="text-xs text-slate-500">Custom item name.</p>
+                              </div>
+
+                              <div className="space-y-1">
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={line.custom_unit_cost}
+                                  onChange={(e) => updateCustomLine(index, 'custom_unit_cost', e.target.value)}
+                                  placeholder="Cost"
+                                />
+                                <p className="text-xs text-slate-500">Once-off cost.</p>
                               </div>
 
                               <Button
                                 type="button"
                                 size="sm"
-                                variant="ghost"
-                                onClick={() => removeLine(index)}
-                                data-testid={`remove-line-${index}`}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => removeCustomLine(index)}
+                                className="bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-700"
                               >
-                                <Trash2 size={16} className="mr-2" />
                                 Remove
                               </Button>
                             </div>
+                          ))
+                        )}
 
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                              <div className="space-y-2">
-                                <Label>Line Type</Label>
-                                <Select
-                                  value={line.line_type}
-                                  onValueChange={(v) => updateLine(index, 'line_type', v)}
-                                >
-                                  <SelectTrigger data-testid={`line-${index}-type`}>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {LINE_TYPES.map((type) => (
-                                      <SelectItem key={type} value={type}>
-                                        {type}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-
-                              {line.line_type !== 'CUSTOM' && (
-                                <div className="space-y-2">
-                                  <Label>Reference</Label>
-                                  <Select
-                                    value={line.reference_id}
-                                    onValueChange={(v) => updateLine(index, 'reference_id', v)}
-                                  >
-                                    <SelectTrigger data-testid={`line-${index}-ref`}>
-                                      <SelectValue placeholder="Select item..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {getRefOptions(line.line_type).map((option) => (
-                                        <SelectItem key={option.id} value={option.id}>
-                                          {option.name}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                  <p className="text-xs text-slate-500">
-                                    Select from your existing pricelist records.
-                                  </p>
-                                </div>
-                              )}
-
-                              {line.line_type === 'CUSTOM' && (
-                                <>
-                                  <div className="space-y-2">
-                                    <Label>Custom Item Name</Label>
-                                    <Input
-                                      value={line.custom_name || ''}
-                                      onChange={(e) => updateLine(index, 'custom_name', e.target.value)}
-                                      placeholder="e.g., Special bracket set"
-                                    />
-                                  </div>
-
-                                  <div className="space-y-2">
-                                    <Label>Custom Unit Cost (ZAR)</Label>
-                                    <Input
-                                      type="number"
-                                      step="0.01"
-                                      value={line.custom_unit_cost || 0}
-                                      onChange={(e) => updateLine(index, 'custom_unit_cost', parseFloat(e.target.value) || 0)}
-                                      placeholder="e.g., 250"
-                                    />
-                                  </div>
-                                </>
-                              )}
-
-                              <div className="space-y-2">
-                                <Label>Qty Driver</Label>
-                                <Select
-                                  value={line.qty_driver}
-                                  onValueChange={(v) => updateLine(index, 'qty_driver', v)}
-                                >
-                                  <SelectTrigger data-testid={`line-${index}-driver`}>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {QTY_DRIVERS.map((driver) => (
-                                      <SelectItem key={driver} value={driver}>
-                                        {driver}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <p className="text-xs text-slate-500">
-                                  SQM uses quote area. HOURS uses this line as hours. PER_JOB is once-off.
-                                </p>
-                              </div>
-
-                              <div className="space-y-2">
-                                <Label>Multiplier</Label>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  value={line.multiplier}
-                                  onChange={(e) => updateLine(index, 'multiplier', parseFloat(e.target.value) || 0)}
-                                  data-testid={`line-${index}-multiplier`}
-                                />
-                                <p className="text-xs text-slate-500">
-                                  Used to scale this line. Example: 1 = normal, 2 = double.
-                                </p>
-                              </div>
-
-                              <div className="space-y-2">
-                                <Label>Waste %</Label>
-                                <Input
-                                  type="number"
-                                  step="0.1"
-                                  value={line.waste_percent}
-                                  onChange={(e) => updateLine(index, 'waste_percent', parseFloat(e.target.value) || 0)}
-                                  data-testid={`line-${index}-waste`}
-                                />
-                              </div>
-
-                              <div className="space-y-2">
-                                <Label>Default Markup %</Label>
-                                <Input
-                                  type="number"
-                                  step="0.1"
-                                  value={line.default_markup_percent}
-                                  onChange={(e) => updateLine(index, 'default_markup_percent', parseFloat(e.target.value) || 0)}
-                                  data-testid={`line-${index}-markup`}
-                                />
-                              </div>
-
-                              <div className="flex items-center space-x-2 pt-6">
-                                <input
-                                  type="checkbox"
-                                  id={`markup-${index}`}
-                                  checked={line.markup_allowed}
-                                  onChange={(e) => updateLine(index, 'markup_allowed', e.target.checked)}
-                                  data-testid={`line-${index}-markup-allowed`}
-                                />
-                                <Label htmlFor={`markup-${index}`} className="text-sm">
-                                  Markup Allowed
-                                </Label>
-                              </div>
-
-                              <div className="flex items-center space-x-2 pt-6">
-                                <input
-                                  type="checkbox"
-                                  id={`approval-${index}`}
-                                  checked={line.override_requires_approval}
-                                  onChange={(e) => updateLine(index, 'override_requires_approval', e.target.checked)}
-                                  data-testid={`line-${index}-approval-required`}
-                                />
-                                <Label htmlFor={`approval-${index}`} className="text-sm">
-                                  Override Requires Approval
-                                </Label>
-                              </div>
-                            </div>
-                          </Card>
-                        ))
-                      )}
-                    </div>
+                        <Button type="button" variant="outline" onClick={addCustomLine}>
+                          + Add Custom Item
+                        </Button>
+                      </CardContent>
+                    </Card>
 
                     <div className="flex gap-2 pt-4">
-                      <Button
-                        type="submit"
-                        data-testid="recipe-submit-btn"
-                        className="bg-[#2563EB] hover:bg-[#1e40af]"
-                      >
+                      <Button type="submit" data-testid="recipe-submit-btn" className="bg-[#2563EB] hover:bg-[#1e40af]">
                         Create Recipe
                       </Button>
 
@@ -615,11 +573,9 @@ export default function RecipesPage() {
           <Card>
             <CardContent className="py-12">
               <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto">
-                <div className="text-lg font-semibold text-slate-900">
-                  No recipes added yet
-                </div>
+                <div className="text-lg font-semibold text-slate-900">No recipes added yet</div>
                 <div className="mt-2 text-sm text-slate-600">
-                  Recipes combine materials, labour, machines, installation, and custom items into reusable pricing structures.
+                  Recipes combine 1 m² pricing inputs into reusable structures for quotes.
                 </div>
 
                 {(isManager() || isMDAdmin()) && (
@@ -653,7 +609,9 @@ export default function RecipesPage() {
                         <div key={idx} className="flex items-center gap-2 text-sm text-slate-600">
                           {getLineIcon(line.line_type)}
                           <span>{line.line_type}</span>
-                          <span className="text-xs text-slate-400">({line.qty_driver})</span>
+                          <span className="text-xs text-slate-400">
+                            {line.markup_allowed ? '(material markup)' : '(no markup)'}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -680,32 +638,17 @@ export default function RecipesPage() {
             <div className="flex flex-col gap-3 text-sm text-slate-600 md:flex-row md:items-center md:justify-between">
               <div>
                 Showing {filteredRecipes.length === 0 ? 0 : startIndex + 1} to{' '}
-                {Math.min(startIndex + itemsPerPage, filteredRecipes.length)} of{' '}
-                {filteredRecipes.length} recipes
+                {Math.min(startIndex + itemsPerPage, filteredRecipes.length)} of {filteredRecipes.length} recipes
               </div>
 
               <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                >
+                <Button type="button" variant="outline" size="sm" onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage === 1}>
                   Previous
                 </Button>
 
-                <span>
-                  Page {currentPage} of {totalPages}
-                </span>
+                <span>Page {currentPage} of {totalPages}</span>
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                >
+                <Button type="button" variant="outline" size="sm" onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages}>
                   Next
                 </Button>
               </div>
