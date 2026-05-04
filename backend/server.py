@@ -3305,8 +3305,23 @@ async def create_install_type(install: InstallTypeCreate, user: dict = Depends(r
 
 @api_router.get("/install-types", response_model=List[InstallType])
 async def get_install_types(user: dict = Depends(get_current_user)):
-    installs = await db.install_types.find({"company_id": user["company_id"]}, {"_id": 0}).to_list(1000)
-    return installs
+    installs = await db.install_types.find(
+        {"company_id": user["company_id"]},
+        {"_id": 0}
+    ).to_list(1000)
+
+    cleaned_installs = []
+    for install in installs:
+        install["quantity_of_people"] = install.get("quantity_of_people") or install.get("number_of_people") or 1
+        install["rate_per_hour"] = install.get("rate_per_hour") or 0
+        install["sqm_per_hour"] = install.get("sqm_per_hour")
+        install["tools"] = install.get("tools") or []
+        install["hire_machine_name"] = install.get("hire_machine_name") or install.get("equipment")
+        install["hire_machine_supplier"] = install.get("hire_machine_supplier") or install.get("equipment_supplier")
+        install["hire_machine_rate_per_hour"] = install.get("hire_machine_rate_per_hour") or install.get("equipment_rate")
+        cleaned_installs.append(install)
+
+    return cleaned_installs
 
 @api_router.get("/install-types/export")
 async def export_install_types(user: dict = Depends(get_current_user)):
