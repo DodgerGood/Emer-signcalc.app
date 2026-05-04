@@ -21,7 +21,7 @@ const MATERIAL_CATEGORIES = [
   { value: 'PROFILE', label: 'Profile' },
 ];
 
-const newLabourLine = () => ({
+const newLabourMachineLine = () => ({
   temp_id: crypto.randomUUID(),
   labour_id: '',
 });
@@ -30,7 +30,7 @@ const newMaterialGroup = () => ({
   temp_id: crypto.randomUUID(),
   material_category: 'ALL',
   material_id: '',
-  labour_lines: [newLabourLine()],
+  labour_machine_lines: [newLabourMachineLine()],
 });
 
 const emptyForm = () => ({
@@ -46,7 +46,7 @@ export default function RecipesPage() {
 
   const [recipes, setRecipes] = useState([]);
   const [materials, setMaterials] = useState([]);
-  const [labours, setLabours] = useState([]);
+  const [labourMachines, setLabourMachines] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -80,7 +80,7 @@ export default function RecipesPage() {
 
       setRecipes(recipesRes.data || []);
       setMaterials(materialsRes.data || []);
-      setLabours((laboursRes.data || []).filter((item) => item.cost_type !== 'MACHINE'));
+      setLabourMachines(laboursRes.data || []);
     } catch {
       toast.error('Failed to load recipes data');
     } finally {
@@ -92,7 +92,11 @@ export default function RecipesPage() {
     if (!material) return 0;
 
     if (material.material_type === 'UNIT') {
-      if (material.unit_price !== null && material.unit_price !== undefined && Number(material.quantity_per_unit) > 0) {
+      if (
+        material.unit_price !== null &&
+        material.unit_price !== undefined &&
+        Number(material.quantity_per_unit) > 0
+      ) {
         return Number(material.unit_price) / Number(material.quantity_per_unit);
       }
 
@@ -102,16 +106,36 @@ export default function RecipesPage() {
     return Number(material.sqm_price) || 0;
   };
 
-  const getLabourCost = (labour) => {
-    if (!labour) return 0;
+  const getLabourMachineCost = (item) => {
+    if (!item) return 0;
 
-    const people = Number(labour.number_of_people) || 1;
-    const sqmPerHour = Number(labour.sqm_per_hour) || 0;
-    const toolsRate = (labour.tools || []).reduce((sum, tool) => {
+    const isMachine = item.cost_type === 'MACHINE';
+    const sqmPerHour = Number(item.sqm_per_hour) || 0;
+
+    if (isMachine) {
+      const machineValue = Number(item.machine_value) || 0;
+      const depreciationYears = Number(item.depreciation_years) || 0;
+      const workingHoursPerYear = Number(item.working_hours_per_year) || 0;
+      const electricityPerHour =
+        (Number(item.power_kw) || 0) * (Number(item.electricity_cost_per_kwh) || 0);
+      const operatorRate = Number(item.operator_hourly_rate) || 0;
+
+      const machineRate =
+        depreciationYears > 0 && workingHoursPerYear > 0
+          ? machineValue / depreciationYears / workingHoursPerYear
+          : Number(item.rate_per_hour) || 0;
+
+      const hourlyTotal = machineRate + electricityPerHour + operatorRate;
+
+      return sqmPerHour > 0 ? hourlyTotal / sqmPerHour : 0;
+    }
+
+    const people = Number(item.number_of_people) || 1;
+    const toolsRate = (item.tools || []).reduce((sum, tool) => {
       return sum + ((Number(tool.quantity) || 0) * (Number(tool.cost_per_hour) || 0));
     }, 0);
 
-    const hourlyTotal = ((Number(labour.rate_per_hour) || 0) * people) + toolsRate;
+    const hourlyTotal = ((Number(item.rate_per_hour) || 0) * people) + toolsRate;
 
     return sqmPerHour > 0 ? hourlyTotal / sqmPerHour : 0;
   };
@@ -124,33 +148,33 @@ export default function RecipesPage() {
     return map;
   }, [materials]);
 
-  const labourById = useMemo(() => {
+  const labourMachineById = useMemo(() => {
     const map = {};
-    labours.forEach((item) => {
+    labourMachines.forEach((item) => {
       map[item.id] = item;
     });
     return map;
-  }, [labours]);
+  }, [labourMachines]);
 
   const calculateFormTotals = () => {
     const materialCost = formData.material_groups.reduce((sum, group) => {
       return sum + getMaterialCost(materialById[group.material_id]);
     }, 0);
 
-    const labourCost = formData.material_groups.reduce((sum, group) => {
-      const groupLabour = group.labour_lines.reduce((labSum, line) => {
-        return labSum + getLabourCost(labourById[line.labour_id]);
+    const labourMachineCost = formData.material_groups.reduce((sum, group) => {
+      const groupCost = group.labour_machine_lines.reduce((lineSum, line) => {
+        return lineSum + getLabourMachineCost(labourMachineById[line.labour_id]);
       }, 0);
 
-      return sum + groupLabour;
+      return sum + groupCost;
     }, 0);
 
     const markupValue = materialCost * ((Number(formData.material_markup_percent) || 0) / 100);
-    const totalSellingPrice = materialCost + labourCost + markupValue;
+    const totalSellingPrice = materialCost + labourMachineCost + markupValue;
 
     return {
       materialCost,
-      labourCost,
+      labourMachineCost,
       markupValue,
       totalSellingPrice,
     };
@@ -202,25 +226,28 @@ export default function RecipesPage() {
     }));
   };
 
-  const addLabourToMaterial = (groupId) => {
-    setFormData((prev) => ({
-      ...prev,
-      material_groups: prev.material_groups.map((group) =>
-        group.temp_id === groupId
-          ? { ...group, labour_lines: [...group.labour_lines, newLabourLine()] }
-          : group
-      ),
-    }));
-  };
-
-  const updateLabourLine = (groupId, lineId, labourId) => {
+  const addLabourMachineToMaterial = (groupId) => {
     setFormData((prev) => ({
       ...prev,
       material_groups: prev.material_groups.map((group) =>
         group.temp_id === groupId
           ? {
               ...group,
-              labour_lines: group.labour_lines.map((line) =>
+              labour_machine_lines: [...group.labour_machine_lines, newLabourMachineLine()],
+            }
+          : group
+      ),
+    }));
+  };
+
+  const updateLabourMachineLine = (groupId, lineId, labourId) => {
+    setFormData((prev) => ({
+      ...prev,
+      material_groups: prev.material_groups.map((group) =>
+        group.temp_id === groupId
+          ? {
+              ...group,
+              labour_machine_lines: group.labour_machine_lines.map((line) =>
                 line.temp_id === lineId ? { ...line, labour_id: labourId } : line
               ),
             }
@@ -229,17 +256,17 @@ export default function RecipesPage() {
     }));
   };
 
-  const removeLabourLine = (groupId, lineId) => {
+  const removeLabourMachineLine = (groupId, lineId) => {
     setFormData((prev) => ({
       ...prev,
       material_groups: prev.material_groups.map((group) =>
         group.temp_id === groupId
           ? {
               ...group,
-              labour_lines:
-                group.labour_lines.length === 1
-                  ? group.labour_lines
-                  : group.labour_lines.filter((line) => line.temp_id !== lineId),
+              labour_machine_lines:
+                group.labour_machine_lines.length === 1
+                  ? group.labour_machine_lines
+                  : group.labour_machine_lines.filter((line) => line.temp_id !== lineId),
             }
           : group
       ),
@@ -265,11 +292,13 @@ export default function RecipesPage() {
         });
       }
 
-      group.labour_lines.forEach((labourLine) => {
-        if (labourLine.labour_id) {
+      group.labour_machine_lines.forEach((line) => {
+        const selected = labourMachineById[line.labour_id];
+
+        if (line.labour_id && selected) {
           lines.push({
-            line_type: 'LABOUR',
-            reference_id: labourLine.labour_id,
+            line_type: selected.cost_type === 'MACHINE' ? 'MACHINE' : 'LABOUR',
+            reference_id: line.labour_id,
             qty_driver: 'SQM',
             multiplier: 1,
             waste_percent: 0,
@@ -302,7 +331,7 @@ export default function RecipesPage() {
     const lines = buildRecipeLines();
 
     if (lines.length === 0) {
-      toast.error('Please add at least one material or labour item');
+      toast.error('Please add at least one material, labour, or machine item');
       return;
     }
 
@@ -331,7 +360,9 @@ export default function RecipesPage() {
   const handleEdit = (recipe) => {
     const recipeLines = recipe.lines || [];
     const materialLines = recipeLines.filter((line) => line.line_type === 'MATERIAL');
-    const labourLines = recipeLines.filter((line) => line.line_type === 'LABOUR');
+    const labourMachineLines = recipeLines.filter(
+      (line) => line.line_type === 'LABOUR' || line.line_type === 'MACHINE'
+    );
 
     const markupPercent =
       materialLines.length > 0
@@ -343,13 +374,13 @@ export default function RecipesPage() {
           temp_id: crypto.randomUUID(),
           material_category: materialById[line.reference_id]?.material_type || 'ALL',
           material_id: line.reference_id || '',
-          labour_lines:
-            index === 0 && labourLines.length
-              ? labourLines.map((labourLine) => ({
+          labour_machine_lines:
+            index === 0 && labourMachineLines.length
+              ? labourMachineLines.map((labourMachineLine) => ({
                   temp_id: crypto.randomUUID(),
-                  labour_id: labourLine.reference_id || '',
+                  labour_id: labourMachineLine.reference_id || '',
                 }))
-              : [newLabourLine()],
+              : [newLabourMachineLine()],
         }))
       : [newMaterialGroup()];
 
@@ -381,19 +412,19 @@ export default function RecipesPage() {
       .filter((line) => line.line_type === 'MATERIAL')
       .reduce((sum, line) => sum + getMaterialCost(materialById[line.reference_id]), 0);
 
-    const labourCost = lines
-      .filter((line) => line.line_type === 'LABOUR')
-      .reduce((sum, line) => sum + getLabourCost(labourById[line.reference_id]), 0);
+    const labourMachineCost = lines
+      .filter((line) => line.line_type === 'LABOUR' || line.line_type === 'MACHINE')
+      .reduce((sum, line) => sum + getLabourMachineCost(labourMachineById[line.reference_id]), 0);
 
     const markupPercent =
       lines.find((line) => line.line_type === 'MATERIAL')?.default_markup_percent || 0;
 
     const markupValue = materialCost * ((Number(markupPercent) || 0) / 100);
-    const totalSellingPrice = materialCost + labourCost + markupValue;
+    const totalSellingPrice = materialCost + labourMachineCost + markupValue;
 
     return {
       materialCost,
-      labourCost,
+      labourMachineCost,
       markupPercent,
       markupValue,
       totalSellingPrice,
@@ -407,7 +438,7 @@ export default function RecipesPage() {
           <div>
             <h1 className="text-4xl font-black tracking-tight leading-none">Recipes</h1>
             <p className="text-slate-600 mt-2">
-              Build reusable 1 m² recipes from materials and labour. Markup applies to materials only.
+              Build reusable 1 m² recipes from materials, labour, and machines. Markup applies to materials only.
             </p>
           </div>
 
@@ -432,7 +463,7 @@ export default function RecipesPage() {
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="rounded-md border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
-                    This recipe represents <strong>1 m²</strong>. Add materials, then assign one or more labour items to each material.
+                    This recipe represents <strong>1 m²</strong>. Add materials, then assign one or more labour or machine items to each material.
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -544,31 +575,38 @@ export default function RecipesPage() {
 
                             <div className="space-y-3 rounded-md border border-slate-200 p-4">
                               <div className="flex items-center justify-between">
-                                <h4 className="font-semibold">Labour assigned to this material</h4>
-                                <Button type="button" variant="outline" size="sm" onClick={() => addLabourToMaterial(group.temp_id)}>
+                                <h4 className="font-semibold">Labour & Machine assigned to this material</h4>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => addLabourMachineToMaterial(group.temp_id)}
+                                >
                                   <Plus size={14} className="mr-2" />
-                                  Add Labour
+                                  Add Labour / Machine
                                 </Button>
                               </div>
 
-                              {group.labour_lines.map((line, lineIndex) => {
-                                const selectedLabour = labourById[line.labour_id];
+                              {group.labour_machine_lines.map((line, lineIndex) => {
+                                const selectedItem = labourMachineById[line.labour_id];
 
                                 return (
                                   <div key={line.temp_id} className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto_auto] md:items-end">
                                     <div className="space-y-2">
-                                      <Label>Labour {lineIndex + 1}</Label>
+                                      <Label>Labour / Machine {lineIndex + 1}</Label>
                                       <Select
                                         value={line.labour_id || undefined}
-                                        onValueChange={(value) => updateLabourLine(group.temp_id, line.temp_id, value)}
+                                        onValueChange={(value) =>
+                                          updateLabourMachineLine(group.temp_id, line.temp_id, value)
+                                        }
                                       >
                                         <SelectTrigger>
-                                          <SelectValue placeholder="Select labour" />
+                                          <SelectValue placeholder="Select labour or machine" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                          {labours.map((item) => (
+                                          {labourMachines.map((item) => (
                                             <SelectItem key={item.id} value={item.id}>
-                                              {item.name} — {money(getLabourCost(item))}
+                                              {item.cost_type === 'MACHINE' ? 'Machine' : 'Labour'}: {item.name} — {money(getLabourMachineCost(item))}
                                             </SelectItem>
                                           ))}
                                         </SelectContent>
@@ -576,15 +614,15 @@ export default function RecipesPage() {
                                     </div>
 
                                     <div className="rounded-md bg-slate-50 px-3 py-2 text-sm">
-                                      {money(getLabourCost(selectedLabour))}
+                                      {money(getLabourMachineCost(selectedItem))}
                                     </div>
 
                                     <Button
                                       type="button"
                                       variant="ghost"
                                       size="sm"
-                                      onClick={() => removeLabourLine(group.temp_id, line.temp_id)}
-                                      disabled={group.labour_lines.length === 1}
+                                      onClick={() => removeLabourMachineLine(group.temp_id, line.temp_id)}
+                                      disabled={group.labour_machine_lines.length === 1}
                                       className="text-red-600 hover:bg-red-50 hover:text-red-700"
                                     >
                                       <Trash2 size={16} />
@@ -610,8 +648,8 @@ export default function RecipesPage() {
                       <div className="text-lg font-bold">{money(formTotals.materialCost)}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-slate-500">Labour Cost</div>
-                      <div className="text-lg font-bold">{money(formTotals.labourCost)}</div>
+                      <div className="text-xs text-slate-500">Labour & Machine Cost</div>
+                      <div className="text-lg font-bold">{money(formTotals.labourMachineCost)}</div>
                     </div>
                     <div>
                       <div className="text-xs text-slate-500">Markup Value</div>
@@ -666,7 +704,7 @@ export default function RecipesPage() {
               <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto">
                 <div className="text-lg font-semibold text-slate-900">No recipes added yet</div>
                 <div className="mt-2 text-sm text-slate-600">
-                  Recipes combine material and labour costs into reusable 1 m² selling prices.
+                  Recipes combine material, labour, and machine costs into reusable 1 m² selling prices.
                 </div>
 
                 {canManage && (
@@ -690,7 +728,7 @@ export default function RecipesPage() {
                   <tr>
                     <th className="px-4 py-3">Recipe Name</th>
                     <th className="px-4 py-3">Materials Cost</th>
-                    <th className="px-4 py-3">Labour Cost</th>
+                    <th className="px-4 py-3">Labour & Machine Cost</th>
                     <th className="px-4 py-3">Markup %</th>
                     <th className="px-4 py-3">Markup Value</th>
                     <th className="px-4 py-3">Total Selling Price</th>
@@ -706,7 +744,7 @@ export default function RecipesPage() {
                       <tr key={recipe.id} data-testid={`recipe-${recipe.id}`}>
                         <td className="px-4 py-3 font-semibold">{recipe.name}</td>
                         <td className="px-4 py-3">{money(totals.materialCost)}</td>
-                        <td className="px-4 py-3">{money(totals.labourCost)}</td>
+                        <td className="px-4 py-3">{money(totals.labourMachineCost)}</td>
                         <td className="px-4 py-3">{Number(totals.markupPercent || 0).toFixed(1)}%</td>
                         <td className="px-4 py-3">{money(totals.markupValue)}</td>
                         <td className="px-4 py-3 font-bold">{money(totals.totalSellingPrice)}</td>
@@ -750,13 +788,25 @@ export default function RecipesPage() {
               </div>
 
               <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage === 1}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                >
                   Previous
                 </Button>
 
                 <span>Page {currentPage} of {totalPages}</span>
 
-                <Button type="button" variant="outline" size="sm" onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                >
                   Next
                 </Button>
               </div>
@@ -780,16 +830,19 @@ export default function RecipesPage() {
                 <div className="space-y-2">
                   {(infoRecipe.lines || []).map((line, index) => {
                     const material = line.line_type === 'MATERIAL' ? materialById[line.reference_id] : null;
-                    const labour = line.line_type === 'LABOUR' ? labourById[line.reference_id] : null;
+                    const labourMachine =
+                      line.line_type === 'LABOUR' || line.line_type === 'MACHINE'
+                        ? labourMachineById[line.reference_id]
+                        : null;
 
                     return (
                       <div key={index} className="rounded-md border p-3 text-sm">
                         <div className="font-semibold">{line.line_type}</div>
-                        <div>{material?.name || labour?.name || line.custom_name || 'Unknown item'}</div>
+                        <div>{material?.name || labourMachine?.name || line.custom_name || 'Unknown item'}</div>
                         <div className="text-slate-500">
                           {line.line_type === 'MATERIAL'
                             ? money(getMaterialCost(material))
-                            : money(getLabourCost(labour))}
+                            : money(getLabourMachineCost(labourMachine))}
                         </div>
                       </div>
                     );
