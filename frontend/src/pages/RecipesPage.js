@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import api from '../lib/api';
@@ -7,9 +7,39 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Plus, Trash2, Package, Users, Wrench } from 'lucide-react';
+import { Card, CardContent } from '../components/ui/card';
+import { Plus, Trash2, Info, Edit } from 'lucide-react';
 import { toast } from 'sonner';
+
+const MATERIAL_CATEGORIES = [
+  { value: 'ALL', label: 'All Categories' },
+  { value: 'SHEET', label: 'Sheet' },
+  { value: 'ROLL', label: 'Roll' },
+  { value: 'BOARD', label: 'Board' },
+  { value: 'INK', label: 'Ink / Paint / Liquid' },
+  { value: 'UNIT', label: 'Unit / Product' },
+  { value: 'PROFILE', label: 'Profile' },
+];
+
+const newLabourLine = () => ({
+  temp_id: crypto.randomUUID(),
+  labour_id: '',
+});
+
+const newMaterialGroup = () => ({
+  temp_id: crypto.randomUUID(),
+  material_category: 'ALL',
+  material_id: '',
+  labour_lines: [newLabourLine()],
+});
+
+const emptyForm = () => ({
+  name: '',
+  material_markup_percent: 30,
+  material_groups: [newMaterialGroup()],
+});
+
+const money = (value) => `R ${(Number(value) || 0).toFixed(2)}`;
 
 export default function RecipesPage() {
   const { isManager, isMDAdmin } = useAuth();
@@ -17,35 +47,18 @@ export default function RecipesPage() {
   const [recipes, setRecipes] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [labours, setLabours] = useState([]);
-  const [installs, setInstalls] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [infoRecipe, setInfoRecipe] = useState(null);
+  const [editingRecipeId, setEditingRecipeId] = useState(null);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [formData, setFormData] = useState(emptyForm());
 
   const itemsPerPage = 9;
-
-  const [formData, setFormData] = useState({
-    name: '',
-    material_markup_percent: 30,
-
-    material_id: 'NA',
-    material_custom_name: '',
-    material_custom_cost: '',
-
-    labour_id: 'NA',
-    labour_custom_name: '',
-    labour_custom_cost: '',
-
-    machine_id: 'NA',
-    machine_custom_name: '',
-    machine_custom_cost: '',
-
-    install_id: 'NA',
-    install_custom_name: '',
-    install_custom_cost: '',
-  });
+  const canManage = isManager() || isMDAdmin();
 
   useEffect(() => {
     loadData();
@@ -59,23 +72,91 @@ export default function RecipesPage() {
     try {
       setLoading(true);
 
-      const [recipesRes, materialsRes, laboursRes, installsRes] = await Promise.all([
+      const [recipesRes, materialsRes, laboursRes] = await Promise.all([
         api.get('/recipes'),
         api.get('/materials'),
         api.get('/labour-types'),
-        api.get('/install-types'),
       ]);
 
       setRecipes(recipesRes.data || []);
       setMaterials(materialsRes.data || []);
-      setLabours(laboursRes.data || []);
-      setInstalls(installsRes.data || []);
+      setLabours((laboursRes.data || []).filter((item) => item.cost_type !== 'MACHINE'));
     } catch {
       toast.error('Failed to load recipes data');
     } finally {
       setLoading(false);
     }
   };
+
+  const getMaterialCost = (material) => {
+    if (!material) return 0;
+
+    if (material.material_type === 'UNIT') {
+      if (material.unit_price !== null && material.unit_price !== undefined && Number(material.quantity_per_unit) > 0) {
+        return Number(material.unit_price) / Number(material.quantity_per_unit);
+      }
+
+      return Number(material.unit_price) || 0;
+    }
+
+    return Number(material.sqm_price) || 0;
+  };
+
+  const getLabourCost = (labour) => {
+    if (!labour) return 0;
+
+    const people = Number(labour.number_of_people) || 1;
+    const sqmPerHour = Number(labour.sqm_per_hour) || 0;
+    const toolsRate = (labour.tools || []).reduce((sum, tool) => {
+      return sum + ((Number(tool.quantity) || 0) * (Number(tool.cost_per_hour) || 0));
+    }, 0);
+
+    const hourlyTotal = ((Number(labour.rate_per_hour) || 0) * people) + toolsRate;
+
+    return sqmPerHour > 0 ? hourlyTotal / sqmPerHour : 0;
+  };
+
+  const materialById = useMemo(() => {
+    const map = {};
+    materials.forEach((item) => {
+      map[item.id] = item;
+    });
+    return map;
+  }, [materials]);
+
+  const labourById = useMemo(() => {
+    const map = {};
+    labours.forEach((item) => {
+      map[item.id] = item;
+    });
+    return map;
+  }, [labours]);
+
+  const calculateFormTotals = () => {
+    const materialCost = formData.material_groups.reduce((sum, group) => {
+      return sum + getMaterialCost(materialById[group.material_id]);
+    }, 0);
+
+    const labourCost = formData.material_groups.reduce((sum, group) => {
+      const groupLabour = group.labour_lines.reduce((labSum, line) => {
+        return labSum + getLabourCost(labourById[line.labour_id]);
+      }, 0);
+
+      return sum + groupLabour;
+    }, 0);
+
+    const markupValue = materialCost * ((Number(formData.material_markup_percent) || 0) / 100);
+    const totalSellingPrice = materialCost + labourCost + markupValue;
+
+    return {
+      materialCost,
+      labourCost,
+      markupValue,
+      totalSellingPrice,
+    };
+  };
+
+  const formTotals = calculateFormTotals();
 
   const filteredRecipes = recipes.filter((recipe) =>
     recipe.name?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -86,26 +167,8 @@ export default function RecipesPage() {
   const paginatedRecipes = filteredRecipes.slice(startIndex, startIndex + itemsPerPage);
 
   const resetForm = () => {
-    setFormData({
-      name: '',
-      material_markup_percent: 30,
-
-      material_id: 'NA',
-      material_custom_name: '',
-      material_custom_cost: '',
-
-      labour_id: 'NA',
-      labour_custom_name: '',
-      labour_custom_cost: '',
-
-      machine_id: 'NA',
-      machine_custom_name: '',
-      machine_custom_cost: '',
-
-      install_id: 'NA',
-      install_custom_name: '',
-      install_custom_cost: '',
-    });
+    setEditingRecipeId(null);
+    setFormData(emptyForm());
   };
 
   const handleOpenCreateRecipe = () => {
@@ -113,72 +176,112 @@ export default function RecipesPage() {
     setDialogOpen(true);
   };
 
-  const addExistingLine = (lines, lineType, referenceId, markupAllowed, markupPercent) => {
-    if (!referenceId || referenceId === 'NA' || referenceId === 'CUSTOM') return;
-
-    lines.push({
-      line_type: lineType,
-      reference_id: referenceId,
-      qty_driver: 'SQM',
-      multiplier: 1,
-      waste_percent: 0,
-      default_markup_percent: markupAllowed ? parseFloat(markupPercent) || 0 : 0,
-      markup_allowed: markupAllowed,
-      override_requires_approval: false,
-      custom_name: null,
-      custom_unit_cost: null,
-    });
+  const updateMaterialGroup = (groupId, updates) => {
+    setFormData((prev) => ({
+      ...prev,
+      material_groups: prev.material_groups.map((group) =>
+        group.temp_id === groupId ? { ...group, ...updates } : group
+      ),
+    }));
   };
 
-  const addCustomLine = (lines, customName, customCost, markupAllowed, markupPercent) => {
-    if (!customName || !(Number(customCost) > 0)) return;
+  const addMaterialGroup = () => {
+    setFormData((prev) => ({
+      ...prev,
+      material_groups: [...prev.material_groups, newMaterialGroup()],
+    }));
+  };
 
-    lines.push({
-      line_type: 'CUSTOM',
-      reference_id: null,
-      qty_driver: 'SQM',
-      multiplier: 1,
-      waste_percent: 0,
-      default_markup_percent: markupAllowed ? parseFloat(markupPercent) || 0 : 0,
-      markup_allowed: markupAllowed,
-      override_requires_approval: false,
-      custom_name: customName,
-      custom_unit_cost: parseFloat(customCost) || 0,
-    });
+  const removeMaterialGroup = (groupId) => {
+    setFormData((prev) => ({
+      ...prev,
+      material_groups:
+        prev.material_groups.length === 1
+          ? prev.material_groups
+          : prev.material_groups.filter((group) => group.temp_id !== groupId),
+    }));
+  };
+
+  const addLabourToMaterial = (groupId) => {
+    setFormData((prev) => ({
+      ...prev,
+      material_groups: prev.material_groups.map((group) =>
+        group.temp_id === groupId
+          ? { ...group, labour_lines: [...group.labour_lines, newLabourLine()] }
+          : group
+      ),
+    }));
+  };
+
+  const updateLabourLine = (groupId, lineId, labourId) => {
+    setFormData((prev) => ({
+      ...prev,
+      material_groups: prev.material_groups.map((group) =>
+        group.temp_id === groupId
+          ? {
+              ...group,
+              labour_lines: group.labour_lines.map((line) =>
+                line.temp_id === lineId ? { ...line, labour_id: labourId } : line
+              ),
+            }
+          : group
+      ),
+    }));
+  };
+
+  const removeLabourLine = (groupId, lineId) => {
+    setFormData((prev) => ({
+      ...prev,
+      material_groups: prev.material_groups.map((group) =>
+        group.temp_id === groupId
+          ? {
+              ...group,
+              labour_lines:
+                group.labour_lines.length === 1
+                  ? group.labour_lines
+                  : group.labour_lines.filter((line) => line.temp_id !== lineId),
+            }
+          : group
+      ),
+    }));
   };
 
   const buildRecipeLines = () => {
     const lines = [];
 
-    if (formData.material_id === 'CUSTOM') {
-      addCustomLine(
-        lines,
-        formData.material_custom_name,
-        formData.material_custom_cost,
-        true,
-        formData.material_markup_percent
-      );
-    } else {
-      addExistingLine(lines, 'MATERIAL', formData.material_id, true, formData.material_markup_percent);
-    }
+    formData.material_groups.forEach((group) => {
+      if (group.material_id) {
+        lines.push({
+          line_type: 'MATERIAL',
+          reference_id: group.material_id,
+          qty_driver: 'SQM',
+          multiplier: 1,
+          waste_percent: 0,
+          default_markup_percent: Number(formData.material_markup_percent) || 0,
+          markup_allowed: true,
+          override_requires_approval: false,
+          custom_name: null,
+          custom_unit_cost: null,
+        });
+      }
 
-    if (formData.labour_id === 'CUSTOM') {
-      addCustomLine(lines, formData.labour_custom_name, formData.labour_custom_cost, false, 0);
-    } else {
-      addExistingLine(lines, 'LABOUR', formData.labour_id, false, 0);
-    }
-
-    if (formData.machine_id === 'CUSTOM') {
-      addCustomLine(lines, formData.machine_custom_name, formData.machine_custom_cost, false, 0);
-    } else {
-      addExistingLine(lines, 'MACHINE', formData.machine_id, false, 0);
-    }
-
-    if (formData.install_id === 'CUSTOM') {
-      addCustomLine(lines, formData.install_custom_name, formData.install_custom_cost, false, 0);
-    } else {
-      addExistingLine(lines, 'INSTALL', formData.install_id, false, 0);
-    }
+      group.labour_lines.forEach((labourLine) => {
+        if (labourLine.labour_id) {
+          lines.push({
+            line_type: 'LABOUR',
+            reference_id: labourLine.labour_id,
+            qty_driver: 'SQM',
+            multiplier: 1,
+            waste_percent: 0,
+            default_markup_percent: 0,
+            markup_allowed: false,
+            override_requires_approval: false,
+            custom_name: null,
+            custom_unit_cost: null,
+          });
+        }
+      });
+    });
 
     return lines;
   };
@@ -186,26 +289,77 @@ export default function RecipesPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!(isManager() || isMDAdmin())) {
+    if (!canManage) {
       toast.error('Only managers can create recipes');
+      return;
+    }
+
+    if (!formData.name.trim()) {
+      toast.error('Recipe name is required');
+      return;
+    }
+
+    const lines = buildRecipeLines();
+
+    if (lines.length === 0) {
+      toast.error('Please add at least one material or labour item');
       return;
     }
 
     try {
       const payload = {
-        name: formData.name,
-        lines: buildRecipeLines(),
+        name: formData.name.trim(),
+        lines,
       };
 
-      await api.post('/recipes', payload);
+      if (editingRecipeId) {
+        await api.put(`/recipes/${editingRecipeId}`, payload);
+        toast.success('Recipe updated');
+      } else {
+        await api.post('/recipes', payload);
+        toast.success('Recipe created');
+      }
 
-      toast.success('Recipe created');
       setDialogOpen(false);
       resetForm();
       loadData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to create recipe');
+      toast.error(error.response?.data?.detail || 'Failed to save recipe');
     }
+  };
+
+  const handleEdit = (recipe) => {
+    const recipeLines = recipe.lines || [];
+    const materialLines = recipeLines.filter((line) => line.line_type === 'MATERIAL');
+    const labourLines = recipeLines.filter((line) => line.line_type === 'LABOUR');
+
+    const markupPercent =
+      materialLines.length > 0
+        ? Number(materialLines[0].default_markup_percent) || 0
+        : 0;
+
+    const materialGroups = materialLines.length
+      ? materialLines.map((line, index) => ({
+          temp_id: crypto.randomUUID(),
+          material_category: materialById[line.reference_id]?.material_type || 'ALL',
+          material_id: line.reference_id || '',
+          labour_lines:
+            index === 0 && labourLines.length
+              ? labourLines.map((labourLine) => ({
+                  temp_id: crypto.randomUUID(),
+                  labour_id: labourLine.reference_id || '',
+                }))
+              : [newLabourLine()],
+        }))
+      : [newMaterialGroup()];
+
+    setEditingRecipeId(recipe.id);
+    setFormData({
+      name: recipe.name || '',
+      material_markup_percent: markupPercent,
+      material_groups: materialGroups,
+    });
+    setDialogOpen(true);
   };
 
   const handleDelete = async (id) => {
@@ -220,19 +374,30 @@ export default function RecipesPage() {
     }
   };
 
-  const getLineIcon = (type) => {
-    switch (type) {
-      case 'MATERIAL':
-      case 'CUSTOM':
-        return <Package size={16} />;
-      case 'LABOUR':
-      case 'MACHINE':
-        return <Users size={16} />;
-      case 'INSTALL':
-        return <Wrench size={16} />;
-      default:
-        return <Plus size={16} />;
-    }
+  const getRecipeTotals = (recipe) => {
+    const lines = recipe.lines || [];
+
+    const materialCost = lines
+      .filter((line) => line.line_type === 'MATERIAL')
+      .reduce((sum, line) => sum + getMaterialCost(materialById[line.reference_id]), 0);
+
+    const labourCost = lines
+      .filter((line) => line.line_type === 'LABOUR')
+      .reduce((sum, line) => sum + getLabourCost(labourById[line.reference_id]), 0);
+
+    const markupPercent =
+      lines.find((line) => line.line_type === 'MATERIAL')?.default_markup_percent || 0;
+
+    const markupValue = materialCost * ((Number(markupPercent) || 0) / 100);
+    const totalSellingPrice = materialCost + labourCost + markupValue;
+
+    return {
+      materialCost,
+      labourCost,
+      markupPercent,
+      markupValue,
+      totalSellingPrice,
+    };
   };
 
   return (
@@ -242,11 +407,11 @@ export default function RecipesPage() {
           <div>
             <h1 className="text-4xl font-black tracking-tight leading-none">Recipes</h1>
             <p className="text-slate-600 mt-2">
-              Build reusable 1 m² pricing recipes from materials, labour, machines, installation, and custom items.
+              Build reusable 1 m² recipes from materials and labour. Markup applies to materials only.
             </p>
           </div>
 
-          {(isManager() || isMDAdmin()) && (
+          {canManage && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button
@@ -260,277 +425,207 @@ export default function RecipesPage() {
                 </Button>
               </DialogTrigger>
 
-              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Create New 1 m² Recipe</DialogTitle>
+                  <DialogTitle>{editingRecipeId ? 'Edit Recipe' : 'Create New 1 m² Recipe'}</DialogTitle>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="rounded-md border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
-                    This recipe represents the cost to produce <strong>1 m²</strong>. Select an existing item,
-                    choose N/A, or enter a custom item for each section.
+                    This recipe represents <strong>1 m²</strong>. Add materials, then assign one or more labour items to each material.
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="recipe-name">Recipe Name *</Label>
-                    <Input
-                      id="recipe-name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      required
-                      data-testid="recipe-name-input"
-                      placeholder="e.g., Standard vinyl print and install per m²"
-                    />
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="recipe-name">Recipe Name *</Label>
+                      <Input
+                        id="recipe-name"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        required
+                        data-testid="recipe-name-input"
+                        placeholder="e.g., ACM panel with vinyl"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="recipe-markup">Recipe Material Markup %</Label>
+                      <Input
+                        id="recipe-markup"
+                        type="number"
+                        step="0.1"
+                        value={formData.material_markup_percent}
+                        onChange={(e) =>
+                          setFormData({ ...formData, material_markup_percent: e.target.value })
+                        }
+                      />
+                      <p className="text-xs text-slate-500">Only materials receive markup.</p>
+                    </div>
                   </div>
 
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Material</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label>Material Reference</Label>
-                          <Select
-                            value={formData.material_id}
-                            onValueChange={(v) => setFormData({ ...formData, material_id: v })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="NA">N/A</SelectItem>
-                              <SelectItem value="CUSTOM">Custom Material</SelectItem>
-                              {materials.map((item) => (
-                                <SelectItem key={item.id} value={item.id}>
-                                  {item.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                  <div className="space-y-4">
+                    {formData.material_groups.map((group, groupIndex) => {
+                      const availableMaterials =
+                        group.material_category === 'ALL'
+                          ? materials
+                          : materials.filter((item) => item.material_type === group.material_category);
 
-                        <div className="space-y-2">
-                          <Label>Material Markup %</Label>
-                          <Input
-                            type="number"
-                            step="0.1"
-                            value={formData.material_markup_percent}
-                            onChange={(e) =>
-                              setFormData({ ...formData, material_markup_percent: e.target.value })
-                            }
-                          />
-                          <p className="text-xs text-slate-500">
-                            Markup applies to materials only. Labour, machines, and installation are not marked up.
-                          </p>
-                        </div>
-                      </div>
+                      const selectedMaterial = materialById[group.material_id];
 
-                      {formData.material_id === 'CUSTOM' && (
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                          <div className="space-y-2">
-                            <Label>Custom Material Name</Label>
-                            <Input
-                              value={formData.material_custom_name}
-                              onChange={(e) =>
-                                setFormData({ ...formData, material_custom_name: e.target.value })
-                              }
-                              placeholder="e.g., Special imported vinyl"
-                            />
-                          </div>
+                      return (
+                        <Card key={group.temp_id} className="border-slate-200">
+                          <CardContent className="space-y-4 pt-6">
+                            <div className="flex items-center justify-between gap-3">
+                              <h3 className="text-lg font-bold">Material {groupIndex + 1}</h3>
 
-                          <div className="space-y-2">
-                            <Label>Custom Material Cost / m² (ZAR)</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={formData.material_custom_cost}
-                              onChange={(e) =>
-                                setFormData({ ...formData, material_custom_cost: e.target.value })
-                              }
-                              placeholder="e.g., 85"
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeMaterialGroup(group.temp_id)}
+                                disabled={formData.material_groups.length === 1}
+                                className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                              >
+                                <Trash2 size={16} className="mr-2" />
+                                Remove Material
+                              </Button>
+                            </div>
 
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Labour</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>Labour Reference</Label>
-                        <Select
-                          value={formData.labour_id}
-                          onValueChange={(v) => setFormData({ ...formData, labour_id: v })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="NA">N/A</SelectItem>
-                            <SelectItem value="CUSTOM">Custom Labour</SelectItem>
-                            {labours
-                              .filter((item) => item.cost_type !== 'MACHINE')
-                              .map((item) => (
-                                <SelectItem key={item.id} value={item.id}>
-                                  {item.name}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                              <div className="space-y-2">
+                                <Label>Material Category</Label>
+                                <Select
+                                  value={group.material_category}
+                                  onValueChange={(value) =>
+                                    updateMaterialGroup(group.temp_id, {
+                                      material_category: value,
+                                      material_id: '',
+                                    })
+                                  }
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {MATERIAL_CATEGORIES.map((cat) => (
+                                      <SelectItem key={cat.value} value={cat.value}>
+                                        {cat.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
 
-                      {formData.labour_id === 'CUSTOM' && (
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                          <div className="space-y-2">
-                            <Label>Custom Labour Name</Label>
-                            <Input
-                              value={formData.labour_custom_name}
-                              onChange={(e) =>
-                                setFormData({ ...formData, labour_custom_name: e.target.value })
-                              }
-                              placeholder="e.g., Special application labour"
-                            />
-                          </div>
+                              <div className="space-y-2">
+                                <Label>Exact Material</Label>
+                                <Select
+                                  value={group.material_id || undefined}
+                                  onValueChange={(value) =>
+                                    updateMaterialGroup(group.temp_id, { material_id: value })
+                                  }
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select material" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {availableMaterials.map((item) => (
+                                      <SelectItem key={item.id} value={item.id}>
+                                        {item.name} — {money(getMaterialCost(item))}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
 
-                          <div className="space-y-2">
-                            <Label>Custom Labour Cost / m² (ZAR)</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={formData.labour_custom_cost}
-                              onChange={(e) =>
-                                setFormData({ ...formData, labour_custom_cost: e.target.value })
-                              }
-                              placeholder="e.g., 25"
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                            <div className="rounded-md bg-slate-50 p-3 text-sm text-slate-700">
+                              Material cost: <strong>{money(getMaterialCost(selectedMaterial))}</strong>
+                            </div>
 
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Machine</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>Machine Reference</Label>
-                        <Select
-                          value={formData.machine_id}
-                          onValueChange={(v) => setFormData({ ...formData, machine_id: v })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="NA">N/A</SelectItem>
-                            <SelectItem value="CUSTOM">Custom Machine</SelectItem>
-                            {labours
-                              .filter((item) => item.cost_type === 'MACHINE')
-                              .map((item) => (
-                                <SelectItem key={item.id} value={item.id}>
-                                  {item.name}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                            <div className="space-y-3 rounded-md border border-slate-200 p-4">
+                              <div className="flex items-center justify-between">
+                                <h4 className="font-semibold">Labour assigned to this material</h4>
+                                <Button type="button" variant="outline" size="sm" onClick={() => addLabourToMaterial(group.temp_id)}>
+                                  <Plus size={14} className="mr-2" />
+                                  Add Labour
+                                </Button>
+                              </div>
 
-                      {formData.machine_id === 'CUSTOM' && (
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                          <div className="space-y-2">
-                            <Label>Custom Machine Name</Label>
-                            <Input
-                              value={formData.machine_custom_name}
-                              onChange={(e) =>
-                                setFormData({ ...formData, machine_custom_name: e.target.value })
-                              }
-                              placeholder="e.g., Outsourced CNC cutting"
-                            />
-                          </div>
+                              {group.labour_lines.map((line, lineIndex) => {
+                                const selectedLabour = labourById[line.labour_id];
 
-                          <div className="space-y-2">
-                            <Label>Custom Machine Cost / m² (ZAR)</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={formData.machine_custom_cost}
-                              onChange={(e) =>
-                                setFormData({ ...formData, machine_custom_cost: e.target.value })
-                              }
-                              placeholder="e.g., 40"
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                                return (
+                                  <div key={line.temp_id} className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto_auto] md:items-end">
+                                    <div className="space-y-2">
+                                      <Label>Labour {lineIndex + 1}</Label>
+                                      <Select
+                                        value={line.labour_id || undefined}
+                                        onValueChange={(value) => updateLabourLine(group.temp_id, line.temp_id, value)}
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select labour" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {labours.map((item) => (
+                                            <SelectItem key={item.id} value={item.id}>
+                                              {item.name} — {money(getLabourCost(item))}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
 
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Installation</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>Installation Reference</Label>
-                        <Select
-                          value={formData.install_id}
-                          onValueChange={(v) => setFormData({ ...formData, install_id: v })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="NA">N/A</SelectItem>
-                            <SelectItem value="CUSTOM">Custom Installation</SelectItem>
-                            {installs.map((item) => (
-                              <SelectItem key={item.id} value={item.id}>
-                                {item.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                                    <div className="rounded-md bg-slate-50 px-3 py-2 text-sm">
+                                      {money(getLabourCost(selectedLabour))}
+                                    </div>
 
-                      {formData.install_id === 'CUSTOM' && (
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                          <div className="space-y-2">
-                            <Label>Custom Installation Name</Label>
-                            <Input
-                              value={formData.install_custom_name}
-                              onChange={(e) =>
-                                setFormData({ ...formData, install_custom_name: e.target.value })
-                              }
-                              placeholder="e.g., High access installation"
-                            />
-                          </div>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => removeLabourLine(group.temp_id, line.temp_id)}
+                                      disabled={group.labour_lines.length === 1}
+                                      className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                                    >
+                                      <Trash2 size={16} />
+                                    </Button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
 
-                          <div className="space-y-2">
-                            <Label>Custom Installation Cost / m² (ZAR)</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={formData.install_custom_cost}
-                              onChange={(e) =>
-                                setFormData({ ...formData, install_custom_cost: e.target.value })
-                              }
-                              placeholder="e.g., 60"
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                    <Button type="button" variant="outline" onClick={addMaterialGroup}>
+                      <Plus size={16} className="mr-2" />
+                      Add Another Material
+                    </Button>
+                  </div>
 
-                  <div className="flex gap-2 pt-4">
+                  <div className="grid grid-cols-1 gap-3 rounded-xl border bg-slate-50 p-4 md:grid-cols-4">
+                    <div>
+                      <div className="text-xs text-slate-500">Materials Cost</div>
+                      <div className="text-lg font-bold">{money(formTotals.materialCost)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-slate-500">Labour Cost</div>
+                      <div className="text-lg font-bold">{money(formTotals.labourCost)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-slate-500">Markup Value</div>
+                      <div className="text-lg font-bold">{money(formTotals.markupValue)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-slate-500">Total Selling Price</div>
+                      <div className="text-xl font-black">{money(formTotals.totalSellingPrice)}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
                     <Button type="submit" data-testid="recipe-submit-btn" className="bg-[#2563EB] hover:bg-[#1e40af]">
-                      Create Recipe
+                      {editingRecipeId ? 'Update Recipe' : 'Create Recipe'}
                     </Button>
 
                     <Button
@@ -550,17 +645,15 @@ export default function RecipesPage() {
           )}
         </div>
 
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div className="w-full md:max-w-sm space-y-2">
-            <Label htmlFor="recipe-search">Search Recipes</Label>
-            <Input
-              id="recipe-search"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by recipe name"
-              data-testid="recipe-search-input"
-            />
-          </div>
+        <div className="w-full md:max-w-sm space-y-2">
+          <Label htmlFor="recipe-search">Search Recipes</Label>
+          <Input
+            id="recipe-search"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search by recipe name"
+            data-testid="recipe-search-input"
+          />
         </div>
 
         {loading ? (
@@ -573,10 +666,10 @@ export default function RecipesPage() {
               <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto">
                 <div className="text-lg font-semibold text-slate-900">No recipes added yet</div>
                 <div className="mt-2 text-sm text-slate-600">
-                  Recipes combine 1 m² pricing inputs into reusable structures for quotes.
+                  Recipes combine material and labour costs into reusable 1 m² selling prices.
                 </div>
 
-                {(isManager() || isMDAdmin()) && (
+                {canManage && (
                   <button
                     type="button"
                     onClick={handleOpenCreateRecipe}
@@ -591,46 +684,63 @@ export default function RecipesPage() {
           </Card>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {paginatedRecipes.map((recipe) => (
-                <Card key={recipe.id} className="card-technical" data-testid={`recipe-${recipe.id}`}>
-                  <CardHeader>
-                    <CardTitle className="flex justify-between items-start gap-3">
-                      <span className="text-lg">{recipe.name}</span>
-                      <span className="text-xs text-slate-500 font-mono">v{recipe.version}</span>
-                    </CardTitle>
-                  </CardHeader>
+            <div className="overflow-x-auto rounded-xl border bg-white">
+              <table className="w-full min-w-[900px] text-sm">
+                <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3">Recipe Name</th>
+                    <th className="px-4 py-3">Materials Cost</th>
+                    <th className="px-4 py-3">Labour Cost</th>
+                    <th className="px-4 py-3">Markup %</th>
+                    <th className="px-4 py-3">Markup Value</th>
+                    <th className="px-4 py-3">Total Selling Price</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
 
-                  <CardContent>
-                    <div className="space-y-2">
-                      {(recipe.lines || []).map((line, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-sm text-slate-600">
-                          {getLineIcon(line.line_type)}
-                          <span>{line.custom_name || line.line_type}</span>
-                          <span className="text-xs text-slate-400">
-                            {line.markup_allowed ? '(material markup)' : '(no markup)'}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                <tbody className="divide-y">
+                  {paginatedRecipes.map((recipe) => {
+                    const totals = getRecipeTotals(recipe);
 
-                    {(isManager() || isMDAdmin()) && (
-                      <div className="mt-4 pt-4 border-t">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDelete(recipe.id)}
-                          data-testid={`delete-recipe-${recipe.id}`}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 w-full"
-                        >
-                          <Trash2 size={16} className="mr-2" />
-                          Delete
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+                    return (
+                      <tr key={recipe.id} data-testid={`recipe-${recipe.id}`}>
+                        <td className="px-4 py-3 font-semibold">{recipe.name}</td>
+                        <td className="px-4 py-3">{money(totals.materialCost)}</td>
+                        <td className="px-4 py-3">{money(totals.labourCost)}</td>
+                        <td className="px-4 py-3">{Number(totals.markupPercent || 0).toFixed(1)}%</td>
+                        <td className="px-4 py-3">{money(totals.markupValue)}</td>
+                        <td className="px-4 py-3 font-bold">{money(totals.totalSellingPrice)}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex justify-end gap-2">
+                            <Button type="button" variant="ghost" size="sm" onClick={() => setInfoRecipe(recipe)}>
+                              <Info size={16} />
+                            </Button>
+
+                            {canManage && (
+                              <>
+                                <Button type="button" variant="ghost" size="sm" onClick={() => handleEdit(recipe)}>
+                                  <Edit size={16} />
+                                </Button>
+
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDelete(recipe.id)}
+                                  data-testid={`delete-recipe-${recipe.id}`}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <Trash2 size={16} />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
 
             <div className="flex flex-col gap-3 text-sm text-slate-600 md:flex-row md:items-center md:justify-between">
@@ -653,8 +763,43 @@ export default function RecipesPage() {
             </div>
           </>
         )}
+
+        <Dialog open={!!infoRecipe} onOpenChange={(open) => !open && setInfoRecipe(null)}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>Recipe Information</DialogTitle>
+            </DialogHeader>
+
+            {infoRecipe && (
+              <div className="space-y-4">
+                <div>
+                  <div className="text-sm text-slate-500">Recipe Name</div>
+                  <div className="text-lg font-bold">{infoRecipe.name}</div>
+                </div>
+
+                <div className="space-y-2">
+                  {(infoRecipe.lines || []).map((line, index) => {
+                    const material = line.line_type === 'MATERIAL' ? materialById[line.reference_id] : null;
+                    const labour = line.line_type === 'LABOUR' ? labourById[line.reference_id] : null;
+
+                    return (
+                      <div key={index} className="rounded-md border p-3 text-sm">
+                        <div className="font-semibold">{line.line_type}</div>
+                        <div>{material?.name || labour?.name || line.custom_name || 'Unknown item'}</div>
+                        <div className="text-slate-500">
+                          {line.line_type === 'MATERIAL'
+                            ? money(getMaterialCost(material))
+                            : money(getLabourCost(labour))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
 }
-
