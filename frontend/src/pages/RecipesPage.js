@@ -444,17 +444,77 @@ export default function RecipesPage() {
 
           {canManage && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
+              <div className="flex flex-wrap gap-2 justify-end">
                 <Button
                   type="button"
-                  onClick={handleOpenCreateRecipe}
-                  data-testid="add-recipe-btn"
-                  className="bg-[#2563EB] text-white hover:bg-[#1d4ed8]"
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      const res = await api.get('/recipes/export', { responseType: 'blob' });
+                      const url = window.URL.createObjectURL(new Blob([res.data]));
+                      const link = document.createElement('a');
+
+                      link.href = url;
+                      link.setAttribute('download', 'recipes_export.csv');
+                      document.body.appendChild(link);
+                      link.click();
+                      link.remove();
+
+                      toast.success('Recipes exported');
+                    } catch {
+                      toast.error('Failed to export recipes');
+                    }
+                  }}
                 >
-                  <Plus size={18} className="mr-2" />
-                  Add Recipe
+                  Export CSV
                 </Button>
-              </DialogTrigger>
+
+                <input
+                  type="file"
+                  accept=".csv"
+                  id="recipe-import"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+
+                    const formDataUpload = new FormData();
+                    formDataUpload.append('file', file);
+
+                    try {
+                      await api.post('/recipes/import', formDataUpload, {
+                        headers: { 'Content-Type': 'multipart/form-data' },
+                      });
+
+                      toast.success('Recipes imported');
+                      e.target.value = '';
+                      loadData();
+                    } catch (err) {
+                      toast.error(err.response?.data?.detail || 'Import failed');
+                    }
+                  }}
+                />
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => document.getElementById('recipe-import')?.click()}
+                >
+                  Import CSV
+                </Button>
+
+                <DialogTrigger asChild>
+                  <Button
+                    type="button"
+                    onClick={handleOpenCreateRecipe}
+                    data-testid="add-recipe-btn"
+                    className="bg-[#2563EB] text-white hover:bg-[#1d4ed8]"
+                  >
+                    <Plus size={18} className="mr-2" />
+                    Add Recipe
+                  </Button>
+                </DialogTrigger>
+              </div>
 
               <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
