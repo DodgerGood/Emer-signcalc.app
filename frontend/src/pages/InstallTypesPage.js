@@ -317,10 +317,10 @@ export default function InstallTypesPage() {
             <Button
               type="button"
               variant="outline"
-              className="border-slate-300 text-slate-700 bg-slate-100 hover:bg-slate-200"
               onClick={() => importFileRef.current?.click()}
               data-testid="import-install-types-btn"
-            className="border-slate-300 text-slate-700 bg-slate-100 hover:bg-slate-200">
+              className="border-slate-300 text-slate-700 bg-slate-100 hover:bg-slate-200"
+            >
               Import CSV
             </Button>
 
