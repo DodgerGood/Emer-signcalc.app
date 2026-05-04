@@ -483,37 +483,7 @@ export default function InstallTypesPage() {
                     </div>
                   </div>
 
-                  {(() => {
-                    const people = parseInt(formData.quantity_of_people || '1') || 1;
-                    const labourRate = (parseFloat(formData.rate_per_hour) || 0) * people;
-
-                    const toolsRate = (formData.tools || []).reduce((sum, tool) => {
-                      return sum + ((parseFloat(tool.quantity) || 0) * (parseFloat(tool.cost_per_hour) || 0));
-                    }, 0);
-
-                    const hireRate = parseFloat(formData.hire_machine_rate_per_hour) || 0;
-                    const totalHourly = labourRate + toolsRate + hireRate;
-
-                    const sqmPerHour = parseFloat(formData.sqm_per_hour) || 0;
-                    const costPerSqm = sqmPerHour > 0 ? totalHourly / sqmPerHour : null;
-
-                    return (
-                      <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm space-y-1">
-                        <div>Installation labour/hour: R {labourRate.toFixed(2)}</div>
-                        <div>Tools/hour: R {toolsRate.toFixed(2)}</div>
-                        <div>Hire machine/hour: R {hireRate.toFixed(2)}</div>
-                        <div className="font-semibold text-green-700">
-                          Total installation/hour: R {totalHourly.toFixed(2)}
-                        </div>
-
-                        {costPerSqm !== null && (
-                          <div className="font-semibold text-blue-700">
-                            Cost per m²: R {costPerSqm.toFixed(2)}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
+                  
 
                   <div className="flex gap-2 pt-4">
                     <Button type="submit" data-testid="install-submit-btn" className="bg-[#2563EB] hover:bg-[#1e40af]">
