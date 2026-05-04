@@ -497,10 +497,6 @@ export default function InstallTypesPage() {
                     const sqmPerHour = parseFloat(formData.sqm_per_hour) || 0;
                     const costPerSqm = sqmPerHour > 0 ? totalHourly / sqmPerHour : null;
 
-                    const travelCost =
-                      (parseFloat(formData.travel_km) || 0) *
-                      (parseFloat(formData.travel_rate_per_km) || 0);
-
                     return (
                       <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm space-y-1">
                         <div>Installation labour/hour: R {labourRate.toFixed(2)}</div>
