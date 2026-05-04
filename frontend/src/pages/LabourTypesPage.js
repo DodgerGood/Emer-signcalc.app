@@ -755,7 +755,7 @@ export default function LabourTypesPage() {
           <>
             <div className="bg-white border border-slate-200 rounded-md shadow-sm overflow-x-auto">
               <Table>
-                <TableHeader>
+                <TableHeader className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Category</TableHead>
