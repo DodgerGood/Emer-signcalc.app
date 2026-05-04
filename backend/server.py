@@ -3497,6 +3497,34 @@ async def create_recipe(recipe: RecipeCreate, user: dict = Depends(require_manag
     await db.recipes.insert_one(recipe_obj.model_dump())
     return recipe_obj
 
+@api_router.put("/recipes/{recipe_id}", response_model=Recipe)
+async def update_recipe(recipe_id: str, recipe: RecipeCreate, user: dict = Depends(require_manager)):
+    existing = await db.recipes.find_one(
+        {"id": recipe_id, "company_id": user["company_id"], "archived_at": None},
+        {"_id": 0}
+    )
+
+    if not existing:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+    update_data = recipe.model_dump()
+    update_data["company_id"] = user["company_id"]
+    update_data["created_by"] = existing.get("created_by", user["id"])
+    update_data["version"] = existing.get("version", 1)
+    update_data["archived_at"] = existing.get("archived_at")
+
+    await db.recipes.update_one(
+        {"id": recipe_id, "company_id": user["company_id"]},
+        {"$set": update_data}
+    )
+
+    updated = await db.recipes.find_one(
+        {"id": recipe_id, "company_id": user["company_id"]},
+        {"_id": 0}
+    )
+
+    return Recipe(**updated)
+
 @api_router.get("/recipes", response_model=List[Recipe])
 async def get_recipes(user: dict = Depends(get_current_user)):
     recipes = await db.recipes.find(
