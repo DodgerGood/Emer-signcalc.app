@@ -42,8 +42,6 @@ const role = user?.role;
         { to: '/install-types', icon: Wrench, label: 'Installation Pricelist' },
         { to: '/recipes', icon: BookOpen, label: 'Recipes' },
         { to: '/estimations', icon: Calculator, label: 'Estimations' },
-        { to: '/estimations', icon: Calculator, label: 'Estimations' },
-        { to: '/estimations', icon: Calculator, label: 'Estimations' },
         { to: '/quotes', icon: FileText, label: 'Quotes' },
         { to: '/approvals', icon: CheckCircle, label: 'Approvals' },
       ];
@@ -64,6 +62,7 @@ const role = user?.role;
     } else if (role === 'QUOTING_STAFF') {
       return [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+        { to: '/estimations', icon: Calculator, label: 'Estimations' },
         { to: '/quotes', icon: FileText, label: 'Quotes' },
         { to: '/approvals', icon: CheckCircle, label: 'Approvals' },
       ];
@@ -74,6 +73,7 @@ const role = user?.role;
         { to: '/labour-types', icon: Users, label: 'Labour & Machine' },
         { to: '/install-types', icon: Wrench, label: 'Installation Pricelist' },
         { to: '/recipes', icon: BookOpen, label: 'Recipes' },
+        { to: '/estimations', icon: Calculator, label: 'Estimations' },
         { to: '/quotes', icon: FileText, label: 'Quotes' },
         { to: '/approvals', icon: CheckCircle, label: 'Approvals' },
       ];
