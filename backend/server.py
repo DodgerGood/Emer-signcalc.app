@@ -565,6 +565,7 @@ class RecipeLineCreate(BaseModel):
     markup_allowed: bool = True
     override_requires_approval: bool = False
     custom_name: Optional[str] = None
+    custom_unit_cost: Optional[float] = None
 
 class RecipeLine(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -578,6 +579,7 @@ class RecipeLine(BaseModel):
     markup_allowed: bool
     override_requires_approval: bool
     custom_name: Optional[str] = None
+    custom_unit_cost: Optional[float] = None
 
 class RecipeCreate(BaseModel):
     name: str
