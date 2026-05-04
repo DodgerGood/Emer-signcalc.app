@@ -127,6 +127,16 @@ const AppRoutes = () => {
       />
 
       <Route
+        path="/estimations"
+        element={
+          <ProtectedRoute>
+            <QuotesPage />
+          </ProtectedRoute>
+        }
+      />
+
+
+      <Route
         path="/quotes/:id"
         element={
           <ProtectedRoute>
