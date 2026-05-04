@@ -444,7 +444,15 @@ export default function RecipesPage() {
 
           {canManage && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <div className="flex flex-wrap gap-2 justify-end">
+              <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => document.getElementById('recipe-import')?.click()}
+                >
+                  Import CSV
+                </Button>
+
                 <Button
                   type="button"
                   variant="outline"
@@ -494,14 +502,6 @@ export default function RecipesPage() {
                     }
                   }}
                 />
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => document.getElementById('recipe-import')?.click()}
-                >
-                  Import CSV
-                </Button>
 
                 <DialogTrigger asChild>
                   <Button
