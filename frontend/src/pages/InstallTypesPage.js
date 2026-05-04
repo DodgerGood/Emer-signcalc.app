@@ -320,7 +320,7 @@ export default function InstallTypesPage() {
               className="border-slate-300 text-slate-700 bg-slate-100 hover:bg-slate-200"
               onClick={() => importFileRef.current?.click()}
               data-testid="import-install-types-btn"
-            >
+            className="border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100">
               Import CSV
             </Button>
 
