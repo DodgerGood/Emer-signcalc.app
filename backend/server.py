@@ -3471,6 +3471,140 @@ async def delete_install_type(install_id: str, user: dict = Depends(require_mana
 
 # ===== RECIPE ROUTES =====
 
+@api_router.get("/recipes/export")
+async def export_recipes(user: dict = Depends(get_current_user)):
+    recipes = await db.recipes.find(
+        {"company_id": user["company_id"], "archived_at": None},
+        {"_id": 0}
+    ).sort("name", 1).to_list(5000)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        "recipe_name",
+        "line_type",
+        "reference_id",
+        "custom_name",
+        "custom_unit_cost",
+        "default_markup_percent",
+        "markup_allowed",
+    ])
+
+    for recipe in recipes:
+        for line in recipe.get("lines", []):
+            writer.writerow([
+                recipe.get("name", ""),
+                line.get("line_type", ""),
+                line.get("reference_id", ""),
+                line.get("custom_name", ""),
+                line.get("custom_unit_cost", ""),
+                line.get("default_markup_percent", ""),
+                line.get("markup_allowed", ""),
+            ])
+
+    csv_bytes = io.BytesIO(output.getvalue().encode("utf-8"))
+    output.close()
+
+    return StreamingResponse(
+        csv_bytes,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=recipes_export.csv"},
+    )
+
+
+@api_router.post("/recipes/import")
+async def import_recipes(
+    file: UploadFile = File(...),
+    user: dict = Depends(require_manager)
+):
+    try:
+        content = await file.read()
+        decoded = content.decode("utf-8-sig")
+        reader = csv.DictReader(io.StringIO(decoded))
+
+        grouped = {}
+        errors = []
+
+        def parse_float(value, default=0):
+            if value is None or str(value).strip() == "":
+                return default
+            return float(value)
+
+        def parse_bool(value):
+            return str(value).strip().lower() in ["true", "1", "yes", "y"]
+
+        for row_num, row in enumerate(reader, start=2):
+            try:
+                recipe_name = (row.get("recipe_name") or "").strip()
+                line_type = (row.get("line_type") or "").strip().upper()
+
+                if not recipe_name:
+                    errors.append(f"Row {row_num}: recipe_name is required")
+                    continue
+
+                if line_type not in ["MATERIAL", "LABOUR", "MACHINE", "CUSTOM"]:
+                    errors.append(f"Row {row_num}: line_type must be MATERIAL, LABOUR, MACHINE, or CUSTOM")
+                    continue
+
+                if recipe_name not in grouped:
+                    grouped[recipe_name] = []
+
+                grouped[recipe_name].append({
+                    "line_type": line_type,
+                    "reference_id": (row.get("reference_id") or "").strip() or None,
+                    "qty_driver": "SQM",
+                    "multiplier": 1,
+                    "waste_percent": 0,
+                    "default_markup_percent": parse_float(row.get("default_markup_percent"), 0),
+                    "markup_allowed": parse_bool(row.get("markup_allowed")),
+                    "override_requires_approval": False,
+                    "custom_name": (row.get("custom_name") or "").strip() or None,
+                    "custom_unit_cost": parse_float(row.get("custom_unit_cost"), None),
+                })
+
+            except Exception as row_error:
+                errors.append(f"Row {row_num}: {str(row_error)}")
+
+        imported_count = 0
+        updated_count = 0
+
+        for recipe_name, lines in grouped.items():
+            existing = await db.recipes.find_one(
+                {"company_id": user["company_id"], "name": recipe_name, "archived_at": None},
+                {"_id": 0}
+            )
+
+            recipe_obj = RecipeCreate(name=recipe_name, lines=lines)
+
+            if existing:
+                await db.recipes.update_one(
+                    {"id": existing["id"], "company_id": user["company_id"]},
+                    {"$set": recipe_obj.model_dump()}
+                )
+                updated_count += 1
+            else:
+                new_recipe = Recipe(
+                    **recipe_obj.model_dump(),
+                    company_id=user["company_id"],
+                    created_by=user["id"],
+                    version=1
+                )
+                await db.recipes.insert_one(new_recipe.model_dump())
+                imported_count += 1
+
+        return {
+            "message": "Recipes import completed",
+            "imported_count": imported_count,
+            "updated_count": updated_count,
+            "error_count": len(errors),
+            "errors": errors[:20],
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Import failed: {str(e)}")
+
+
 @api_router.post("/recipes", response_model=Recipe)
 async def create_recipe(recipe: RecipeCreate, user: dict = Depends(require_manager)):
     # Check for existing recipe with same name to determine version
