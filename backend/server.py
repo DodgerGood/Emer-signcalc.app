@@ -658,6 +658,7 @@ class Quote(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     company_id: str
+    quote_number: str | None = None
     created_by: str
     created_by_name: str
     client_name: str
@@ -3950,12 +3951,29 @@ async def calculate_quote_line(recipe: dict, width_mm: float, height_mm: float, 
 
 @api_router.post("/quotes", response_model=Quote)
 async def create_quote(quote: QuoteCreate, user: dict = Depends(require_quoting_staff)):
+
+    # Get last quote number for company
+    last_quote = await db.quotes.find(
+        {"company_id": user["company_id"]},
+        {"quote_number": 1, "_id": 0}
+    ).sort("created_at", -1).limit(1).to_list(1)
+
+    if last_quote and last_quote[0].get("quote_number"):
+        last_number = int(last_quote[0]["quote_number"].replace("Qu", ""))
+        next_number = last_number + 1
+    else:
+        next_number = 1
+
+    quote_number = f"Qu{str(next_number).zfill(5)}"
+
     quote_obj = Quote(
         **quote.model_dump(),
         company_id=user["company_id"],
         created_by=user["id"],
-        created_by_name=user["full_name"]
+        created_by_name=user["full_name"],
+        quote_number=quote_number
     )
+
     await db.quotes.insert_one(quote_obj.model_dump())
     return quote_obj
 

@@ -156,8 +156,7 @@ export default function QuotesPage() {
     }
   };
 
-  const getQuoteNumber = (index) => `Qu${String(index + 1).padStart(5, '0')}`;
-
+  
   const staffOptions = useMemo(() => {
     return [...new Set(quotes.map((q) => q.created_by_name).filter(Boolean))];
   }, [quotes]);
@@ -364,11 +363,11 @@ export default function QuotesPage() {
                   ) : (
                     paginatedQuotes.map((quote, index) => {
                       const absoluteIndex = startIndex + index;
-                      const quoteNumber = getQuoteNumber(absoluteIndex);
+                      const quoteNumber = quote.quote_number;
 
                       return (
                         <TableRow key={quote.id}>
-                          <TableCell className="px-4 py-3 font-mono">{quoteNumber}</TableCell>
+                          <TableCell className="px-4 py-3 font-mono">{quoteNumber || '-'}</TableCell>
                           <TableCell className="px-4 py-3 font-semibold">{quote.client_name}</TableCell>
                           <TableCell className="px-4 py-3">{quote.created_by_name}</TableCell>
                           <TableCell className="px-4 py-3 font-mono font-bold text-blue-700">
