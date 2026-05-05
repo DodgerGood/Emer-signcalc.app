@@ -621,6 +621,32 @@ class QuoteLine(BaseModel):
     approval_required: bool = False
     approval_status: Optional[str] = None
 
+class ClientCreate(BaseModel):
+    company_name: str
+    contact_person: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    billing_address: Optional[str] = None
+    site_address: Optional[str] = None
+    vat_number: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class ClientRecord(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    company_id: str
+    company_name: str
+    contact_person: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    billing_address: Optional[str] = None
+    site_address: Optional[str] = None
+    vat_number: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
 class QuoteCreate(BaseModel):
     client_name: str
     client_email: Optional[str] = None
@@ -3483,6 +3509,96 @@ async def delete_install_type(install_id: str, user: dict = Depends(require_mana
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Install type not found")
     return {"message": "Install type deleted"}
+
+# ===== CLIENT ROUTES =====
+
+@api_router.post("/clients", response_model=ClientRecord)
+async def create_client_record(client: ClientCreate, user: dict = Depends(require_quoting_staff)):
+    existing = await db.client_records.find_one(
+        {
+            "company_id": user["company_id"],
+            "company_name": client.company_name,
+        },
+        {"_id": 0}
+    )
+
+    client_doc = client.model_dump()
+    client_doc["company_name"] = client_doc["company_name"].strip()
+    client_doc["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    if existing:
+        await db.client_records.update_one(
+            {"id": existing["id"], "company_id": user["company_id"]},
+            {"$set": client_doc}
+        )
+
+        updated = await db.client_records.find_one(
+            {"id": existing["id"], "company_id": user["company_id"]},
+            {"_id": 0}
+        )
+        return ClientRecord(**updated)
+
+    new_client = ClientRecord(
+        **client_doc,
+        company_id=user["company_id"]
+    )
+
+    await db.client_records.insert_one(new_client.model_dump())
+    return new_client
+
+
+@api_router.get("/clients", response_model=List[ClientRecord])
+async def get_client_records(user: dict = Depends(get_current_user)):
+    clients = await db.client_records.find(
+        {"company_id": user["company_id"]},
+        {"_id": 0}
+    ).sort("company_name", 1).to_list(5000)
+
+    return clients
+
+
+@api_router.get("/clients/{client_id}", response_model=ClientRecord)
+async def get_client_record(client_id: str, user: dict = Depends(get_current_user)):
+    client = await db.client_records.find_one(
+        {"id": client_id, "company_id": user["company_id"]},
+        {"_id": 0}
+    )
+
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    return ClientRecord(**client)
+
+
+@api_router.put("/clients/{client_id}", response_model=ClientRecord)
+async def update_client_record(client_id: str, client: ClientCreate, user: dict = Depends(require_quoting_staff)):
+    update_data = client.model_dump()
+    update_data["company_name"] = update_data["company_name"].strip()
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    result = await db.client_records.find_one_and_update(
+        {"id": client_id, "company_id": user["company_id"]},
+        {"$set": update_data},
+        return_document=True
+    )
+
+    if not result:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    result.pop("_id", None)
+    return ClientRecord(**result)
+
+
+@api_router.delete("/clients/{client_id}")
+async def delete_client_record(client_id: str, user: dict = Depends(require_quoting_staff)):
+    result = await db.client_records.delete_one(
+        {"id": client_id, "company_id": user["company_id"]}
+    )
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    return {"message": "Client deleted"}
 
 # ===== RECIPE ROUTES =====
 
