@@ -94,9 +94,16 @@ export default function QuoteDetailPage() {
         client_phone: q.client_phone || '',
         client_address: q.client_address || '',
         description: q.description || '',
-        discount_percent: '',
+        discount_percent: q.blueprint?.discount_percent?.toString() || '',
       });
+
       setClientSearch(q.client_name || '');
+
+      const savedLines = q.blueprint?.estimate_lines || [];
+      const savedAddons = q.blueprint?.estimate_addons || [];
+
+      setLines(savedLines.length > 0 ? savedLines : [newLine()]);
+      setAddons(savedAddons);
     } catch {
       toast.error('Failed to load estimate data');
     } finally {
