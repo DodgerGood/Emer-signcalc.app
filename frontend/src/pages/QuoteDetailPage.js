@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import api from '../lib/api';
 
 import { Button } from '../components/ui/button';
@@ -39,6 +39,7 @@ const newAddon = () => ({
 
 export default function QuoteDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
 
   const [quote, setQuote] = useState(null);
   const [recipes, setRecipes] = useState([]);
@@ -62,6 +63,24 @@ export default function QuoteDetailPage() {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      calculateAllLines(false);
+    }, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lines, installTypes]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      calculateAllLines(false);
+    }, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lines, installTypes]);
 
   const loadData = async () => {
     try {
@@ -236,6 +255,52 @@ export default function QuoteDetailPage() {
     const updated = [...lines];
     updated[index] = await recalculateLine(updated[index]);
     setLines(updated);
+  };
+
+  const shouldCalculateLine = (line) => {
+    return Boolean(line.recipe_id && Number(line.width_mm) > 0 && Number(line.height_mm) > 0);
+  };
+
+  const calculateAllLines = async (showToast = true) => {
+    const updated = [];
+
+    for (const line of lines) {
+      if (shouldCalculateLine(line)) {
+        updated.push(await recalculateLine(line));
+      } else {
+        updated.push(line);
+      }
+    }
+
+    setLines(updated);
+
+    if (showToast) {
+      toast.success('All complete line items calculated');
+    }
+
+    return updated;
+  };
+
+  const handleSaveAndClose = async () => {
+    try {
+      await calculateAllLines(false);
+      await saveClientIfNew();
+
+      await api.put(`/quotes/${id}/client-details`, null, {
+        params: {
+          client_name: clientData.client_name || '',
+          client_email: clientData.client_email || '',
+          client_phone: clientData.client_phone || '',
+          client_address: clientData.client_address || '',
+          description: clientData.description || '',
+        },
+      });
+
+      toast.success('Estimate calculated and saved');
+      navigate('/estimations');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to save estimate');
+    }
   };
 
   const addLine = () => {
@@ -472,7 +537,7 @@ export default function QuoteDetailPage() {
                           onClick={() => calculateLine(index)}
                         >
                           <Calculator size={14} className="mr-1" />
-                          Calc
+                          Calculate
                         </Button>
 
                         <Button
@@ -610,6 +675,16 @@ export default function QuoteDetailPage() {
             <div>VAT (15%): <strong>{money(vat)}</strong></div>
             <div className="text-xl font-black">Total: {money(total)}</div>
           </div>
+        </div>
+
+        <div className="flex justify-end gap-2 pb-8">
+          <Button
+            type="button"
+            onClick={handleSaveAndClose}
+            className="bg-[#2563EB] text-white hover:bg-[#1d4ed8]"
+          >
+            Save and Close Estimate
+          </Button>
         </div>
       </div>
     </Layout>
