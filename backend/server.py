@@ -659,6 +659,7 @@ class Quote(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     company_id: str
     quote_number: str | None = None
+    estimate_number: str | None = None
     created_by: str
     created_by_name: str
     client_name: str
@@ -3952,26 +3953,27 @@ async def calculate_quote_line(recipe: dict, width_mm: float, height_mm: float, 
 @api_router.post("/quotes", response_model=Quote)
 async def create_quote(quote: QuoteCreate, user: dict = Depends(require_quoting_staff)):
 
-    # Get last quote number for company
-    last_quote = await db.quotes.find(
+    # 🔹 Get last ESTIMATE number
+    last_estimate = await db.quotes.find(
         {"company_id": user["company_id"]},
-        {"quote_number": 1, "_id": 0}
+        {"estimate_number": 1, "_id": 0}
     ).sort("created_at", -1).limit(1).to_list(1)
 
-    if last_quote and last_quote[0].get("quote_number"):
-        last_number = int(last_quote[0]["quote_number"].replace("Qu", ""))
+    if last_estimate and last_estimate[0].get("estimate_number"):
+        last_number = int(last_estimate[0]["estimate_number"].replace("Es", ""))
         next_number = last_number + 1
     else:
         next_number = 1
 
-    quote_number = f"Qu{str(next_number).zfill(5)}"
+    estimate_number = f"Es{str(next_number).zfill(5)}"
 
     quote_obj = Quote(
         **quote.model_dump(),
         company_id=user["company_id"],
         created_by=user["id"],
         created_by_name=user["full_name"],
-        quote_number=quote_number
+        estimate_number=estimate_number,
+        quote_number=None
     )
 
     await db.quotes.insert_one(quote_obj.model_dump())
@@ -4689,15 +4691,28 @@ async def approve_quote(quote_id: str, user: dict = Depends(require_manager)):
     quote = await db.quotes.find_one({"id": quote_id, "company_id": user["company_id"]}, {"_id": 0})
     if not quote:
         raise HTTPException(status_code=404, detail="Quote not found")
-    
-    # Prevent self-approval
+
     if quote["created_by"] == user["id"]:
         raise HTTPException(status_code=403, detail="You cannot approve your own quote")
-    
-    # Update quote approval
+
+    # 🔹 Get last QUOTE number
+    last_quote = await db.quotes.find(
+        {"company_id": user["company_id"], "quote_number": {"$ne": None}},
+        {"quote_number": 1, "_id": 0}
+    ).sort("approved_at", -1).limit(1).to_list(1)
+
+    if last_quote and last_quote[0].get("quote_number"):
+        last_number = int(last_quote[0]["quote_number"].replace("Qu", ""))
+        next_number = last_number + 1
+    else:
+        next_number = 1
+
+    quote_number = f"Qu{str(next_number).zfill(5)}"
+
     await db.quotes.update_one(
         {"id": quote_id},
         {"$set": {
+            "quote_number": quote_number,
             "quote_approval_status": "APPROVED",
             "approved_by": user["id"],
             "approved_by_name": user["full_name"],
@@ -4705,7 +4720,7 @@ async def approve_quote(quote_id: str, user: dict = Depends(require_manager)):
             "updated_at": datetime.now(timezone.utc).isoformat()
         }}
     )
-    
+
     return {"message": "Quote approved successfully"}
 
 @api_router.post("/quotes/{quote_id}/reject")
