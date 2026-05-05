@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Layout } from '../components/Layout';
 import api from '../lib/api';
 
@@ -35,6 +35,7 @@ export default function ClientsPage() {
   const [currentPage, setCurrentPage] = useState(1);
 
   const itemsPerPage = 10;
+  const importFileRef = useRef(null);
 
   useEffect(() => {
     loadClients();
@@ -129,6 +130,100 @@ export default function ClientsPage() {
     }
   };
 
+  const handleExportClients = () => {
+    const headers = [
+      'company_name',
+      'contact_person',
+      'email',
+      'phone',
+      'billing_address',
+      'site_address',
+      'vat_number',
+      'notes',
+    ];
+
+    const rows = clients.map((client) =>
+      headers.map((key) => {
+        const value = client[key] || '';
+        return `"${String(value).replaceAll('"', '""')}"`;
+      }).join(',')
+    );
+
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'clients_export.csv');
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    window.URL.revokeObjectURL(url);
+    toast.success('Clients exported');
+  };
+
+  const handleImportClients = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const text = await file.text();
+    const lines = text.split(/\r?\n/).filter(Boolean);
+
+    if (lines.length < 2) {
+      toast.error('CSV has no client rows');
+      return;
+    }
+
+    const headers = lines[0].split(',').map((h) => h.trim());
+
+    const parseRow = (row) => {
+      const values = row.match(/("([^"]|"")*"|[^,]+)/g) || [];
+      const item = {};
+
+      headers.forEach((header, index) => {
+        item[header] = (values[index] || '')
+          .replace(/^"/, '')
+          .replace(/"$/, '')
+          .replaceAll('""', '"')
+          .trim();
+      });
+
+      return item;
+    };
+
+    try {
+      let imported = 0;
+
+      for (const row of lines.slice(1)) {
+        const client = parseRow(row);
+
+        if (!client.company_name) continue;
+
+        await api.post('/clients', {
+          company_name: client.company_name,
+          contact_person: client.contact_person || null,
+          email: client.email || null,
+          phone: client.phone || null,
+          billing_address: client.billing_address || null,
+          site_address: client.site_address || null,
+          vat_number: client.vat_number || null,
+          notes: client.notes || null,
+        });
+
+        imported += 1;
+      }
+
+      toast.success(`Imported ${imported} clients`);
+      loadClients();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Client import failed');
+    } finally {
+      if (importFileRef.current) importFileRef.current.value = '';
+    }
+  };
+
   const filteredClients = clients.filter((client) => {
     const term = searchTerm.toLowerCase();
 
@@ -155,6 +250,32 @@ export default function ClientsPage() {
               Manage client company details for quick estimating and quoting.
             </p>
           </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              ref={importFileRef}
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={handleImportClients}
+            />
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => importFileRef.current?.click()}
+              className="border-slate-300 text-slate-700 bg-slate-100 hover:bg-slate-200"
+            >
+              Import CSV
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleExportClients}
+            >
+              Export CSV
+            </Button>
 
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
@@ -272,6 +393,7 @@ export default function ClientsPage() {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         <div className="w-full md:max-w-sm space-y-2">
