@@ -24,6 +24,8 @@ export default function QuotesPage() {
   const isEstimationsPage = location.pathname.startsWith('/estimations');
 
   const [quotes, setQuotes] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [clientSearch, setClientSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [infoQuote, setInfoQuote] = useState(null);
@@ -54,8 +56,13 @@ export default function QuotesPage() {
   const loadQuotes = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/quotes');
-      setQuotes(response.data || []);
+      const [quotesRes, clientsRes] = await Promise.all([
+        api.get('/quotes'),
+        api.get('/clients'),
+      ]);
+
+      setQuotes(quotesRes.data || []);
+      setClients(clientsRes.data || []);
     } catch {
       toast.error('Failed to load quotes');
     } finally {
@@ -63,10 +70,51 @@ export default function QuotesPage() {
     }
   };
 
+  const selectClient = (client) => {
+    setFormData({
+      ...formData,
+      client_name: client.company_name || '',
+      client_email: client.email || '',
+      client_phone: client.phone || '',
+      client_address: client.billing_address || client.site_address || '',
+      description: formData.description || client.notes || '',
+    });
+    setClientSearch(client.company_name || '');
+  };
+
+  const matchedClients = clients.filter((client) => {
+    const term = clientSearch.toLowerCase();
+    if (!term) return false;
+
+    return (
+      client.company_name?.toLowerCase().includes(term) ||
+      client.contact_person?.toLowerCase().includes(term) ||
+      client.email?.toLowerCase().includes(term) ||
+      client.phone?.toLowerCase().includes(term)
+    );
+  }).slice(0, 5);
+
+  const exactClientExists = clients.some(
+    (client) => client.company_name?.trim().toLowerCase() === formData.client_name.trim().toLowerCase()
+  );
+
   const handleCreate = async (e) => {
     e.preventDefault();
 
     try {
+      if (formData.client_name.trim() && !exactClientExists) {
+        await api.post('/clients', {
+          company_name: formData.client_name.trim(),
+          contact_person: null,
+          email: formData.client_email || null,
+          phone: formData.client_phone || null,
+          billing_address: formData.client_address || null,
+          site_address: null,
+          vat_number: null,
+          notes: formData.description || null,
+        });
+      }
+
       const response = await api.post('/quotes', formData);
       toast.success('Estimate created');
 
@@ -78,6 +126,7 @@ export default function QuotesPage() {
         client_address: '',
         description: '',
       });
+      setClientSearch('');
 
       navigate(`/quotes/${response.data.id}`);
     } catch (error) {
@@ -167,13 +216,40 @@ export default function QuotesPage() {
 
                 <form onSubmit={handleCreate} className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Client / Company Name *</Label>
+                    <Label>Search / Select Client *</Label>
                     <Input
-                      value={formData.client_name}
-                      onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
-                      placeholder="e.g., ABC Retailers"
+                      value={clientSearch}
+                      onChange={(e) => {
+                        setClientSearch(e.target.value);
+                        setFormData({ ...formData, client_name: e.target.value });
+                      }}
+                      placeholder="Search existing client or type new client"
                       required
                     />
+
+                    {matchedClients.length > 0 && (
+                      <div className="rounded-md border bg-white shadow-sm">
+                        {matchedClients.map((client) => (
+                          <button
+                            key={client.id}
+                            type="button"
+                            onClick={() => selectClient(client)}
+                            className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                          >
+                            <div className="font-semibold">{client.company_name}</div>
+                            <div className="text-xs text-slate-500">
+                              {client.contact_person || '-'} | {client.email || '-'} | {client.phone || '-'}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {formData.client_name && !exactClientExists && (
+                      <p className="text-xs text-blue-700">
+                        New client will be saved to Clients when you create the estimate.
+                      </p>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
