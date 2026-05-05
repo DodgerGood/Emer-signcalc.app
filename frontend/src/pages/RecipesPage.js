@@ -445,64 +445,6 @@ export default function RecipesPage() {
           {canManage && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => document.getElementById('recipe-import')?.click()}
-                  className="border-slate-300 text-slate-700 bg-slate-100 hover:bg-slate-200"
-                >
-                  Import CSV
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={async () => {
-                    try {
-                      const res = await api.get('/recipes/export', { responseType: 'blob' });
-                      const url = window.URL.createObjectURL(new Blob([res.data]));
-                      const link = document.createElement('a');
-
-                      link.href = url;
-                      link.setAttribute('download', 'recipes_export.csv');
-                      document.body.appendChild(link);
-                      link.click();
-                      link.remove();
-
-                      toast.success('Recipes exported');
-                    } catch {
-                      toast.error('Failed to export recipes');
-                    }
-                  }}
-                >
-                  Export CSV
-                </Button>
-
-                <input
-                  type="file"
-                  accept=".csv"
-                  id="recipe-import"
-                  className="hidden"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-
-                    const formDataUpload = new FormData();
-                    formDataUpload.append('file', file);
-
-                    try {
-                      await api.post('/recipes/import', formDataUpload, {
-                        headers: { 'Content-Type': 'multipart/form-data' },
-                      });
-
-                      toast.success('Recipes imported');
-                      e.target.value = '';
-                      loadData();
-                    } catch (err) {
-                      toast.error(err.response?.data?.detail || 'Import failed');
-                    }
-                  }}
-                />
 
                 <DialogTrigger asChild>
                   <Button
