@@ -30,6 +30,7 @@ const newLine = () => ({
   fulfilment_note: '',
 
   line_total: 0,
+  needs_calculation: true,
 });
 
 const newAddon = () => ({
@@ -231,6 +232,7 @@ export default function QuoteDetailPage() {
       recipe_total: recipeTotal,
       fulfilment_price: fulfilmentPrice,
       line_total: recipeTotal + fulfilmentPrice,
+      needs_calculation: false,
     };
   };
 
@@ -240,6 +242,7 @@ export default function QuoteDetailPage() {
     updated[index] = {
       ...updated[index],
       [field]: value,
+      needs_calculation: true,
     };
 
     if (field === 'fulfilment_type') {
@@ -529,12 +532,19 @@ export default function QuoteDetailPage() {
                     </TableCell>
 
                     <TableCell className="px-4 py-3">
-                      <div className="flex gap-2">
+                      <div className="space-y-2">
+                        {line.needs_calculation && (
+                          <div className="rounded bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">
+                            This line has not been calculated since the last change.
+                          </div>
+                        )}
+
+                        <div className="flex gap-2">
                         <Button
                           type="button"
-                          variant="outline"
                           size="sm"
                           onClick={() => calculateLine(index)}
+                          className="bg-[#2563EB] text-white hover:bg-[#1d4ed8]"
                         >
                           <Calculator size={14} className="mr-1" />
                           Calculate
@@ -549,6 +559,7 @@ export default function QuoteDetailPage() {
                         >
                           <Trash2 size={16} />
                         </Button>
+                        </div>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -677,7 +688,7 @@ export default function QuoteDetailPage() {
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 pb-8">
+        <div className="flex flex-col items-end gap-2 pb-8">
           <Button
             type="button"
             onClick={handleSaveAndClose}
@@ -685,6 +696,9 @@ export default function QuoteDetailPage() {
           >
             Save and Close Estimate
           </Button>
+          <p className="text-xs text-slate-500">
+            This will recalculate all complete line items before closing.
+          </p>
         </div>
       </div>
     </Layout>
