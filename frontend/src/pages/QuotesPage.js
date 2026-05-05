@@ -11,7 +11,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 
-import { Plus, Info, Pencil, Trash2, CheckCircle } from 'lucide-react';
+import { Plus, Info, Pencil, Trash2, CheckCircle, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 
 const money = (value) => `R ${(Number(value) || 0).toFixed(2)}`;
@@ -153,6 +153,27 @@ export default function QuotesPage() {
       loadQuotes();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Approval failed');
+    }
+  };
+
+  const handleExportPdf = async (quote) => {
+    try {
+      const response = await api.get(`/quotes/${quote.id}/export/pdf`, {
+        responseType: 'blob',
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${quote.quote_number || 'quote'}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success('PDF downloaded');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to create PDF');
     }
   };
 
@@ -362,11 +383,14 @@ export default function QuotesPage() {
                     </TableRow>
                   ) : (
                     paginatedQuotes.map((quote, index) => {
-                      const quoteNumber = quote.quote_number;
+                      const quoteNumber = quote.quote_number || quote.estimate_number;
 
                       return (
                         <TableRow key={quote.id}>
-                          <TableCell className="px-4 py-3 font-mono">{quoteNumber || '-'}</TableCell>
+                          <TableCell className="px-4 py-3 font-mono"><div className="flex items-center gap-2">
+        <span className="text-green-600">✔</span>
+        {quoteNumber || '-'}
+      </div></TableCell>
                           <TableCell className="px-4 py-3 font-semibold">{quote.client_name}</TableCell>
                           <TableCell className="px-4 py-3">{quote.created_by_name}</TableCell>
                           <TableCell className="px-4 py-3 font-mono font-bold text-blue-700">
@@ -404,6 +428,19 @@ export default function QuotesPage() {
                               >
                                 <CheckCircle size={16} />
                               </Button>
+
+                              {quote.quote_number && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleExportPdf(quote)}
+                                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                  title="Create PDF"
+                                >
+                                  <FileText size={16} />
+                                </Button>
+                              )}
 
                               <Button
                                 type="button"

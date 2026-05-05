@@ -380,7 +380,12 @@ export default function QuoteDetailPage() {
     <Layout>
       <div className="space-y-6 fade-in max-w-7xl">
         <div>
-          <h1 className="text-4xl font-black tracking-tight leading-none">Estimate Builder</h1>
+          <div className="flex justify-between items-center">
+        <h1 className="text-4xl font-black tracking-tight leading-none">Estimate Builder</h1>
+        <div className="text-2xl font-bold text-blue-700">
+          {quote?.quote_number || quote?.estimate_number || '-'}
+        </div>
+      </div>
           <p className="text-slate-600 mt-2">
             Internal estimate view. Costs are visible here. Client quote will show selling prices only.
             Enter the line details, then click Calc to price that line.
