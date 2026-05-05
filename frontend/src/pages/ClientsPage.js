@@ -1,0 +1,414 @@
+import React, { useEffect, useState } from 'react';
+import { Layout } from '../components/Layout';
+import api from '../lib/api';
+
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Textarea } from '../components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+
+import { Plus, Pencil, Trash2, Info } from 'lucide-react';
+import { toast } from 'sonner';
+
+const emptyForm = () => ({
+  company_name: '',
+  contact_person: '',
+  email: '',
+  phone: '',
+  billing_address: '',
+  site_address: '',
+  vat_number: '',
+  notes: '',
+});
+
+export default function ClientsPage() {
+  const [clients, setClients] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [infoClient, setInfoClient] = useState(null);
+
+  const [formData, setFormData] = useState(emptyForm());
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    loadClients();
+  }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  const loadClients = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/clients');
+      setClients(response.data || []);
+    } catch {
+      toast.error('Failed to load clients');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetForm = () => {
+    setEditingId(null);
+    setFormData(emptyForm());
+  };
+
+  const handleOpenCreate = () => {
+    resetForm();
+    setDialogOpen(true);
+  };
+
+  const handleEdit = (client) => {
+    setEditingId(client.id);
+    setFormData({
+      company_name: client.company_name || '',
+      contact_person: client.contact_person || '',
+      email: client.email || '',
+      phone: client.phone || '',
+      billing_address: client.billing_address || '',
+      site_address: client.site_address || '',
+      vat_number: client.vat_number || '',
+      notes: client.notes || '',
+    });
+    setDialogOpen(true);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!formData.company_name.trim()) {
+      toast.error('Company name is required');
+      return;
+    }
+
+    try {
+      const payload = {
+        company_name: formData.company_name.trim(),
+        contact_person: formData.contact_person || null,
+        email: formData.email || null,
+        phone: formData.phone || null,
+        billing_address: formData.billing_address || null,
+        site_address: formData.site_address || null,
+        vat_number: formData.vat_number || null,
+        notes: formData.notes || null,
+      };
+
+      if (editingId) {
+        await api.put(`/clients/${editingId}`, payload);
+        toast.success('Client updated');
+      } else {
+        await api.post('/clients', payload);
+        toast.success('Client saved');
+      }
+
+      setDialogOpen(false);
+      resetForm();
+      loadClients();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to save client');
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this client record?')) return;
+
+    try {
+      await api.delete(`/clients/${id}`);
+      toast.success('Client deleted');
+      loadClients();
+    } catch {
+      toast.error('Delete failed');
+    }
+  };
+
+  const filteredClients = clients.filter((client) => {
+    const term = searchTerm.toLowerCase();
+
+    return (
+      client.company_name?.toLowerCase().includes(term) ||
+      client.contact_person?.toLowerCase().includes(term) ||
+      client.email?.toLowerCase().includes(term) ||
+      client.phone?.toLowerCase().includes(term) ||
+      client.vat_number?.toLowerCase().includes(term)
+    );
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filteredClients.length / itemsPerPage));
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedClients = filteredClients.slice(startIndex, startIndex + itemsPerPage);
+
+  return (
+    <Layout>
+      <div className="space-y-6 fade-in max-w-7xl">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-4xl font-black tracking-tight leading-none">Clients</h1>
+            <p className="text-slate-600 mt-2">
+              Manage client company details for quick estimating and quoting.
+            </p>
+          </div>
+
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                type="button"
+                onClick={handleOpenCreate}
+                className="bg-[#2563EB] text-white hover:bg-[#1d4ed8]"
+              >
+                <Plus size={18} className="mr-2" />
+                Add Client
+              </Button>
+            </DialogTrigger>
+
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>{editingId ? 'Edit Client' : 'Add New Client'}</DialogTitle>
+              </DialogHeader>
+
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Company Name *</Label>
+                    <Input
+                      value={formData.company_name}
+                      onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                      placeholder="e.g., ABC Retailers"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Contact Person</Label>
+                    <Input
+                      value={formData.contact_person}
+                      onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
+                      placeholder="Contact person"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Email</Label>
+                    <Input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      placeholder="client@example.com"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Phone</Label>
+                    <Input
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      placeholder="+27..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>VAT Number</Label>
+                    <Input
+                      value={formData.vat_number}
+                      onChange={(e) => setFormData({ ...formData, vat_number: e.target.value })}
+                      placeholder="VAT number"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Billing Address</Label>
+                    <Textarea
+                      value={formData.billing_address}
+                      onChange={(e) => setFormData({ ...formData, billing_address: e.target.value })}
+                      placeholder="Billing address"
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Site / Delivery Address</Label>
+                    <Textarea
+                      value={formData.site_address}
+                      onChange={(e) => setFormData({ ...formData, site_address: e.target.value })}
+                      placeholder="Site or delivery address"
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Notes</Label>
+                    <Textarea
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      placeholder="Client notes"
+                      rows={3}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <Button type="submit" className="bg-[#2563EB] hover:bg-[#1e40af]">
+                    {editingId ? 'Update Client' : 'Save Client'}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setDialogOpen(false);
+                      resetForm();
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        <div className="w-full md:max-w-sm space-y-2">
+          <Label>Search Clients</Label>
+          <Input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search company, contact, email, phone, VAT"
+          />
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center p-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto rounded-xl border bg-white">
+              <Table className="w-full min-w-[1000px] text-sm">
+                <TableHeader className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <TableRow>
+                    <TableHead className="px-4 py-3">Company</TableHead>
+                    <TableHead className="px-4 py-3">Contact</TableHead>
+                    <TableHead className="px-4 py-3">Email</TableHead>
+                    <TableHead className="px-4 py-3">Phone</TableHead>
+                    <TableHead className="px-4 py-3">VAT No.</TableHead>
+                    <TableHead className="px-4 py-3 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+
+                <TableBody className="divide-y">
+                  {paginatedClients.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="py-12 text-center">
+                        No clients found.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    paginatedClients.map((client) => (
+                      <TableRow key={client.id}>
+                        <TableCell className="px-4 py-3 font-semibold">{client.company_name}</TableCell>
+                        <TableCell className="px-4 py-3">{client.contact_person || '-'}</TableCell>
+                        <TableCell className="px-4 py-3">{client.email || '-'}</TableCell>
+                        <TableCell className="px-4 py-3">{client.phone || '-'}</TableCell>
+                        <TableCell className="px-4 py-3">{client.vat_number || '-'}</TableCell>
+                        <TableCell className="px-4 py-3">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setInfoClient(client)}
+                            >
+                              <Info size={16} />
+                            </Button>
+
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(client)}
+                            >
+                              <Pencil size={16} />
+                            </Button>
+
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(client.id)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 size={16} />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="flex flex-col gap-3 text-sm text-slate-600 md:flex-row md:items-center md:justify-between">
+              <div>
+                Showing {filteredClients.length === 0 ? 0 : startIndex + 1} to{' '}
+                {Math.min(startIndex + itemsPerPage, filteredClients.length)} of {filteredClients.length} clients
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+
+                <span>Page {currentPage} of {totalPages}</span>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+
+        <Dialog open={!!infoClient} onOpenChange={(open) => !open && setInfoClient(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Client Info</DialogTitle>
+            </DialogHeader>
+
+            {infoClient && (
+              <div className="space-y-2 text-sm">
+                <div><strong>Company:</strong> {infoClient.company_name}</div>
+                <div><strong>Contact:</strong> {infoClient.contact_person || '-'}</div>
+                <div><strong>Email:</strong> {infoClient.email || '-'}</div>
+                <div><strong>Phone:</strong> {infoClient.phone || '-'}</div>
+                <div><strong>VAT No.:</strong> {infoClient.vat_number || '-'}</div>
+                <div><strong>Billing Address:</strong> {infoClient.billing_address || '-'}</div>
+                <div><strong>Site Address:</strong> {infoClient.site_address || '-'}</div>
+                <div><strong>Notes:</strong> {infoClient.notes || '-'}</div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
+    </Layout>
+  );
+}

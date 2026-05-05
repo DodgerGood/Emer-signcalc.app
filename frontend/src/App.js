@@ -13,6 +13,7 @@ import LabourTypesPage from './pages/LabourTypesPage';
 import InstallTypesPage from './pages/InstallTypesPage';
 import RecipesPage from './pages/RecipesPage';
 import QuotesPage from './pages/QuotesPage';
+import ClientsPage from './pages/ClientsPage';
 import QuoteDetailPage from './pages/QuoteDetailPage';
 import ApprovalsPage from './pages/ApprovalsPage';
 import SettingsPage from './pages/SettingsPage';
@@ -113,6 +114,15 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <RecipesPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/clients"
+        element={
+          <ProtectedRoute>
+            <ClientsPage />
           </ProtectedRoute>
         }
       />
