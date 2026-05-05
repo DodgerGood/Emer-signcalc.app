@@ -4533,6 +4533,62 @@ async def get_quote_blueprint(quote_id: str, user: dict = Depends(can_view_bluep
         "updated_at": quote["updated_at"]
     }
 
+class EstimateDraftSave(BaseModel):
+    client_name: str
+    client_email: Optional[str] = None
+    client_phone: Optional[str] = None
+    client_address: Optional[str] = None
+    description: Optional[str] = None
+    lines: List[dict] = []
+    addons: List[dict] = []
+    discount_percent: float = 0.0
+    subtotal: float = 0.0
+    discount_value: float = 0.0
+    subtotal_after_discount: float = 0.0
+    vat: float = 0.0
+    total_amount: float = 0.0
+
+
+@api_router.put("/quotes/{quote_id}/estimate-draft")
+async def save_estimate_draft(
+    quote_id: str,
+    estimate: EstimateDraftSave,
+    user: dict = Depends(can_edit_blueprint)
+):
+    quote = await db.quotes.find_one(
+        {"id": quote_id, "company_id": user["company_id"]},
+        {"_id": 0}
+    )
+
+    if not quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+
+    blueprint = quote.get("blueprint") or {}
+    blueprint["estimate_lines"] = estimate.lines
+    blueprint["estimate_addons"] = estimate.addons
+    blueprint["discount_percent"] = estimate.discount_percent
+    blueprint["subtotal"] = estimate.subtotal
+    blueprint["discount_value"] = estimate.discount_value
+    blueprint["subtotal_after_discount"] = estimate.subtotal_after_discount
+    blueprint["vat"] = estimate.vat
+    blueprint["total_amount"] = estimate.total_amount
+
+    await db.quotes.update_one(
+        {"id": quote_id, "company_id": user["company_id"]},
+        {"$set": {
+            "client_name": estimate.client_name,
+            "client_email": estimate.client_email,
+            "client_phone": estimate.client_phone,
+            "client_address": estimate.client_address,
+            "description": estimate.description,
+            "blueprint": blueprint,
+            "total_amount": estimate.total_amount,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+
+    return {"message": "Estimate draft saved", "total_amount": estimate.total_amount}
+
 @api_router.put("/quotes/{quote_id}/client-details")
 async def update_quote_client_details(quote_id: str, client_name: str, client_email: Optional[str] = None, client_phone: Optional[str] = None, client_address: Optional[str] = None, description: Optional[str] = None, user: dict = Depends(can_edit_blueprint)):
     """Update client details on a quote"""
