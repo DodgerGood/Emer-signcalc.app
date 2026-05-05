@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../lib/api';
-
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -64,15 +63,6 @@ export default function QuoteDetailPage() {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      calculateAllLines(false);
-    }, 5 * 60 * 1000);
-
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lines, installTypes]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -286,23 +276,47 @@ export default function QuoteDetailPage() {
 
   const handleSaveAndClose = async () => {
     try {
-      await calculateAllLines(false);
+      const calculatedLines = await calculateAllLines(false);
       await saveClientIfNew();
 
-      await api.put(`/quotes/${id}/client-details`, null, {
-        params: {
-          client_name: clientData.client_name || '',
-          client_email: clientData.client_email || '',
-          client_phone: clientData.client_phone || '',
-          client_address: clientData.client_address || '',
-          description: clientData.description || '',
-        },
+      const linesSubtotal = calculatedLines.reduce(
+        (sum, line) => sum + (Number(line.line_total) || 0),
+        0
+      );
+
+      const addonsTotal = addons.reduce(
+        (sum, addon) => sum + (Number(addon.selling_price) || 0),
+        0
+      );
+
+      const subtotalBeforeDiscount = linesSubtotal + addonsTotal;
+      const discountPercentForSave = Number(clientData.discount_percent) || 0;
+      const discountValueForSave = subtotalBeforeDiscount * (discountPercentForSave / 100);
+      const subtotalAfterDiscountForSave = subtotalBeforeDiscount - discountValueForSave;
+      const vatForSave = subtotalAfterDiscountForSave * 0.15;
+      const totalAmountForSave = subtotalAfterDiscountForSave + vatForSave;
+
+      await api.put(`/quotes/${id}/estimate-draft`, {
+        client_name: clientData.client_name,
+        client_email: clientData.client_email,
+        client_phone: clientData.client_phone,
+        client_address: clientData.client_address,
+        description: clientData.description,
+        lines: calculatedLines,
+        addons: addons || [],
+        discount_percent: discountPercentForSave,
+        subtotal: subtotalBeforeDiscount,
+        discount_value: discountValueForSave,
+        subtotal_after_discount: subtotalAfterDiscountForSave,
+        vat: vatForSave,
+        total_amount: totalAmountForSave,
       });
 
       toast.success('Estimate calculated and saved');
       navigate('/estimations');
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to save estimate');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to save estimate');
     }
   };
 
