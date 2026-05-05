@@ -161,8 +161,8 @@ export default function QuotesPage() {
     return [...new Set(quotes.map((q) => q.created_by_name).filter(Boolean))];
   }, [quotes]);
 
-  const filteredQuotes = quotes.filter((quote, index) => {
-    const quoteNumber = getQuoteNumber(index).toLowerCase();
+  const filteredQuotes = quotes.filter((quote) => {
+    const quoteNumber = (quote.quote_number || '').toLowerCase();
     const term = searchTerm.toLowerCase();
 
     const matchesSearch =
@@ -362,7 +362,6 @@ export default function QuotesPage() {
                     </TableRow>
                   ) : (
                     paginatedQuotes.map((quote, index) => {
-                      const absoluteIndex = startIndex + index;
                       const quoteNumber = quote.quote_number;
 
                       return (
@@ -466,7 +465,7 @@ export default function QuotesPage() {
 
             {infoQuote && (
               <div className="space-y-2 text-sm">
-                <div><strong>Quote #:</strong> {infoQuote.quoteNumber}</div>
+                <div><strong>Quote #:</strong> {infoQuote.quoteNumber || '-'}</div>
                 <div><strong>Client:</strong> {infoQuote.client_name}</div>
                 <div><strong>Total:</strong> {money(infoQuote.total_amount)}</div>
                 <div><strong>Date:</strong> {infoQuote.created_at ? new Date(infoQuote.created_at).toLocaleDateString() : '-'}</div>
