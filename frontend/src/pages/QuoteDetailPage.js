@@ -53,6 +53,7 @@ export default function QuoteDetailPage() {
     client_phone: '',
     client_address: '',
     description: '',
+    discount_percent: '',
   });
 
   useEffect(() => {
@@ -203,11 +204,20 @@ export default function QuoteDetailPage() {
     setAddons((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const getFulfilmentPriceLabel = (type) => {
+    if (type === 'SITE_INSTALL') return 'Installation Price';
+    if (type === 'DELIVERY') return 'Delivery Price';
+    return 'Collection Price';
+  };
+
   const subtotal = lines.reduce((sum, line) => sum + (Number(line.line_total) || 0), 0);
   const addonTotal = addons.reduce((sum, addon) => sum + (Number(addon.selling_price) || 0), 0);
   const estimateSubtotal = subtotal + addonTotal;
-  const vat = estimateSubtotal * 0.15;
-  const total = estimateSubtotal + vat;
+  const discountPercent = Number(clientData.discount_percent) || 0;
+  const discountValue = estimateSubtotal * (discountPercent / 100);
+  const discountedSubtotal = estimateSubtotal - discountValue;
+  const vat = discountedSubtotal * 0.15;
+  const total = discountedSubtotal + vat;
 
   if (loading) {
     return (
@@ -276,6 +286,17 @@ export default function QuoteDetailPage() {
                 onChange={(e) => setClientData({ ...clientData, description: e.target.value })}
                 placeholder="Brief project description"
                 rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Discount %</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={clientData.discount_percent}
+                onChange={(e) => setClientData({ ...clientData, discount_percent: e.target.value })}
+                placeholder="0"
               />
             </div>
           </div>
@@ -423,7 +444,7 @@ export default function QuoteDetailPage() {
                       </div>
 
                       <div className="mt-3 text-right text-sm">
-                        Fulfilment total: <strong>{money(line.fulfilment_price)}</strong>
+                        {getFulfilmentPriceLabel(line.fulfilment_type)}: <strong>{money(line.fulfilment_price)}</strong>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -483,6 +504,8 @@ export default function QuoteDetailPage() {
         <div className="rounded-xl border bg-slate-50 p-5">
           <div className="ml-auto max-w-sm space-y-2 text-right">
             <div>Subtotal: <strong>{money(estimateSubtotal)}</strong></div>
+            <div>Discount ({discountPercent.toFixed(2)}%): <strong>- {money(discountValue)}</strong></div>
+            <div>Subtotal after Discount: <strong>{money(discountedSubtotal)}</strong></div>
             <div>VAT (15%): <strong>{money(vat)}</strong></div>
             <div className="text-xl font-black">Total: {money(total)}</div>
           </div>
