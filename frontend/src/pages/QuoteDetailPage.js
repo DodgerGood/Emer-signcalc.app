@@ -43,6 +43,8 @@ export default function QuoteDetailPage() {
   const [quote, setQuote] = useState(null);
   const [recipes, setRecipes] = useState([]);
   const [installTypes, setInstallTypes] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [clientSearch, setClientSearch] = useState('');
   const [lines, setLines] = useState([newLine()]);
   const [addons, setAddons] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -63,16 +65,18 @@ export default function QuoteDetailPage() {
 
   const loadData = async () => {
     try {
-      const [quoteRes, recipesRes, installRes] = await Promise.all([
+      const [quoteRes, recipesRes, installRes, clientsRes] = await Promise.all([
         api.get(`/quotes/${id}`),
         api.get('/recipes'),
         api.get('/install-types'),
+        api.get('/clients'),
       ]);
 
       const q = quoteRes.data;
       setQuote(q);
       setRecipes(recipesRes.data || []);
       setInstallTypes(installRes.data || []);
+      setClients(clientsRes.data || []);
 
       setClientData({
         client_name: q.client_name || '',
@@ -80,12 +84,61 @@ export default function QuoteDetailPage() {
         client_phone: q.client_phone || '',
         client_address: q.client_address || '',
         description: q.description || '',
+        discount_percent: '',
       });
+      setClientSearch(q.client_name || '');
     } catch {
       toast.error('Failed to load estimate data');
     } finally {
       setLoading(false);
     }
+  };
+
+  const selectClient = (client) => {
+    setClientData({
+      ...clientData,
+      client_name: client.company_name || '',
+      client_email: client.email || '',
+      client_phone: client.phone || '',
+      client_address: client.billing_address || client.site_address || '',
+      description: clientData.description || client.notes || '',
+    });
+    setClientSearch(client.company_name || '');
+  };
+
+  const matchedClients = clients.filter((client) => {
+    const term = clientSearch.toLowerCase();
+    if (!term) return false;
+
+    return (
+      client.company_name?.toLowerCase().includes(term) ||
+      client.contact_person?.toLowerCase().includes(term) ||
+      client.email?.toLowerCase().includes(term) ||
+      client.phone?.toLowerCase().includes(term)
+    );
+  }).slice(0, 5);
+
+  const exactClientExists = clients.some(
+    (client) => client.company_name?.trim().toLowerCase() === clientData.client_name.trim().toLowerCase()
+  );
+
+  const saveClientIfNew = async () => {
+    if (!clientData.client_name.trim() || exactClientExists) return;
+
+    await api.post('/clients', {
+      company_name: clientData.client_name.trim(),
+      contact_person: null,
+      email: clientData.client_email || null,
+      phone: clientData.client_phone || null,
+      billing_address: clientData.client_address || null,
+      site_address: null,
+      vat_number: null,
+      notes: clientData.description || null,
+    });
+
+    toast.success('New client saved to Clients');
+    const res = await api.get('/clients');
+    setClients(res.data || []);
   };
 
   const calculateInstallCostPerSqm = (install) => {
@@ -250,12 +303,42 @@ export default function QuoteDetailPage() {
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label>Client / Company Name</Label>
+              <Label>Search / Select Client</Label>
               <Input
-                value={clientData.client_name}
-                onChange={(e) => setClientData({ ...clientData, client_name: e.target.value })}
-                placeholder="Client / company name"
+                value={clientSearch}
+                onChange={(e) => {
+                  setClientSearch(e.target.value);
+                  setClientData({ ...clientData, client_name: e.target.value });
+                }}
+                placeholder="Search existing client or type new client"
               />
+
+              {matchedClients.length > 0 && (
+                <div className="rounded-md border bg-white shadow-sm">
+                  {matchedClients.map((client) => (
+                    <button
+                      key={client.id}
+                      type="button"
+                      onClick={() => selectClient(client)}
+                      className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                    >
+                      <div className="font-semibold">{client.company_name}</div>
+                      <div className="text-xs text-slate-500">
+                        {client.contact_person || '-'} | {client.email || '-'} | {client.phone || '-'}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {clientData.client_name && !exactClientExists && (
+                <div className="flex items-center justify-between gap-2 rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                  <span>New client. Save it to Clients for future use.</span>
+                  <Button type="button" size="sm" variant="outline" onClick={saveClientIfNew}>
+                    Save Client
+                  </Button>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
