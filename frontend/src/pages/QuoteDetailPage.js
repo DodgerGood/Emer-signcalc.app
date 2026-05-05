@@ -9,7 +9,7 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Calculator } from 'lucide-react';
 import { toast } from 'sonner';
 
 const money = (value) => `R ${(Number(value) || 0).toFixed(2)}`;
@@ -162,7 +162,7 @@ export default function QuoteDetailPage() {
     };
   };
 
-  const updateLine = async (index, field, value) => {
+  const updateLine = (index, field, value) => {
     const updated = [...lines];
 
     updated[index] = {
@@ -176,6 +176,11 @@ export default function QuoteDetailPage() {
       updated[index].fulfilment_note = '';
     }
 
+    setLines(updated);
+  };
+
+  const calculateLine = async (index) => {
+    const updated = [...lines];
     updated[index] = await recalculateLine(updated[index]);
     setLines(updated);
   };
@@ -236,6 +241,7 @@ export default function QuoteDetailPage() {
           <h1 className="text-4xl font-black tracking-tight leading-none">Estimate Builder</h1>
           <p className="text-slate-600 mt-2">
             Internal estimate view. Costs are visible here. Client quote will show selling prices only.
+            Enter the line details, then click Calc to price that line.
           </p>
         </div>
 
@@ -375,15 +381,27 @@ export default function QuoteDetailPage() {
                     </TableCell>
 
                     <TableCell className="px-4 py-3">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => removeLine(index)}
-                        disabled={lines.length === 1}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 size={16} />
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => calculateLine(index)}
+                        >
+                          <Calculator size={14} className="mr-1" />
+                          Calc
+                        </Button>
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => removeLine(index)}
+                          disabled={lines.length === 1}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 size={16} />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
 
