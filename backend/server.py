@@ -5012,7 +5012,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         elements.append(Spacer(1, 8))
 
     # Line items
-    table_data = [["QTY", "DESCRIPTION", "UNIT PRICE", "LINE TOTAL"]]
+    table_data = [["DESCRIPTION", "UNIT PRICE", "LINE TOTAL"]]
 
     for line in estimate_lines:
         recipe_name = line.get("recipe_name") or "Quoted item"
@@ -5020,54 +5020,61 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         height = line.get("height_mm") or "-"
         qty = float(line.get("quantity") or 0)
         selling_each = float(line.get("recipe_price_each") or 0)
-        line_total = float(line.get("line_total") or 0)
+        job_price = selling_each * qty
 
         fulfilment_type = line.get("fulfilment_type") or "COLLECTION"
         fulfilment_note = line.get("fulfilment_note") or ""
         fulfilment_price = float(line.get("fulfilment_price") or 0)
 
-        fulfilment_label = "Collection Included"
-        if fulfilment_type == "SITE_INSTALL":
-            fulfilment_label = "Installation"
-        elif fulfilment_type == "DELIVERY":
-            fulfilment_label = "Delivery"
-
-        job_price = selling_each * qty
-        description = f"<b>{recipe_name}</b><br/>Size: {width} x {height} mm"
+        description = f"<b>{recipe_name}</b><br/>Qty: {qty:g}<br/>Size: {width} x {height} mm"
 
         table_data.append([
-            f"{qty:g}",
             Paragraph(description, normal),
             f"R {selling_each:.2f}",
             f"R {job_price:.2f}",
         ])
 
-        fulfilment_description = f"<b>{fulfilment_label}</b>"
-        if fulfilment_note:
-            fulfilment_description += f"<br/><font size='7'>{fulfilment_note}</font>"
+        if fulfilment_type == "SITE_INSTALL":
+            fulfilment_description = "<b>Installation</b>"
+            if fulfilment_note:
+                fulfilment_description += f"<br/><font size='7'>{fulfilment_note}</font>"
 
-        table_data.append([
-            "",
-            Paragraph(fulfilment_description, normal),
-            "",
-            "",
-            f"R {fulfilment_price:.2f}",
-            f"R {fulfilment_price:.2f}",
-        ])
+            table_data.append([
+                Paragraph(fulfilment_description, normal),
+                "",
+                f"R {fulfilment_price:.2f}",
+            ])
+
+        elif fulfilment_type == "DELIVERY":
+            fulfilment_description = "<b>Delivery</b>"
+            if fulfilment_note:
+                fulfilment_description += f"<br/><font size='7'>{fulfilment_note}</font>"
+
+            table_data.append([
+                Paragraph(fulfilment_description, normal),
+                "",
+                f"R {fulfilment_price:.2f}",
+            ])
+
+        else:
+            table_data.append([
+                Paragraph("<b>Collection Included</b>", normal),
+                "",
+                "",
+            ])
 
     for addon in addons:
         amount = float(addon.get("selling_price") or 0)
         table_data.append([
-            "1",
             Paragraph(addon.get("description") or "Add-on", normal),
             f"R {amount:.2f}",
             f"R {amount:.2f}",
         ])
 
     if len(table_data) == 1:
-        table_data.append(["-", "No quoted items", "R 0.00", "R 0.00"])
+        table_data.append(["No quoted items", "", ""])
 
-    quote_table = Table(table_data, colWidths=[16 * mm, 94 * mm, 30 * mm, 30 * mm])
+    quote_table = Table(table_data, colWidths=[110 * mm, 30 * mm, 30 * mm])
     quote_table.setStyle(TableStyle([
         ("LINEABOVE", (0, 0), (-1, 0), 1.2, blue),
         ("LINEBELOW", (0, 0), (-1, 0), 1.2, blue),
@@ -5075,9 +5082,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
         ("FONTSIZE", (0, 0), (-1, 0), 9),
         ("FONTSIZE", (0, 1), (-1, -1), 8),
-        ("ALIGN", (0, 1), (0, -1), "CENTER"),
-        ("ALIGN", (2, 1), (-1, -1), "RIGHT"),
-        ("LINEBELOW", (0, -1), (-1, -1), 0.5, border),
+        ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
         ("TOPPADDING", (0, 0), (-1, -1), 8),
