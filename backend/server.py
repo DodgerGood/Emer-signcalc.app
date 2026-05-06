@@ -4970,8 +4970,9 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     header = Table(
         [[
             Paragraph(
-                f"QUOTE<br/><font size='14' color='#2563EB'>{quote_number}</font><br/>"
-                f"<font size='8'>Prepared by: {quote.get('created_by_name') or '-'}</font>",
+                f"QUOTE<br/>"
+                f"<font size='14' color='#2563EB'>{quote_number}</font><br/>"
+                f"<font size='7'>Prepared by: {quote.get('created_by_name') or '-'}</font>",
                 title_style
             ),
             logo_placeholder
@@ -4992,7 +4993,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     )
 
     billing_to = Paragraph(
-        f"<b>BILLING COMPANY</b><br/>{company_name}<br/>{company_address}<br/>Tel: {company_phone}<br/>Email: {company_email}<br/>VAT No: {company_vat}",
+        f"<para alignment='right'><b>BILLING COMPANY</b><br/>{company_name}<br/>{company_address}<br/>Tel: {company_phone}<br/>Email: {company_email}<br/>VAT No: {company_vat}</para>",
         normal
     )
 
@@ -5037,7 +5038,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
             Paragraph(description, normal),
             f"R {selling_each:.2f}",
             f"R {job_price:.2f}",
-            "R 0.00",
+            "",
             f"R {job_price:.2f}",
         ])
 
@@ -5086,7 +5087,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     elements.append(quote_table)
     elements.append(Spacer(1, 8))
 
-    divider = Table([[""]], colWidths=[170 * mm], rowHeights=[1])
+    divider = Table([[""]], colWidths=[172 * mm], rowHeights=[1])
     divider.setStyle(TableStyle([
         ("LINEABOVE", (0, 0), (-1, -1), 1, blue),
     ]))
@@ -5132,13 +5133,13 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
 
             canvas_obj.setStrokeColor(blue)
             canvas_obj.setLineWidth(0.6)
-            canvas_obj.line(18 * mm, 281 * mm, 188 * mm, 281 * mm)
+            canvas_obj.line(18 * mm, 281 * mm, 190 * mm, 281 * mm)
 
         if is_last_page:
             # Full footer only on the last page
             canvas_obj.setStrokeColor(blue)
             canvas_obj.setLineWidth(0.8)
-            canvas_obj.line(18 * mm, 32 * mm, 188 * mm, 32 * mm)
+            canvas_obj.line(18 * mm, 32 * mm, 190 * mm, 32 * mm)
 
             canvas_obj.setFillColor(navy)
             canvas_obj.setFont("Helvetica-Bold", 18)
@@ -5158,7 +5159,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
             # Condensed footer on all non-last pages
             canvas_obj.setStrokeColor(blue)
             canvas_obj.setLineWidth(0.6)
-            canvas_obj.line(18 * mm, 18 * mm, 188 * mm, 18 * mm)
+            canvas_obj.line(18 * mm, 18 * mm, 190 * mm, 18 * mm)
 
             canvas_obj.setFillColor(slate)
             canvas_obj.setFont("Helvetica", 6)
@@ -5196,7 +5197,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     return Response(
         content=buffer.getvalue(),
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={quote_number}-{company_name.replace(' ', '_')}-{quote_date}.pdf"}
+        headers={"Content-Disposition": f'attachment; filename="{quote_number}-{company_name.replace(" ", "_")}-{quote_date}.pdf"'}
     )
 
 @api_router.get("/quotes/{quote_id}/export/bom")
