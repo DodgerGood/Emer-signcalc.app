@@ -388,8 +388,17 @@ export default function QuotesPage() {
                       return (
                         <TableRow key={quote.id}>
                           <TableCell className="px-4 py-3 font-mono"><div className="flex items-center gap-2">
-        <span className="text-green-600">✔</span>
-        {quoteNumber || '-'}
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => handleApprove(quote.id)}
+          className="text-green-600 hover:text-green-700 hover:bg-green-50"
+          title="Approve and convert to quote"
+        >
+          <CheckCircle size={16} />
+        </Button>
+        <span>{quoteNumber || '-'}</span>
       </div></TableCell>
                           <TableCell className="px-4 py-3 font-semibold">{quote.client_name}</TableCell>
                           <TableCell className="px-4 py-3">{quote.created_by_name}</TableCell>
