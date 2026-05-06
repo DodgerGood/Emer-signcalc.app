@@ -5128,17 +5128,17 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
             canvas_obj.setFont("Helvetica-Bold", 9)
             canvas_obj.drawString(18 * mm, 285 * mm, company_name)
             canvas_obj.setFillColor(blue)
-            canvas_obj.drawRightString(192 * mm, 285 * mm, quote_number)
+            canvas_obj.drawRightString(188 * mm, 285 * mm, quote_number)
 
             canvas_obj.setStrokeColor(blue)
             canvas_obj.setLineWidth(0.6)
-            canvas_obj.line(18 * mm, 281 * mm, 192 * mm, 281 * mm)
+            canvas_obj.line(18 * mm, 281 * mm, 188 * mm, 281 * mm)
 
         if is_last_page:
             # Full footer only on the last page
             canvas_obj.setStrokeColor(blue)
             canvas_obj.setLineWidth(0.8)
-            canvas_obj.line(18 * mm, 32 * mm, 192 * mm, 32 * mm)
+            canvas_obj.line(18 * mm, 32 * mm, 188 * mm, 32 * mm)
 
             canvas_obj.setFillColor(navy)
             canvas_obj.setFont("Helvetica-Bold", 18)
@@ -5151,24 +5151,24 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
             canvas_obj.drawString(18 * mm, 11 * mm, "Payment terms placeholder. Quote valid for 7 days unless stated otherwise.")
 
             canvas_obj.setFont("Helvetica-Bold", 7)
-            canvas_obj.drawRightString(192 * mm, 20 * mm, "BANKING DETAILS")
+            canvas_obj.drawRightString(188 * mm, 20 * mm, "BANKING DETAILS")
             canvas_obj.setFont("Helvetica", 6)
-            canvas_obj.drawRightString(192 * mm, 16 * mm, str(banking_details)[:95])
+            canvas_obj.drawRightString(188 * mm, 16 * mm, str(banking_details)[:95])
         else:
             # Condensed footer on all non-last pages
             canvas_obj.setStrokeColor(blue)
             canvas_obj.setLineWidth(0.6)
-            canvas_obj.line(18 * mm, 18 * mm, 192 * mm, 18 * mm)
+            canvas_obj.line(18 * mm, 18 * mm, 188 * mm, 18 * mm)
 
             canvas_obj.setFillColor(slate)
             canvas_obj.setFont("Helvetica", 6)
             canvas_obj.drawString(18 * mm, 12 * mm, "Continued on next page. Full terms and banking details appear on the final page.")
-            canvas_obj.drawRightString(192 * mm, 12 * mm, f"Page {page_number} of {page_count}")
+            canvas_obj.drawRightString(188 * mm, 12 * mm, f"Page {page_number} of {page_count}")
 
         if is_last_page:
             canvas_obj.setFillColor(slate)
             canvas_obj.setFont("Helvetica", 6)
-            canvas_obj.drawRightString(192 * mm, 8 * mm, f"Page {page_number} of {page_count}")
+            canvas_obj.drawRightString(188 * mm, 8 * mm, f"Page {page_number} of {page_count}")
 
         canvas_obj.restoreState()
 
