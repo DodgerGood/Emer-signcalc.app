@@ -4966,7 +4966,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
 
     header = Table(
         [[
-            Paragraph("QUOTE", title_style),
+            Paragraph(f"QUOTE<br/><font size='12' color='#2563EB'>{quote_number}</font>", title_style),
             logo_placeholder
         ]],
         colWidths=[135 * mm, 30 * mm]
@@ -4995,7 +4995,6 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     )
 
     quote_info = Paragraph(
-        f"<b>QUOTE #</b>&nbsp;&nbsp; {quote_number}<br/>"
         f"<b>QUOTE DATE</b>&nbsp;&nbsp; {quote.get('created_at', '')[:10]}<br/>"
         f"<b>PREPARED BY</b>&nbsp;&nbsp; {quote.get('created_by_name') or '-'}",
         normal
@@ -5111,31 +5110,63 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     elements.append(totals_table)
     elements.append(Spacer(1, 18))
 
-    # Banking + Terms
-    bottom_table = Table(
-        [[
-            Paragraph("<b>THANK YOU</b>", ParagraphStyle(
-                "Thanks",
-                parent=styles["Normal"],
-                fontSize=22,
-                leading=24,
-                textColor=navy
-            )),
-            Paragraph(
-                f"<b>TERMS & CONDITIONS</b><br/>Payment terms placeholder.<br/>Quote valid for 7 days unless stated otherwise.<br/><br/><b>BANKING DETAILS</b><br/>{banking_details}",
-                small
-            )
-        ]],
-        colWidths=[75 * mm, 90 * mm]
-    )
-    bottom_table.setStyle(TableStyle([
-        ("LINEBEFORE", (1, 0), (1, 0), 1, blue),
-        ("LEFTPADDING", (1, 0), (1, 0), 10),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-    ]))
-    elements.append(bottom_table)
+    def draw_first_page(canvas, doc_ref):
+        canvas.saveState()
 
-    doc.build(elements)
+        # Footer line
+        canvas.setStrokeColor(blue)
+        canvas.setLineWidth(0.8)
+        canvas.line(18 * mm, 32 * mm, 192 * mm, 32 * mm)
+
+        # Full footer for short / first-page quotes
+        canvas.setFillColor(navy)
+        canvas.setFont("Helvetica-Bold", 18)
+        canvas.drawString(18 * mm, 22 * mm, "THANK YOU")
+
+        canvas.setFillColor(slate)
+        canvas.setFont("Helvetica-Bold", 7)
+        canvas.drawString(88 * mm, 24 * mm, "TERMS & CONDITIONS")
+        canvas.setFont("Helvetica", 6)
+        canvas.drawString(88 * mm, 20 * mm, "Payment terms placeholder. Quote valid for 7 days unless stated otherwise.")
+
+        canvas.setFont("Helvetica-Bold", 7)
+        canvas.drawString(88 * mm, 14 * mm, "BANKING DETAILS")
+        canvas.setFont("Helvetica", 6)
+        canvas.drawString(88 * mm, 10 * mm, str(banking_details)[:95])
+
+        canvas.setFillColor(slate)
+        canvas.setFont("Helvetica", 6)
+        canvas.drawRightString(192 * mm, 8 * mm, f"Page {doc_ref.page}")
+
+        canvas.restoreState()
+
+    def draw_later_pages(canvas, doc_ref):
+        canvas.saveState()
+
+        # Condensed repeating header
+        canvas.setFillColor(navy)
+        canvas.setFont("Helvetica-Bold", 9)
+        canvas.drawString(18 * mm, 285 * mm, company_name)
+        canvas.setFillColor(blue)
+        canvas.drawRightString(192 * mm, 285 * mm, quote_number)
+
+        canvas.setStrokeColor(blue)
+        canvas.setLineWidth(0.6)
+        canvas.line(18 * mm, 281 * mm, 192 * mm, 281 * mm)
+
+        # Condensed repeating footer
+        canvas.setStrokeColor(blue)
+        canvas.setLineWidth(0.6)
+        canvas.line(18 * mm, 18 * mm, 192 * mm, 18 * mm)
+
+        canvas.setFillColor(slate)
+        canvas.setFont("Helvetica", 6)
+        canvas.drawString(18 * mm, 12 * mm, "Terms & Conditions and banking details are shown on the first page footer.")
+        canvas.drawRightString(192 * mm, 12 * mm, f"Page {doc_ref.page}")
+
+        canvas.restoreState()
+
+    doc.build(elements, onFirstPage=draw_first_page, onLaterPages=draw_later_pages)
     buffer.seek(0)
 
     return Response(
