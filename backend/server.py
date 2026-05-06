@@ -4874,6 +4874,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     blueprint = quote.get("blueprint") or {}
 
     quote_number = quote.get("quote_number") or quote.get("estimate_number") or "QUOTE"
+    quote_date = quote.get("created_at", "")[:10] or datetime.now(timezone.utc).date().isoformat()
     estimate_lines = blueprint.get("estimate_lines") or []
     addons = blueprint.get("estimate_addons") or []
 
@@ -4890,6 +4891,8 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     company_email = company.get("email") or "Email placeholder"
     company_vat = company.get("vat_number") or "VAT number placeholder"
     banking_details = company.get("banking_details") or "Banking details placeholder"
+
+    from reportlab.pdfgen import canvas as rl_canvas
 
     buffer = BytesIO()
 
@@ -4968,7 +4971,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         [[
             Paragraph(
                 f"QUOTE<br/><font size='14' color='#2563EB'>{quote_number}</font><br/>"
-                f"<font size='8'>Quote Date: {quote.get('created_at', '')[:10]}<br/>Prepared by: {quote.get('created_by_name') or '-'}</font>",
+                f"<font size='8'>Prepared by: {quote.get('created_by_name') or '-'}</font>",
                 title_style
             ),
             logo_placeholder
@@ -4993,9 +4996,10 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         normal
     )
 
-    info_table = Table([[client_to, billing_to]], colWidths=[82 * mm, 82 * mm])
+    info_table = Table([[client_to, "", billing_to]], colWidths=[70 * mm, 25 * mm, 70 * mm])
     info_table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("ALIGN", (2, 0), (2, 0), "RIGHT"),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
     ]))
     elements.append(info_table)
@@ -5111,69 +5115,87 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     elements.append(totals_table)
     elements.append(Spacer(1, 18))
 
-    def draw_first_page(canvas, doc_ref):
-        canvas.saveState()
+    def draw_header_footer(canvas_obj, doc_ref, page_count):
+        canvas_obj.saveState()
 
-        # Footer line
-        canvas.setStrokeColor(blue)
-        canvas.setLineWidth(0.8)
-        canvas.line(18 * mm, 32 * mm, 192 * mm, 32 * mm)
+        is_first_page = doc_ref.page == 1
+        is_last_page = doc_ref.page == page_count
 
-        # Full footer for short / first-page quotes
-        canvas.setFillColor(navy)
-        canvas.setFont("Helvetica-Bold", 18)
-        canvas.drawString(18 * mm, 22 * mm, "THANK YOU")
+        if not is_first_page:
+            # Condensed repeating header
+            canvas_obj.setFillColor(navy)
+            canvas_obj.setFont("Helvetica-Bold", 9)
+            canvas_obj.drawString(18 * mm, 285 * mm, company_name)
+            canvas_obj.setFillColor(blue)
+            canvas_obj.drawRightString(192 * mm, 285 * mm, quote_number)
 
-        canvas.setFillColor(slate)
-        canvas.setFont("Helvetica-Bold", 7)
-        canvas.drawString(18 * mm, 15 * mm, "TERMS & CONDITIONS")
-        canvas.setFont("Helvetica", 6)
-        canvas.drawString(18 * mm, 11 * mm, "Payment terms placeholder. Quote valid for 7 days unless stated otherwise.")
+            canvas_obj.setStrokeColor(blue)
+            canvas_obj.setLineWidth(0.6)
+            canvas_obj.line(18 * mm, 281 * mm, 192 * mm, 281 * mm)
 
-        canvas.setFont("Helvetica-Bold", 7)
-        canvas.drawString(112 * mm, 20 * mm, "BANKING DETAILS")
-        canvas.setFont("Helvetica", 6)
-        canvas.drawString(112 * mm, 16 * mm, str(banking_details)[:95])
+        if is_last_page:
+            # Full footer only on the last page
+            canvas_obj.setStrokeColor(blue)
+            canvas_obj.setLineWidth(0.8)
+            canvas_obj.line(18 * mm, 32 * mm, 192 * mm, 32 * mm)
 
-        canvas.setFillColor(slate)
-        canvas.setFont("Helvetica", 6)
-        canvas.drawRightString(192 * mm, 8 * mm, f"Page {doc_ref.page}")
+            canvas_obj.setFillColor(navy)
+            canvas_obj.setFont("Helvetica-Bold", 18)
+            canvas_obj.drawString(18 * mm, 22 * mm, "THANK YOU")
 
-        canvas.restoreState()
+            canvas_obj.setFillColor(slate)
+            canvas_obj.setFont("Helvetica-Bold", 7)
+            canvas_obj.drawString(18 * mm, 15 * mm, "TERMS & CONDITIONS")
+            canvas_obj.setFont("Helvetica", 6)
+            canvas_obj.drawString(18 * mm, 11 * mm, "Payment terms placeholder. Quote valid for 7 days unless stated otherwise.")
 
-    def draw_later_pages(canvas, doc_ref):
-        canvas.saveState()
+            canvas_obj.setFont("Helvetica-Bold", 7)
+            canvas_obj.drawRightString(192 * mm, 20 * mm, "BANKING DETAILS")
+            canvas_obj.setFont("Helvetica", 6)
+            canvas_obj.drawRightString(192 * mm, 16 * mm, str(banking_details)[:95])
+        else:
+            # Condensed footer on all non-last pages
+            canvas_obj.setStrokeColor(blue)
+            canvas_obj.setLineWidth(0.6)
+            canvas_obj.line(18 * mm, 18 * mm, 192 * mm, 18 * mm)
 
-        # Condensed repeating header
-        canvas.setFillColor(navy)
-        canvas.setFont("Helvetica-Bold", 9)
-        canvas.drawString(18 * mm, 285 * mm, company_name)
-        canvas.setFillColor(blue)
-        canvas.drawRightString(192 * mm, 285 * mm, quote_number)
+            canvas_obj.setFillColor(slate)
+            canvas_obj.setFont("Helvetica", 6)
+            canvas_obj.drawString(18 * mm, 12 * mm, "Continued on next page.")
+            canvas_obj.drawRightString(192 * mm, 12 * mm, f"Page {doc_ref.page} of {page_count}")
 
-        canvas.setStrokeColor(blue)
-        canvas.setLineWidth(0.6)
-        canvas.line(18 * mm, 281 * mm, 192 * mm, 281 * mm)
+        if is_last_page:
+            canvas_obj.setFillColor(slate)
+            canvas_obj.setFont("Helvetica", 6)
+            canvas_obj.drawRightString(192 * mm, 8 * mm, f"Page {doc_ref.page} of {page_count}")
 
-        # Condensed repeating footer
-        canvas.setStrokeColor(blue)
-        canvas.setLineWidth(0.6)
-        canvas.line(18 * mm, 18 * mm, 192 * mm, 18 * mm)
+        canvas_obj.restoreState()
 
-        canvas.setFillColor(slate)
-        canvas.setFont("Helvetica", 6)
-        canvas.drawString(18 * mm, 12 * mm, "Terms & Conditions and banking details are shown on the first page footer.")
-        canvas.drawRightString(192 * mm, 12 * mm, f"Page {doc_ref.page}")
 
-        canvas.restoreState()
+    class NumberedCanvas(rl_canvas.Canvas):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self._saved_page_states = []
 
-    doc.build(elements, onFirstPage=draw_first_page, onLaterPages=draw_later_pages)
+        def showPage(self):
+            self._saved_page_states.append(dict(self.__dict__))
+            self._startPage()
+
+        def save(self):
+            page_count = len(self._saved_page_states)
+            for state in self._saved_page_states:
+                self.__dict__.update(state)
+                draw_header_footer(self, doc, page_count)
+                super().showPage()
+            super().save()
+
+    doc.build(elements, canvasmaker=NumberedCanvas)
     buffer.seek(0)
 
     return Response(
         content=buffer.getvalue(),
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={quote_number}.pdf"}
+        headers={"Content-Disposition": f"attachment; filename={quote_number}-{company_name.replace(' ', '_')}-{quote_date}.pdf"}
     )
 
 @api_router.get("/quotes/{quote_id}/export/bom")
