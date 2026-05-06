@@ -4914,8 +4914,8 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     light = colors.HexColor("#F8FAFC")
     border = colors.HexColor("#CBD5E1")
 
-    content_left = 22 * mm
-    content_right = 188 * mm
+    content_left = 15 * mm
+    content_right = 195 * mm
     content_width = content_right - content_left
 
     title_style = ParagraphStyle(
@@ -4979,7 +4979,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
             ),
             logo_placeholder
         ]],
-        colWidths=[116 * mm, 50 * mm]
+        colWidths=[128 * mm, 52 * mm]
     )
     header.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -4999,7 +4999,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         normal
     )
 
-    info_table = Table([[client_to, "", billing_to]], colWidths=[66 * mm, 34 * mm, 66 * mm])
+    info_table = Table([[client_to, "", billing_to]], colWidths=[78 * mm, 24 * mm, 78 * mm])
     info_table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("ALIGN", (2, 0), (2, 0), "RIGHT"),
@@ -5069,7 +5069,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     if len(table_data) == 1:
         table_data.append(["-", "No quoted items", "R 0.00", "R 0.00"])
 
-    quote_table = Table(table_data, colWidths=[14 * mm, 92 * mm, 30 * mm, 30 * mm])
+    quote_table = Table(table_data, colWidths=[18 * mm, 102 * mm, 30 * mm, 30 * mm])
     quote_table.setStyle(TableStyle([
         ("LINEABOVE", (0, 0), (-1, 0), 1.2, blue),
         ("LINEBELOW", (0, 0), (-1, 0), 1.2, blue),
@@ -5087,7 +5087,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     elements.append(quote_table)
     elements.append(Spacer(1, 8))
 
-    divider = Table([[""]], colWidths=[166 * mm], rowHeights=[1])
+    divider = Table([[""]], colWidths=[180 * mm], rowHeights=[1])
     divider.setStyle(TableStyle([
         ("LINEABOVE", (0, 0), (-1, -1), 1, blue),
     ]))
@@ -5104,7 +5104,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     totals_data.append(["VAT (15%)", f"R {vat:.2f}"])
     totals_data.append(["TOTAL", f"R {total_amount:.2f}"])
 
-    totals_table = Table(totals_data, colWidths=[116 * mm, 50 * mm])
+    totals_table = Table(totals_data, colWidths=[128 * mm, 52 * mm])
     totals_table.setStyle(TableStyle([
         ("ALIGN", (1, 0), (1, -1), "RIGHT"),
         ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
