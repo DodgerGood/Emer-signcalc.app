@@ -5010,7 +5010,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         elements.append(Spacer(1, 8))
 
     # Line items
-    table_data = [["QTY", "DESCRIPTION", "UNIT PRICE", "JOB PRICE", "EXTRA", "AMOUNT"]]
+    table_data = [["QTY", "DESCRIPTION", "UNIT PRICE", "JOB PRICE", "INSTALL / DELIVERY", "AMOUNT"]]
 
     for line in estimate_lines:
         recipe_name = line.get("recipe_name") or "Quoted item"
@@ -5038,7 +5038,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
             Paragraph(description, normal),
             f"R {selling_each:.2f}",
             f"R {job_price:.2f}",
-            "",
+            "-",
             f"R {job_price:.2f}",
         ])
 
