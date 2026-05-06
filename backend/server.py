@@ -4692,8 +4692,8 @@ async def approve_quote(quote_id: str, user: dict = Depends(require_manager)):
     if not quote:
         raise HTTPException(status_code=404, detail="Quote not found")
 
-    if quote["created_by"] == user["id"]:
-        raise HTTPException(status_code=403, detail="You cannot approve your own quote")
+    if quote["created_by"] == user["id"] and user["role"] != "MD_ADMIN":
+        raise HTTPException(status_code=403, detail="You cannot approve your own estimation")
 
     # 🔹 Get last QUOTE number
     last_quote = await db.quotes.find(
