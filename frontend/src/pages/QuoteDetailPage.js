@@ -320,7 +320,7 @@ export default function QuoteDetailPage() {
       });
 
       toast.success('Estimate calculated and saved');
-      navigate('/estimations');
+      navigate(quote?.quote_number ? '/quotes' : '/estimations');
     } catch (err) {
       console.error(err);
       toast.error('Failed to save estimate');

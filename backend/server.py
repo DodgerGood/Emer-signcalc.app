@@ -4966,7 +4966,11 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
 
     header = Table(
         [[
-            Paragraph(f"QUOTE<br/><font size='12' color='#2563EB'>{quote_number}</font>", title_style),
+            Paragraph(
+                f"QUOTE<br/><font size='14' color='#2563EB'>{quote_number}</font><br/>"
+                f"<font size='8'>Quote Date: {quote.get('created_at', '')[:10]}<br/>Prepared by: {quote.get('created_by_name') or '-'}</font>",
+                title_style
+            ),
             logo_placeholder
         ]],
         colWidths=[135 * mm, 30 * mm]
@@ -4977,11 +4981,6 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     ]))
     elements.append(header)
 
-    elements.append(Paragraph(
-        f"<b>{company_name}</b><br/>{company_address}<br/>Tel: {company_phone}<br/>Email: {company_email}<br/>VAT No: {company_vat}",
-        normal
-    ))
-    elements.append(Spacer(1, 10))
 
     # Client / billing / quote info
     client_to = Paragraph(
@@ -4990,17 +4989,11 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     )
 
     billing_to = Paragraph(
-        f"<b>BILLING COMPANY</b><br/>{company_name}<br/>{company_address}<br/>Tel: {company_phone}<br/>VAT No: {company_vat}",
+        f"<b>BILLING COMPANY</b><br/>{company_name}<br/>{company_address}<br/>Tel: {company_phone}<br/>Email: {company_email}<br/>VAT No: {company_vat}",
         normal
     )
 
-    quote_info = Paragraph(
-        f"<b>QUOTE DATE</b>&nbsp;&nbsp; {quote.get('created_at', '')[:10]}<br/>"
-        f"<b>PREPARED BY</b>&nbsp;&nbsp; {quote.get('created_by_name') or '-'}",
-        normal
-    )
-
-    info_table = Table([[client_to, billing_to, quote_info]], colWidths=[55 * mm, 55 * mm, 55 * mm])
+    info_table = Table([[client_to, billing_to]], colWidths=[82 * mm, 82 * mm])
     info_table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
@@ -5035,18 +5028,26 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         job_price = selling_each * qty
         description = f"<b>{recipe_name}</b><br/>Size: {width} x {height} mm"
 
-        if fulfilment_note:
-            description += f"<br/><font size='7'>{fulfilment_label}: {fulfilment_note}</font>"
-        else:
-            description += f"<br/><font size='7'>{fulfilment_label}</font>"
-
         table_data.append([
             f"{qty:g}",
             Paragraph(description, normal),
             f"R {selling_each:.2f}",
             f"R {job_price:.2f}",
+            "R 0.00",
+            f"R {job_price:.2f}",
+        ])
+
+        fulfilment_description = f"<b>{fulfilment_label}</b>"
+        if fulfilment_note:
+            fulfilment_description += f"<br/><font size='7'>{fulfilment_note}</font>"
+
+        table_data.append([
+            "",
+            Paragraph(fulfilment_description, normal),
+            "",
+            "",
             f"R {fulfilment_price:.2f}",
-            f"R {line_total:.2f}",
+            f"R {fulfilment_price:.2f}",
         ])
 
     for addon in addons:
@@ -5125,14 +5126,14 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
 
         canvas.setFillColor(slate)
         canvas.setFont("Helvetica-Bold", 7)
-        canvas.drawString(88 * mm, 24 * mm, "TERMS & CONDITIONS")
+        canvas.drawString(18 * mm, 15 * mm, "TERMS & CONDITIONS")
         canvas.setFont("Helvetica", 6)
-        canvas.drawString(88 * mm, 20 * mm, "Payment terms placeholder. Quote valid for 7 days unless stated otherwise.")
+        canvas.drawString(18 * mm, 11 * mm, "Payment terms placeholder. Quote valid for 7 days unless stated otherwise.")
 
         canvas.setFont("Helvetica-Bold", 7)
-        canvas.drawString(88 * mm, 14 * mm, "BANKING DETAILS")
+        canvas.drawString(112 * mm, 20 * mm, "BANKING DETAILS")
         canvas.setFont("Helvetica", 6)
-        canvas.drawString(88 * mm, 10 * mm, str(banking_details)[:95])
+        canvas.drawString(112 * mm, 16 * mm, str(banking_details)[:95])
 
         canvas.setFillColor(slate)
         canvas.setFont("Helvetica", 6)
