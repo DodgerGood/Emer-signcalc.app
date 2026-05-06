@@ -4914,6 +4914,10 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     light = colors.HexColor("#F8FAFC")
     border = colors.HexColor("#CBD5E1")
 
+    content_left = 18 * mm
+    content_right = 192 * mm
+    content_width = content_right - content_left
+
     title_style = ParagraphStyle(
         "QuoteTitle",
         parent=styles["Heading1"],
@@ -5067,7 +5071,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     if len(table_data) == 1:
         table_data.append(["-", "No quoted items", "R 0.00", "R 0.00"])
 
-    quote_table = Table(table_data, colWidths=[18 * mm, 92 * mm, 30 * mm, 30 * mm])
+    quote_table = Table(table_data, colWidths=[18 * mm, 96 * mm, 30 * mm, 30 * mm])
     quote_table.setStyle(TableStyle([
         ("LINEABOVE", (0, 0), (-1, 0), 1.2, blue),
         ("LINEBELOW", (0, 0), (-1, 0), 1.2, blue),
@@ -5085,7 +5089,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     elements.append(quote_table)
     elements.append(Spacer(1, 8))
 
-    divider = Table([[""]], colWidths=[172 * mm], rowHeights=[1])
+    divider = Table([[""]], colWidths=[content_width], rowHeights=[1])
     divider.setStyle(TableStyle([
         ("LINEABOVE", (0, 0), (-1, -1), 1, blue),
     ]))
@@ -5131,13 +5135,13 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
 
             canvas_obj.setStrokeColor(blue)
             canvas_obj.setLineWidth(0.6)
-            canvas_obj.line(18 * mm, 281 * mm, 190 * mm, 281 * mm)
+            canvas_obj.line(content_left, 281 * mm, content_right, 281 * mm)
 
         if is_last_page:
             # Full footer only on the last page
             canvas_obj.setStrokeColor(blue)
             canvas_obj.setLineWidth(0.8)
-            canvas_obj.line(18 * mm, 32 * mm, 190 * mm, 32 * mm)
+            canvas_obj.line(content_left, 32 * mm, content_right, 32 * mm)
 
             canvas_obj.setFillColor(navy)
             canvas_obj.setFont("Helvetica-Bold", 18)
@@ -5157,7 +5161,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
             # Condensed footer on all non-last pages
             canvas_obj.setStrokeColor(blue)
             canvas_obj.setLineWidth(0.6)
-            canvas_obj.line(18 * mm, 18 * mm, 190 * mm, 18 * mm)
+            canvas_obj.line(content_left, 18 * mm, content_right, 18 * mm)
 
             canvas_obj.setFillColor(slate)
             canvas_obj.setFont("Helvetica", 6)
