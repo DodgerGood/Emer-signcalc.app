@@ -183,18 +183,22 @@ export default function QuotesPage() {
   }, [quotes]);
 
   const filteredQuotes = quotes.filter((quote) => {
-    const quoteNumber = (quote.quote_number || '').toLowerCase();
+    const displayNumber = (quote.quote_number || quote.estimate_number || '').toLowerCase();
     const term = searchTerm.toLowerCase();
 
+    const belongsOnThisPage = isEstimationsPage
+      ? !quote.quote_number
+      : !!quote.quote_number;
+
     const matchesSearch =
-      quoteNumber.includes(term) ||
+      displayNumber.includes(term) ||
       quote.client_name?.toLowerCase().includes(term) ||
       quote.description?.toLowerCase().includes(term);
 
     const matchesStaff =
       staffFilter === 'ALL' || quote.created_by_name === staffFilter;
 
-    return matchesSearch && matchesStaff;
+    return belongsOnThisPage && matchesSearch && matchesStaff;
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredQuotes.length / itemsPerPage));
@@ -364,7 +368,7 @@ export default function QuotesPage() {
               <Table className="w-full min-w-[1000px] text-sm">
                 <TableHeader className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                   <TableRow>
-                    <TableHead className="px-4 py-3">Quote #</TableHead>
+                    <TableHead className="px-4 py-3">{isEstimationsPage ? "Estimate #" : "Quote #"}</TableHead>
                     <TableHead className="px-4 py-3">Client</TableHead>
                     <TableHead className="px-4 py-3">Staff</TableHead>
                     <TableHead className="px-4 py-3">Total</TableHead>
@@ -388,16 +392,18 @@ export default function QuotesPage() {
                       return (
                         <TableRow key={quote.id}>
                           <TableCell className="px-4 py-3 font-mono"><div className="flex items-center gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => handleApprove(quote.id)}
-          className="text-green-600 hover:text-green-700 hover:bg-green-50"
-          title="Approve and convert to quote"
-        >
-          <CheckCircle size={16} />
-        </Button>
+        {isEstimationsPage && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => handleApprove(quote.id)}
+            className="text-green-600 hover:text-green-700 hover:bg-green-50"
+            title="Approve and convert to quote"
+          >
+            <CheckCircle size={16} />
+          </Button>
+        )}
         <span>{quoteNumber || '-'}</span>
       </div></TableCell>
                           <TableCell className="px-4 py-3 font-semibold">{quote.client_name}</TableCell>
@@ -428,17 +434,20 @@ export default function QuotesPage() {
                                 </Button>
                               </Link>
 
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleApprove(quote.id)}
-                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                              >
-                                <CheckCircle size={16} />
-                              </Button>
+                              {isEstimationsPage && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleApprove(quote.id)}
+                                  className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                  title="Approve and convert to quote"
+                                >
+                                  <CheckCircle size={16} />
+                                </Button>
+                              )}
 
-                              {quote.quote_number && (
+                              {!isEstimationsPage && quote.quote_number && (
                                 <Button
                                   type="button"
                                   variant="ghost"
