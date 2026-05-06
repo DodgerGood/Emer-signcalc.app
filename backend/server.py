@@ -5024,7 +5024,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         fulfilment_note = line.get("fulfilment_note") or ""
         fulfilment_price = float(line.get("fulfilment_price") or 0)
 
-        fulfilment_label = "Collection"
+        fulfilment_label = "Collection Included"
         if fulfilment_type == "SITE_INSTALL":
             fulfilment_label = "Installation"
         elif fulfilment_type == "DELIVERY":
