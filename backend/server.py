@@ -4870,7 +4870,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     if not quote:
         raise HTTPException(status_code=404, detail="Quote not found")
 
-    company = await db.companies.find_one({"id": quote["company_id"]}, {"_id": 0})
+    company = await db.companies.find_one({"id": quote["company_id"]}, {"_id": 0}) or {}
     blueprint = quote.get("blueprint") or {}
 
     quote_number = quote.get("quote_number") or quote.get("estimate_number") or "QUOTE"
@@ -4883,6 +4883,13 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     subtotal_after_discount = float(blueprint.get("subtotal_after_discount") or subtotal)
     vat = float(blueprint.get("vat") or 0)
     total_amount = float(blueprint.get("total_amount") or quote.get("total_amount") or 0)
+
+    company_name = company.get("name") or "Your Company Name"
+    company_address = company.get("address") or "Company address placeholder"
+    company_phone = company.get("phone") or "Telephone placeholder"
+    company_email = company.get("email") or "Email placeholder"
+    company_vat = company.get("vat_number") or "VAT number placeholder"
+    banking_details = company.get("banking_details") or "Banking details placeholder"
 
     buffer = BytesIO()
 
@@ -4898,86 +4905,118 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     elements = []
     styles = getSampleStyleSheet()
 
+    navy = colors.HexColor("#0F172A")
+    blue = colors.HexColor("#2563EB")
+    slate = colors.HexColor("#475569")
+    light = colors.HexColor("#F8FAFC")
+    border = colors.HexColor("#CBD5E1")
+
     title_style = ParagraphStyle(
         "QuoteTitle",
         parent=styles["Heading1"],
-        fontSize=22,
-        leading=26,
-        textColor=colors.HexColor("#0F172A"),
-        spaceAfter=6
+        fontSize=34,
+        leading=38,
+        textColor=navy,
+        spaceAfter=4
     )
 
-    section_style = ParagraphStyle(
-        "SectionTitle",
+    h_style = ParagraphStyle(
+        "SectionHeading",
         parent=styles["Heading2"],
-        fontSize=12,
-        leading=14,
-        textColor=colors.HexColor("#0F172A"),
-        spaceBefore=10,
-        spaceAfter=6
+        fontSize=10,
+        leading=12,
+        textColor=navy,
+        spaceBefore=8,
+        spaceAfter=5
     )
 
-    normal = styles["Normal"]
-    small = ParagraphStyle(
-        "Small",
+    normal = ParagraphStyle(
+        "NormalClean",
         parent=styles["Normal"],
         fontSize=8,
         leading=10,
-        textColor=colors.HexColor("#334155")
+        textColor=colors.black
+    )
+
+    small = ParagraphStyle(
+        "SmallClean",
+        parent=styles["Normal"],
+        fontSize=7,
+        leading=9,
+        textColor=slate
     )
 
     # Header
-    header_data = [
-        [
-            Paragraph(f"<b>{company.get('name', 'Company')}</b><br/>{company.get('email', '')}<br/>{company.get('phone', '')}", small),
-            Paragraph(f"<b>{quote_number}</b><br/>Date: {quote.get('created_at', '')[:10]}", ParagraphStyle(
-                "QuoteNumber",
-                parent=styles["Normal"],
-                fontSize=14,
-                leading=18,
-                alignment=2,
-                textColor=colors.HexColor("#2563EB")
-            ))
-        ]
-    ]
+    logo_placeholder = Table(
+        [[Paragraph("<b>LOGO</b>", ParagraphStyle(
+            "LogoText",
+            parent=styles["Normal"],
+            fontSize=14,
+            alignment=1,
+            textColor=colors.white
+        ))]],
+        colWidths=[28 * mm],
+        rowHeights=[28 * mm]
+    )
+    logo_placeholder.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#94A3B8")),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+    ]))
 
-    header = Table(header_data, colWidths=[110 * mm, 55 * mm])
+    header = Table(
+        [[
+            Paragraph("QUOTE", title_style),
+            logo_placeholder
+        ]],
+        colWidths=[135 * mm, 30 * mm]
+    )
     header.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
+        ("ALIGN", (1, 0), (1, 0), "RIGHT"),
     ]))
     elements.append(header)
 
-    elements.append(Paragraph(f"Quote for {quote.get('client_name', '-')}", title_style))
-
-    client_data = [
-        ["Client / Company", quote.get("client_name") or "-"],
-        ["Email", quote.get("client_email") or "-"],
-        ["Phone", quote.get("client_phone") or "-"],
-        ["Address", quote.get("client_address") or "-"],
-        ["Project", quote.get("description") or "-"],
-        ["Prepared by", quote.get("created_by_name") or "-"],
-    ]
-
-    client_table = Table(client_data, colWidths=[38 * mm, 127 * mm])
-    client_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#F8FAFC")),
-        ("TEXTCOLOR", (0, 0), (0, -1), colors.HexColor("#475569")),
-        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 8),
-        ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#CBD5E1")),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("PADDING", (0, 0), (-1, -1), 6),
-    ]))
-    elements.append(client_table)
+    elements.append(Paragraph(
+        f"<b>{company_name}</b><br/>{company_address}<br/>Tel: {company_phone}<br/>Email: {company_email}<br/>VAT No: {company_vat}",
+        normal
+    ))
     elements.append(Spacer(1, 10))
 
-    # Client-facing quote line table: NO COSTS
-    elements.append(Paragraph("Quoted Items", section_style))
+    # Bill / Ship / Quote info
+    bill_to = Paragraph(
+        f"<b>BILL TO</b><br/>{quote.get('client_name') or '-'}<br/>{quote.get('client_address') or '-'}<br/>{quote.get('client_email') or '-'}<br/>{quote.get('client_phone') or '-'}",
+        normal
+    )
 
-    line_table_data = [["#", "Description", "Size", "Qty", "Selling Price", "Line Total"]]
+    ship_to = Paragraph(
+        f"<b>SHIP / SITE TO</b><br/>{quote.get('client_name') or '-'}<br/>{quote.get('client_address') or 'Site / delivery address placeholder'}",
+        normal
+    )
 
-    for idx, line in enumerate(estimate_lines, start=1):
+    quote_info = Paragraph(
+        f"<b>QUOTE #</b>&nbsp;&nbsp; {quote_number}<br/>"
+        f"<b>QUOTE DATE</b>&nbsp;&nbsp; {quote.get('created_at', '')[:10]}<br/>"
+        f"<b>PREPARED BY</b>&nbsp;&nbsp; {quote.get('created_by_name') or '-'}<br/>"
+        f"<b>STATUS</b>&nbsp;&nbsp; {quote.get('quote_approval_status') or '-'}",
+        normal
+    )
+
+    info_table = Table([[bill_to, ship_to, quote_info]], colWidths=[55 * mm, 55 * mm, 55 * mm])
+    info_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
+    ]))
+    elements.append(info_table)
+
+    if quote.get("description"):
+        elements.append(Paragraph(f"<b>PROJECT:</b> {quote.get('description')}", normal))
+        elements.append(Spacer(1, 8))
+
+    # Line items
+    table_data = [["QTY", "DESCRIPTION", "UNIT PRICE", "AMOUNT"]]
+
+    for line in estimate_lines:
         recipe_name = line.get("recipe_name") or "Quoted item"
         width = line.get("width_mm") or "-"
         height = line.get("height_mm") or "-"
@@ -4995,83 +5034,96 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         elif fulfilment_type == "DELIVERY":
             fulfilment_label = "Delivery"
 
-        description = recipe_name
+        description = f"<b>{recipe_name}</b><br/>Size: {width} x {height} mm"
+        description += f"<br/><font size='7'>{fulfilment_label}"
         if fulfilment_note:
-            description += f"<br/><font size='7'>{fulfilment_label}: {fulfilment_note}</font>"
-        else:
-            description += f"<br/><font size='7'>{fulfilment_label}</font>"
+            description += f": {fulfilment_note}"
+        description += "</font>"
 
         if fulfilment_price > 0:
             description += f"<br/><font size='7'>{fulfilment_label} Price: R {fulfilment_price:.2f}</font>"
 
-        line_table_data.append([
-            str(idx),
-            Paragraph(description, small),
-            f"{width} x {height} mm",
+        table_data.append([
             f"{qty:g}",
+            Paragraph(description, normal),
             f"R {selling_each:.2f}",
             f"R {line_total:.2f}",
         ])
 
-    if addons:
-        for addon in addons:
-            line_table_data.append([
-                "",
-                Paragraph(addon.get("description") or "Add-on", small),
-                "-",
-                "1",
-                f"R {float(addon.get('selling_price') or 0):.2f}",
-                f"R {float(addon.get('selling_price') or 0):.2f}",
-            ])
+    for addon in addons:
+        amount = float(addon.get("selling_price") or 0)
+        table_data.append([
+            "1",
+            Paragraph(addon.get("description") or "Add-on", normal),
+            f"R {amount:.2f}",
+            f"R {amount:.2f}",
+        ])
 
-    if len(line_table_data) == 1:
-        line_table_data.append(["-", "No quoted items", "-", "-", "R 0.00", "R 0.00"])
+    if len(table_data) == 1:
+        table_data.append(["-", "No quoted items", "R 0.00", "R 0.00"])
 
-    line_table = Table(line_table_data, colWidths=[10 * mm, 62 * mm, 33 * mm, 15 * mm, 25 * mm, 25 * mm])
-    line_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2563EB")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+    quote_table = Table(table_data, colWidths=[20 * mm, 90 * mm, 30 * mm, 30 * mm])
+    quote_table.setStyle(TableStyle([
+        ("LINEABOVE", (0, 0), (-1, 0), 1.2, blue),
+        ("LINEBELOW", (0, 0), (-1, 0), 1.2, blue),
+        ("TEXTCOLOR", (0, 0), (-1, 0), navy),
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, 0), 8),
+        ("FONTSIZE", (0, 0), (-1, 0), 9),
         ("FONTSIZE", (0, 1), (-1, -1), 8),
-        ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#CBD5E1")),
+        ("ALIGN", (0, 1), (0, -1), "CENTER"),
+        ("ALIGN", (2, 1), (-1, -1), "RIGHT"),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("ALIGN", (3, 1), (-1, -1), "RIGHT"),
-        ("PADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 8),
     ]))
-    elements.append(line_table)
-    elements.append(Spacer(1, 12))
+    elements.append(quote_table)
+    elements.append(Spacer(1, 10))
 
     # Totals
-    totals_data = [
-        ["Subtotal", f"R {subtotal:.2f}"],
-    ]
+    totals_data = [["Subtotal", f"R {subtotal:.2f}"]]
 
     if discount_percent > 0:
         totals_data.append([f"Discount ({discount_percent:.2f}%)", f"- R {discount_value:.2f}"])
         totals_data.append(["Subtotal after Discount", f"R {subtotal_after_discount:.2f}"])
 
     totals_data.append(["VAT (15%)", f"R {vat:.2f}"])
-    totals_data.append(["Grand Total", f"R {total_amount:.2f}"])
+    totals_data.append(["TOTAL", f"R {total_amount:.2f}"])
 
-    totals_table = Table(totals_data, colWidths=[120 * mm, 45 * mm])
+    totals_table = Table(totals_data, colWidths=[115 * mm, 55 * mm])
     totals_table.setStyle(TableStyle([
         ("ALIGN", (1, 0), (1, -1), "RIGHT"),
         ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("FONTSIZE", (0, -1), (-1, -1), 12),
-        ("TEXTCOLOR", (0, -1), (-1, -1), colors.HexColor("#0F172A")),
-        ("LINEABOVE", (0, -1), (-1, -1), 1, colors.HexColor("#0F172A")),
+        ("FONTSIZE", (0, 0), (-1, -2), 9),
+        ("FONTSIZE", (0, -1), (-1, -1), 14),
+        ("TEXTCOLOR", (0, -1), (-1, -1), navy),
         ("PADDING", (0, 0), (-1, -1), 5),
     ]))
     elements.append(totals_table)
-    elements.append(Spacer(1, 14))
+    elements.append(Spacer(1, 18))
 
-    elements.append(Paragraph(
-        "This quote is valid subject to final artwork, site conditions, and written approval. "
-        "No internal costs are shown on this client-facing document.",
-        small
-    ))
+    # Banking + Terms
+    bottom_table = Table(
+        [[
+            Paragraph("<b>THANK YOU</b>", ParagraphStyle(
+                "Thanks",
+                parent=styles["Normal"],
+                fontSize=22,
+                leading=24,
+                textColor=navy
+            )),
+            Paragraph(
+                f"<b>TERMS & CONDITIONS</b><br/>Payment terms placeholder.<br/>Quote valid for 7 days unless stated otherwise.<br/><br/><b>BANKING DETAILS</b><br/>{banking_details}",
+                small
+            )
+        ]],
+        colWidths=[75 * mm, 90 * mm]
+    )
+    bottom_table.setStyle(TableStyle([
+        ("LINEBEFORE", (1, 0), (1, 0), 1, blue),
+        ("LEFTPADDING", (1, 0), (1, 0), 10),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ]))
+    elements.append(bottom_table)
 
     doc.build(elements)
     buffer.seek(0)
