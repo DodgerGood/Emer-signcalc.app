@@ -5010,7 +5010,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         elements.append(Spacer(1, 8))
 
     # Line items
-    table_data = [["QTY", "DESCRIPTION", "UNIT PRICE", "JOB PRICE", "INSTALL / DELIVERY", "AMOUNT"]]
+    table_data = [["QTY", "DESCRIPTION", "UNIT PRICE", "LINE TOTAL"]]
 
     for line in estimate_lines:
         recipe_name = line.get("recipe_name") or "Quoted item"
@@ -5037,8 +5037,6 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
             f"{qty:g}",
             Paragraph(description, normal),
             f"R {selling_each:.2f}",
-            f"R {job_price:.2f}",
-            "-",
             f"R {job_price:.2f}",
         ])
 
@@ -5067,9 +5065,9 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         ])
 
     if len(table_data) == 1:
-        table_data.append(["-", "No quoted items", "R 0.00", "R 0.00", "R 0.00", "R 0.00"])
+        table_data.append(["-", "No quoted items", "R 0.00", "R 0.00"])
 
-    quote_table = Table(table_data, colWidths=[15 * mm, 70 * mm, 25 * mm, 25 * mm, 25 * mm, 25 * mm])
+    quote_table = Table(table_data, colWidths=[18 * mm, 92 * mm, 30 * mm, 30 * mm])
     quote_table.setStyle(TableStyle([
         ("LINEABOVE", (0, 0), (-1, 0), 1.2, blue),
         ("LINEBELOW", (0, 0), (-1, 0), 1.2, blue),
