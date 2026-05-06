@@ -4902,7 +4902,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         rightMargin=18 * mm,
         leftMargin=18 * mm,
         topMargin=16 * mm,
-        bottomMargin=16 * mm
+        bottomMargin=48 * mm
     )
 
     elements = []
@@ -5118,8 +5118,9 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     def draw_header_footer(canvas_obj, doc_ref, page_count):
         canvas_obj.saveState()
 
-        is_first_page = doc_ref.page == 1
-        is_last_page = doc_ref.page == page_count
+        page_number = canvas_obj._pageNumber
+        is_first_page = page_number == 1
+        is_last_page = page_number == page_count
 
         if not is_first_page:
             # Condensed repeating header
@@ -5161,13 +5162,13 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
 
             canvas_obj.setFillColor(slate)
             canvas_obj.setFont("Helvetica", 6)
-            canvas_obj.drawString(18 * mm, 12 * mm, "Continued on next page.")
-            canvas_obj.drawRightString(192 * mm, 12 * mm, f"Page {doc_ref.page} of {page_count}")
+            canvas_obj.drawString(18 * mm, 12 * mm, "Continued on next page. Full terms and banking details appear on the final page.")
+            canvas_obj.drawRightString(192 * mm, 12 * mm, f"Page {page_number} of {page_count}")
 
         if is_last_page:
             canvas_obj.setFillColor(slate)
             canvas_obj.setFont("Helvetica", 6)
-            canvas_obj.drawRightString(192 * mm, 8 * mm, f"Page {doc_ref.page} of {page_count}")
+            canvas_obj.drawRightString(192 * mm, 8 * mm, f"Page {page_number} of {page_count}")
 
         canvas_obj.restoreState()
 
