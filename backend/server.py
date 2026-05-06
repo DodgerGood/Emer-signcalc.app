@@ -4862,135 +4862,224 @@ async def reject_request(approval_id: str, user: dict = Depends(require_manager)
 
 @api_router.get("/quotes/{quote_id}/export/pdf")
 async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)):
-    quote = await db.quotes.find_one({"id": quote_id, "company_id": user["company_id"]}, {"_id": 0})
+    quote = await db.quotes.find_one(
+        {"id": quote_id, "company_id": user["company_id"]},
+        {"_id": 0}
+    )
+
     if not quote:
         raise HTTPException(status_code=404, detail="Quote not found")
-    
+
     company = await db.companies.find_one({"id": quote["company_id"]}, {"_id": 0})
-    
+    blueprint = quote.get("blueprint") or {}
+
+    quote_number = quote.get("quote_number") or quote.get("estimate_number") or "QUOTE"
+    estimate_lines = blueprint.get("estimate_lines") or []
+    addons = blueprint.get("estimate_addons") or []
+
+    subtotal = float(blueprint.get("subtotal") or quote.get("total_amount") or 0)
+    discount_percent = float(blueprint.get("discount_percent") or 0)
+    discount_value = float(blueprint.get("discount_value") or 0)
+    subtotal_after_discount = float(blueprint.get("subtotal_after_discount") or subtotal)
+    vat = float(blueprint.get("vat") or 0)
+    total_amount = float(blueprint.get("total_amount") or quote.get("total_amount") or 0)
+
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4)
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=18 * mm,
+        leftMargin=18 * mm,
+        topMargin=16 * mm,
+        bottomMargin=16 * mm
+    )
+
     elements = []
     styles = getSampleStyleSheet()
-    
-    # Title
-    title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=24, textColor=colors.HexColor('#0F172A'))
-    elements.append(Paragraph(f"Quote for {quote['client_name']}", title_style))
+
+    title_style = ParagraphStyle(
+        "QuoteTitle",
+        parent=styles["Heading1"],
+        fontSize=22,
+        leading=26,
+        textColor=colors.HexColor("#0F172A"),
+        spaceAfter=6
+    )
+
+    section_style = ParagraphStyle(
+        "SectionTitle",
+        parent=styles["Heading2"],
+        fontSize=12,
+        leading=14,
+        textColor=colors.HexColor("#0F172A"),
+        spaceBefore=10,
+        spaceAfter=6
+    )
+
+    normal = styles["Normal"]
+    small = ParagraphStyle(
+        "Small",
+        parent=styles["Normal"],
+        fontSize=8,
+        leading=10,
+        textColor=colors.HexColor("#334155")
+    )
+
+    # Header
+    header_data = [
+        [
+            Paragraph(f"<b>{company.get('name', 'Company')}</b><br/>{company.get('email', '')}<br/>{company.get('phone', '')}", small),
+            Paragraph(f"<b>{quote_number}</b><br/>Date: {quote.get('created_at', '')[:10]}", ParagraphStyle(
+                "QuoteNumber",
+                parent=styles["Normal"],
+                fontSize=14,
+                leading=18,
+                alignment=2,
+                textColor=colors.HexColor("#2563EB")
+            ))
+        ]
+    ]
+
+    header = Table(header_data, colWidths=[110 * mm, 55 * mm])
+    header.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
+    ]))
+    elements.append(header)
+
+    elements.append(Paragraph(f"Quote for {quote.get('client_name', '-')}", title_style))
+
+    client_data = [
+        ["Client / Company", quote.get("client_name") or "-"],
+        ["Email", quote.get("client_email") or "-"],
+        ["Phone", quote.get("client_phone") or "-"],
+        ["Address", quote.get("client_address") or "-"],
+        ["Project", quote.get("description") or "-"],
+        ["Prepared by", quote.get("created_by_name") or "-"],
+    ]
+
+    client_table = Table(client_data, colWidths=[38 * mm, 127 * mm])
+    client_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#F8FAFC")),
+        ("TEXTCOLOR", (0, 0), (0, -1), colors.HexColor("#475569")),
+        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#CBD5E1")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("PADDING", (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(client_table)
+    elements.append(Spacer(1, 10))
+
+    # Client-facing quote line table: NO COSTS
+    elements.append(Paragraph("Quoted Items", section_style))
+
+    line_table_data = [["#", "Description", "Size", "Qty", "Selling Price", "Line Total"]]
+
+    for idx, line in enumerate(estimate_lines, start=1):
+        recipe_name = line.get("recipe_name") or "Quoted item"
+        width = line.get("width_mm") or "-"
+        height = line.get("height_mm") or "-"
+        qty = float(line.get("quantity") or 0)
+        selling_each = float(line.get("recipe_price_each") or 0)
+        line_total = float(line.get("line_total") or 0)
+
+        fulfilment_type = line.get("fulfilment_type") or "COLLECTION"
+        fulfilment_note = line.get("fulfilment_note") or ""
+        fulfilment_price = float(line.get("fulfilment_price") or 0)
+
+        fulfilment_label = "Collection"
+        if fulfilment_type == "SITE_INSTALL":
+            fulfilment_label = "Installation"
+        elif fulfilment_type == "DELIVERY":
+            fulfilment_label = "Delivery"
+
+        description = recipe_name
+        if fulfilment_note:
+            description += f"<br/><font size='7'>{fulfilment_label}: {fulfilment_note}</font>"
+        else:
+            description += f"<br/><font size='7'>{fulfilment_label}</font>"
+
+        if fulfilment_price > 0:
+            description += f"<br/><font size='7'>{fulfilment_label} Price: R {fulfilment_price:.2f}</font>"
+
+        line_table_data.append([
+            str(idx),
+            Paragraph(description, small),
+            f"{width} x {height} mm",
+            f"{qty:g}",
+            f"R {selling_each:.2f}",
+            f"R {line_total:.2f}",
+        ])
+
+    if addons:
+        for addon in addons:
+            line_table_data.append([
+                "",
+                Paragraph(addon.get("description") or "Add-on", small),
+                "-",
+                "1",
+                f"R {float(addon.get('selling_price') or 0):.2f}",
+                f"R {float(addon.get('selling_price') or 0):.2f}",
+            ])
+
+    if len(line_table_data) == 1:
+        line_table_data.append(["-", "No quoted items", "-", "-", "R 0.00", "R 0.00"])
+
+    line_table = Table(line_table_data, colWidths=[10 * mm, 62 * mm, 33 * mm, 15 * mm, 25 * mm, 25 * mm])
+    line_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2563EB")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, 0), 8),
+        ("FONTSIZE", (0, 1), (-1, -1), 8),
+        ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#CBD5E1")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("ALIGN", (3, 1), (-1, -1), "RIGHT"),
+        ("PADDING", (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(line_table)
     elements.append(Spacer(1, 12))
-    
-    # Company info
-    info_style = styles['Normal']
-    elements.append(Paragraph(f"<b>Company:</b> {company['name']}", info_style))
-    elements.append(Paragraph(f"<b>Prepared by:</b> {quote['created_by_name']}", info_style))
-    elements.append(Paragraph(f"<b>Date:</b> {quote['created_at'][:10]}", info_style))
-    if quote.get('description'):
-        elements.append(Paragraph(f"<b>Description:</b> {quote['description']}", info_style))
-    elements.append(Spacer(1, 20))
-    
-    # Line items table
-    for idx, line in enumerate(quote['lines']):
-        elements.append(Paragraph(f"<b>Line {idx + 1}: {line['recipe_name']}</b>", styles['Heading3']))
-        elements.append(Paragraph(f"Size: {line['width_mm']}mm x {line['height_mm']}mm | Qty: {line['quantity']} | SqM: {line['calculated_sqm']}", info_style))
-        elements.append(Spacer(1, 6))
-        
-        table_data = [['Item', 'Qty', 'Unit Cost', 'Line Cost', 'Markup', 'Total']]
-        for item in line['line_items']:
-            table_data.append([
-                item['name'],
-                str(item['quantity']),
-                f"R {item['unit_cost']:.2f}",
-                f"R {item['line_cost']:.2f}",
-                f"{item['markup_percent']}%" if item['markup_allowed'] else "N/A",
-                f"R {item['total']:.2f}"
-            ])
-        
-        table = Table(table_data, colWidths=[60*mm, 20*mm, 25*mm, 25*mm, 20*mm, 25*mm])
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2563EB')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
-        ]))
-        elements.append(table)
-        elements.append(Spacer(1, 12))
-        elements.append(Paragraph(f"<b>Line Total: R {line['total']:.2f}</b>", styles['Heading4']))
-        elements.append(Spacer(1, 20))
-    
-    # Labour Section
-    if quote.get('labour_items') and len(quote['labour_items']) > 0:
-        elements.append(Paragraph("<b>Labour Items</b>", styles['Heading3']))
-        elements.append(Spacer(1, 6))
-        labour_table_data = [['Labour Type', 'People', 'Rate/Hr', 'Hours', 'Total']]
-        for labour in quote['labour_items']:
-            labour_table_data.append([
-                labour['labour_type_name'],
-                str(labour['number_of_people']),
-                f"R {labour['rate_per_hour']:.2f}",
-                str(labour['hours']),
-                f"R {labour['total_cost']:.2f}"
-            ])
-        labour_table = Table(labour_table_data, colWidths=[60*mm, 25*mm, 30*mm, 25*mm, 35*mm])
-        labour_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2563EB')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
-        ]))
-        elements.append(labour_table)
-        elements.append(Spacer(1, 20))
-    
-    # Installation Section
-    if quote.get('installation_items') and len(quote['installation_items']) > 0:
-        elements.append(Paragraph("<b>Installation Items</b>", styles['Heading3']))
-        elements.append(Spacer(1, 6))
-        install_table_data = [['Installation Type', 'People', 'Rate/Hr', 'Hours', 'Equipment', 'Total']]
-        for install in quote['installation_items']:
-            install_table_data.append([
-                install['install_type_name'],
-                str(install['quantity_of_people']),
-                f"R {install['rate_per_hour']:.2f}",
-                str(install['hours']),
-                f"R {install['equipment_rate']:.2f}",
-                f"R {install['total_cost']:.2f}"
-            ])
-        install_table = Table(install_table_data, colWidths=[50*mm, 20*mm, 25*mm, 20*mm, 25*mm, 35*mm])
-        install_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2563EB')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
-        ]))
-        elements.append(install_table)
-        elements.append(Spacer(1, 20))
-    
-    # Travel Section
-    if quote.get('travel'):
-        elements.append(Paragraph("<b>Travel</b>", styles['Heading3']))
-        elements.append(Spacer(1, 6))
-        travel = quote['travel']
-        travel_info = f"Vehicle: {travel['vehicle_type']} | Rate: R {travel['rate_per_km']:.2f}/km<br/>"
-        travel_info += f"Tolls: R {travel['toll_gates']:.2f} | Subsistence: R {travel['subsistence']:.2f} | Accommodation: R {travel['accommodation']:.2f}"
-        elements.append(Paragraph(travel_info, info_style))
-        travel_total = travel['toll_gates'] + travel['subsistence'] + travel['accommodation']
-        elements.append(Paragraph(f"<b>Travel Total: R {travel_total:.2f}</b>", styles['Heading4']))
-        elements.append(Spacer(1, 20))
-    
-    # Grand total
-    elements.append(Paragraph(f"<b>GRAND TOTAL: R {quote['total_amount']:.2f}</b>", styles['Heading2']))
-    
+
+    # Totals
+    totals_data = [
+        ["Subtotal", f"R {subtotal:.2f}"],
+    ]
+
+    if discount_percent > 0:
+        totals_data.append([f"Discount ({discount_percent:.2f}%)", f"- R {discount_value:.2f}"])
+        totals_data.append(["Subtotal after Discount", f"R {subtotal_after_discount:.2f}"])
+
+    totals_data.append(["VAT (15%)", f"R {vat:.2f}"])
+    totals_data.append(["Grand Total", f"R {total_amount:.2f}"])
+
+    totals_table = Table(totals_data, colWidths=[120 * mm, 45 * mm])
+    totals_table.setStyle(TableStyle([
+        ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+        ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("FONTSIZE", (0, -1), (-1, -1), 12),
+        ("TEXTCOLOR", (0, -1), (-1, -1), colors.HexColor("#0F172A")),
+        ("LINEABOVE", (0, -1), (-1, -1), 1, colors.HexColor("#0F172A")),
+        ("PADDING", (0, 0), (-1, -1), 5),
+    ]))
+    elements.append(totals_table)
+    elements.append(Spacer(1, 14))
+
+    elements.append(Paragraph(
+        "This quote is valid subject to final artwork, site conditions, and written approval. "
+        "No internal costs are shown on this client-facing document.",
+        small
+    ))
+
     doc.build(elements)
     buffer.seek(0)
-    
+
     return Response(
         content=buffer.getvalue(),
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=quote_{quote_id}.pdf"}
+        headers={"Content-Disposition": f"attachment; filename={quote_number}.pdf"}
     )
 
 @api_router.get("/quotes/{quote_id}/export/bom")
