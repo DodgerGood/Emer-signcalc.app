@@ -4899,10 +4899,10 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
-        rightMargin=18 * mm,
-        leftMargin=18 * mm,
+        rightMargin=20 * mm,
+        leftMargin=20 * mm,
         topMargin=16 * mm,
-        bottomMargin=48 * mm
+        bottomMargin=42 * mm
     )
 
     elements = []
@@ -4914,15 +4914,15 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     light = colors.HexColor("#F8FAFC")
     border = colors.HexColor("#CBD5E1")
 
-    content_left = 18 * mm
-    content_right = 192 * mm
+    content_left = 20 * mm
+    content_right = 190 * mm
     content_width = content_right - content_left
 
     title_style = ParagraphStyle(
         "QuoteTitle",
         parent=styles["Heading1"],
-        fontSize=34,
-        leading=38,
+        fontSize=36,
+        leading=40,
         textColor=navy,
         spaceAfter=4
     )
@@ -4940,16 +4940,16 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     normal = ParagraphStyle(
         "NormalClean",
         parent=styles["Normal"],
-        fontSize=8,
-        leading=10,
+        fontSize=9,
+        leading=11,
         textColor=colors.black
     )
 
     small = ParagraphStyle(
         "SmallClean",
         parent=styles["Normal"],
-        fontSize=7,
-        leading=9,
+        fontSize=8,
+        leading=10,
         textColor=slate
     )
 
@@ -4974,14 +4974,12 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     header = Table(
         [[
             Paragraph(
-                f"QUOTE<br/>"
-                f"<font size='14' color='#2563EB'>{quote_number}</font><br/>"
-                f"<font size='7'>Prepared by: {quote.get('created_by_name') or '-'}</font>",
+                f"QUOTE<br/><font size='14' color='#2563EB'>{quote_number}</font><br/><font size='6'>Prepared by: {quote.get('created_by_name') or '-'}</font>",
                 title_style
             ),
             logo_placeholder
         ]],
-        colWidths=[135 * mm, 30 * mm]
+        colWidths=[120 * mm, 50 * mm]
     )
     header.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -5001,7 +4999,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         normal
     )
 
-    info_table = Table([[client_to, "", billing_to]], colWidths=[70 * mm, 25 * mm, 70 * mm])
+    info_table = Table([[client_to, "", billing_to]], colWidths=[72 * mm, 26 * mm, 72 * mm])
     info_table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("ALIGN", (2, 0), (2, 0), "RIGHT"),
@@ -5071,7 +5069,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     if len(table_data) == 1:
         table_data.append(["-", "No quoted items", "R 0.00", "R 0.00"])
 
-    quote_table = Table(table_data, colWidths=[18 * mm, 96 * mm, 30 * mm, 30 * mm])
+    quote_table = Table(table_data, colWidths=[16 * mm, 94 * mm, 30 * mm, 30 * mm])
     quote_table.setStyle(TableStyle([
         ("LINEABOVE", (0, 0), (-1, 0), 1.2, blue),
         ("LINEBELOW", (0, 0), (-1, 0), 1.2, blue),
@@ -5106,7 +5104,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     totals_data.append(["VAT (15%)", f"R {vat:.2f}"])
     totals_data.append(["TOTAL", f"R {total_amount:.2f}"])
 
-    totals_table = Table(totals_data, colWidths=[115 * mm, 55 * mm])
+    totals_table = Table(totals_data, colWidths=[120 * mm, 50 * mm])
     totals_table.setStyle(TableStyle([
         ("ALIGN", (1, 0), (1, -1), "RIGHT"),
         ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
@@ -5156,7 +5154,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
             canvas_obj.setFont("Helvetica-Bold", 7)
             canvas_obj.drawRightString(188 * mm, 20 * mm, "BANKING DETAILS")
             canvas_obj.setFont("Helvetica", 6)
-            canvas_obj.drawRightString(188 * mm, 16 * mm, str(banking_details)[:95])
+            canvas_obj.drawRightString(188 * mm, 16 * mm, str(banking_details)[:70])
         else:
             # Condensed footer on all non-last pages
             canvas_obj.setStrokeColor(blue)
