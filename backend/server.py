@@ -4983,26 +4983,25 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     ))
     elements.append(Spacer(1, 10))
 
-    # Bill / Ship / Quote info
-    bill_to = Paragraph(
-        f"<b>BILL TO</b><br/>{quote.get('client_name') or '-'}<br/>{quote.get('client_address') or '-'}<br/>{quote.get('client_email') or '-'}<br/>{quote.get('client_phone') or '-'}",
+    # Client / billing / quote info
+    client_to = Paragraph(
+        f"<b>CLIENT DETAILS</b><br/>{quote.get('client_name') or '-'}<br/>{quote.get('client_address') or '-'}<br/>{quote.get('client_email') or '-'}<br/>{quote.get('client_phone') or '-'}",
         normal
     )
 
-    ship_to = Paragraph(
-        f"<b>SHIP / SITE TO</b><br/>{quote.get('client_name') or '-'}<br/>{quote.get('client_address') or 'Site / delivery address placeholder'}",
+    billing_to = Paragraph(
+        f"<b>BILLING COMPANY</b><br/>{company_name}<br/>{company_address}<br/>Tel: {company_phone}<br/>VAT No: {company_vat}",
         normal
     )
 
     quote_info = Paragraph(
         f"<b>QUOTE #</b>&nbsp;&nbsp; {quote_number}<br/>"
         f"<b>QUOTE DATE</b>&nbsp;&nbsp; {quote.get('created_at', '')[:10]}<br/>"
-        f"<b>PREPARED BY</b>&nbsp;&nbsp; {quote.get('created_by_name') or '-'}<br/>"
-        f"<b>STATUS</b>&nbsp;&nbsp; {quote.get('quote_approval_status') or '-'}",
+        f"<b>PREPARED BY</b>&nbsp;&nbsp; {quote.get('created_by_name') or '-'}",
         normal
     )
 
-    info_table = Table([[bill_to, ship_to, quote_info]], colWidths=[55 * mm, 55 * mm, 55 * mm])
+    info_table = Table([[client_to, billing_to, quote_info]], colWidths=[55 * mm, 55 * mm, 55 * mm])
     info_table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
@@ -5014,7 +5013,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         elements.append(Spacer(1, 8))
 
     # Line items
-    table_data = [["QTY", "DESCRIPTION", "UNIT PRICE", "AMOUNT"]]
+    table_data = [["QTY", "DESCRIPTION", "UNIT PRICE", "JOB PRICE", "EXTRA", "AMOUNT"]]
 
     for line in estimate_lines:
         recipe_name = line.get("recipe_name") or "Quoted item"
@@ -5034,19 +5033,20 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         elif fulfilment_type == "DELIVERY":
             fulfilment_label = "Delivery"
 
+        job_price = selling_each * qty
         description = f"<b>{recipe_name}</b><br/>Size: {width} x {height} mm"
-        description += f"<br/><font size='7'>{fulfilment_label}"
-        if fulfilment_note:
-            description += f": {fulfilment_note}"
-        description += "</font>"
 
-        if fulfilment_price > 0:
-            description += f"<br/><font size='7'>{fulfilment_label} Price: R {fulfilment_price:.2f}</font>"
+        if fulfilment_note:
+            description += f"<br/><font size='7'>{fulfilment_label}: {fulfilment_note}</font>"
+        else:
+            description += f"<br/><font size='7'>{fulfilment_label}</font>"
 
         table_data.append([
             f"{qty:g}",
             Paragraph(description, normal),
             f"R {selling_each:.2f}",
+            f"R {job_price:.2f}",
+            f"R {fulfilment_price:.2f}",
             f"R {line_total:.2f}",
         ])
 
@@ -5057,12 +5057,14 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
             Paragraph(addon.get("description") or "Add-on", normal),
             f"R {amount:.2f}",
             f"R {amount:.2f}",
+            "R 0.00",
+            f"R {amount:.2f}",
         ])
 
     if len(table_data) == 1:
-        table_data.append(["-", "No quoted items", "R 0.00", "R 0.00"])
+        table_data.append(["-", "No quoted items", "R 0.00", "R 0.00", "R 0.00", "R 0.00"])
 
-    quote_table = Table(table_data, colWidths=[20 * mm, 90 * mm, 30 * mm, 30 * mm])
+    quote_table = Table(table_data, colWidths=[15 * mm, 70 * mm, 25 * mm, 25 * mm, 25 * mm, 25 * mm])
     quote_table.setStyle(TableStyle([
         ("LINEABOVE", (0, 0), (-1, 0), 1.2, blue),
         ("LINEBELOW", (0, 0), (-1, 0), 1.2, blue),
@@ -5072,12 +5074,20 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         ("FONTSIZE", (0, 1), (-1, -1), 8),
         ("ALIGN", (0, 1), (0, -1), "CENTER"),
         ("ALIGN", (2, 1), (-1, -1), "RIGHT"),
+        ("LINEBELOW", (0, -1), (-1, -1), 0.5, border),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
         ("TOPPADDING", (0, 0), (-1, -1), 8),
     ]))
     elements.append(quote_table)
-    elements.append(Spacer(1, 10))
+    elements.append(Spacer(1, 8))
+
+    divider = Table([[""]], colWidths=[170 * mm], rowHeights=[1])
+    divider.setStyle(TableStyle([
+        ("LINEABOVE", (0, 0), (-1, -1), 1, blue),
+    ]))
+    elements.append(divider)
+    elements.append(Spacer(1, 8))
 
     # Totals
     totals_data = [["Subtotal", f"R {subtotal:.2f}"]]
