@@ -4947,6 +4947,44 @@ async def export_bom_pdf(quote_id: str, user: dict = Depends(get_current_user)):
 
 
 
+
+@api_router.post("/approved/{quote_id}/move-back-to-quote")
+async def move_invoice_back_to_quote(quote_id: str, user: dict = Depends(require_manager)):
+    if user["role"] not in ["MD_ADMIN", "MANAGER", "CEO"]:
+        raise HTTPException(status_code=403, detail="Only MD Admin, Management, or CEO can move invoices back to quoting")
+
+    quote = await db.quotes.find_one(
+        {"id": quote_id, "company_id": user["company_id"]},
+        {"_id": 0}
+    )
+
+    if not quote:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    if not quote.get("invoice_number"):
+        raise HTTPException(status_code=400, detail="This item is not an invoice")
+
+    await db.quotes.update_one(
+        {"id": quote_id, "company_id": user["company_id"]},
+        {"$set": {
+            "quote_status": "DRAFT",
+            "is_invoice_locked": False,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "moved_back_from_invoice_at": datetime.now(timezone.utc).isoformat(),
+            "moved_back_from_invoice_by": user["id"],
+            "moved_back_from_invoice_by_name": user["full_name"]
+        },
+        "$unset": {
+            "invoice_number": "",
+            "invoice_created_at": "",
+            "invoice_created_by": "",
+            "invoice_created_by_name": ""
+        }}
+    )
+
+    return {"message": "Invoice moved back to quoting stage"}
+
+
 @api_router.delete("/approved/{quote_id}")
 async def delete_approved_invoice(quote_id: str, user: dict = Depends(require_manager)):
     quote = await db.quotes.find_one(

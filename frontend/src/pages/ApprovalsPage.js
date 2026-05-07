@@ -1,16 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
 import api from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 
 import { Button } from '../components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 
-import { FileText, Upload, Trash2 } from 'lucide-react';
+import { FileText, Upload, Trash2, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 
 const money = (value) => `R ${(Number(value) || 0).toFixed(2)}`;
 
 export default function ApprovalsPage() {
+  const { user } = useAuth();
+  const canMoveBackToQuote = ['MD_ADMIN', 'MANAGER', 'CEO'].includes(user?.role);
+
   const [approvedJobs, setApprovedJobs] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -89,6 +93,18 @@ export default function ApprovalsPage() {
       loadApprovedJobs();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to delete approved invoice');
+    }
+  };
+
+  const moveBackToQuote = async (job) => {
+    if (!window.confirm(`Move ${job.invoice_number || 'this invoice'} back to quoting?`)) return;
+
+    try {
+      await api.post(`/approved/${job.id}/move-back-to-quote`);
+      toast.success('Invoice moved back to Quotes');
+      loadApprovedJobs();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to move invoice back');
     }
   };
 
@@ -171,15 +187,31 @@ export default function ApprovalsPage() {
                       </TableCell>
 
                       <TableCell className="px-4 py-3 text-right">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteApproved(job)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 size={16} />
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          {canMoveBackToQuote && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => moveBackToQuote(job)}
+                              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              title="Move back to quoting"
+                            >
+                              <RotateCcw size={16} />
+                            </Button>
+                          )}
+
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteApproved(job)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            title="Delete approved invoice"
+                          >
+                            <Trash2 size={16} />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
