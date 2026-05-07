@@ -165,7 +165,9 @@ export default function QuotesPage() {
       const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `${quote.quote_number || 'quote'}.pdf`);
+      const clientName = (quote.client_name || 'client').replaceAll(' ', '_');
+      const datePart = (quote.created_at || '').slice(0, 10);
+      link.setAttribute('download', `${quote.quote_number || 'quote'}-${clientName}-${datePart}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.remove();
