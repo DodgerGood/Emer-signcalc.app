@@ -45,7 +45,7 @@ const role = user?.role;
         { to: '/clients', icon: Building2, label: 'Clients' },
         { to: '/estimations', icon: Calculator, label: 'Estimations' },
         { to: '/quotes', icon: FileText, label: 'Quotes' },
-        { to: '/approvals', icon: CheckCircle, label: 'Approvals' },
+        { to: '/approvals', icon: CheckCircle, label: 'Approved' },
       ];
     } else if (role === 'MANAGER') {
       return [
@@ -54,7 +54,7 @@ const role = user?.role;
         { to: '/labour-types', icon: Users, label: 'Labour & Machine' },
         { to: '/install-types', icon: Wrench, label: 'Installation Pricelist' },
         { to: '/recipes', icon: BookOpen, label: 'Recipes' },
-        { to: '/approvals', icon: CheckCircle, label: 'Approvals' },
+        { to: '/approvals', icon: CheckCircle, label: 'Approved' },
       ];
     } else if (role === 'PROCUREMENT') {
       return [
@@ -67,7 +67,7 @@ const role = user?.role;
         { to: '/clients', icon: Building2, label: 'Clients' },
         { to: '/estimations', icon: Calculator, label: 'Estimations' },
         { to: '/quotes', icon: FileText, label: 'Quotes' },
-        { to: '/approvals', icon: CheckCircle, label: 'Approvals' },
+        { to: '/approvals', icon: CheckCircle, label: 'Approved' },
       ];
     } else if (role === 'CEO') {
       return [
@@ -79,7 +79,7 @@ const role = user?.role;
         { to: '/clients', icon: Building2, label: 'Clients' },
         { to: '/estimations', icon: Calculator, label: 'Estimations' },
         { to: '/quotes', icon: FileText, label: 'Quotes' },
-        { to: '/approvals', icon: CheckCircle, label: 'Approvals' },
+        { to: '/approvals', icon: CheckCircle, label: 'Approved' },
       ];
     }
     return [];

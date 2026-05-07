@@ -4858,6 +4858,83 @@ async def reject_request(approval_id: str, user: dict = Depends(require_manager)
     
     return {"message": "Approval rejected"}
 
+
+# ===== APPROVED / INVOICE ROUTES =====
+
+@api_router.post("/quotes/{quote_id}/convert-to-invoice")
+async def convert_quote_to_invoice(quote_id: str, user: dict = Depends(require_manager)):
+    quote = await db.quotes.find_one(
+        {"id": quote_id, "company_id": user["company_id"]},
+        {"_id": 0}
+    )
+    if not quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+
+    if not quote.get("quote_number"):
+        raise HTTPException(status_code=400, detail="Only approved quotes can be converted to invoices")
+
+    if quote.get("invoice_number"):
+        return {
+            "message": "Quote already converted to invoice",
+            "invoice_number": quote.get("invoice_number")
+        }
+
+    last_invoice = await db.quotes.find(
+        {"company_id": user["company_id"], "invoice_number": {"$ne": None}},
+        {"invoice_number": 1, "_id": 0}
+    ).sort("invoice_created_at", -1).limit(1).to_list(1)
+
+    if last_invoice and last_invoice[0].get("invoice_number"):
+        last_number = int(last_invoice[0]["invoice_number"].replace("Inv", ""))
+        next_number = last_number + 1
+    else:
+        next_number = 1
+
+    invoice_number = f"Inv{str(next_number).zfill(5)}"
+
+    await db.quotes.update_one(
+        {"id": quote_id, "company_id": user["company_id"]},
+        {"$set": {
+            "invoice_number": invoice_number,
+            "quote_status": "INVOICED",
+            "is_invoice_locked": True,
+            "invoice_created_by": user["id"],
+            "invoice_created_by_name": user["full_name"],
+            "invoice_created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+
+    return {
+        "message": "Quote converted to locked invoice",
+        "invoice_number": invoice_number
+    }
+
+
+@api_router.get("/approved")
+async def get_approved_jobs(user: dict = Depends(get_current_user)):
+    jobs = await db.quotes.find(
+        {
+            "company_id": user["company_id"],
+            "invoice_number": {"$ne": None}
+        },
+        {"_id": 0}
+    ).sort("invoice_created_at", -1).to_list(1000)
+
+    return jobs
+
+
+@api_router.get("/approved/{quote_id}/invoice/pdf")
+async def export_invoice_pdf(quote_id: str, user: dict = Depends(get_current_user)):
+    # Temporary: reuse quote PDF until invoice-specific template is added.
+    return await export_quote_pdf(quote_id, user)
+
+
+@api_router.get("/approved/{quote_id}/bom/pdf")
+async def export_bom_pdf(quote_id: str, user: dict = Depends(get_current_user)):
+    raise HTTPException(status_code=501, detail="BOM PDF generation will be added in the next step")
+
+
 # ===== EXPORT ROUTES =====
 
 @api_router.get("/quotes/{quote_id}/export/pdf")

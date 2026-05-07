@@ -1,129 +1,163 @@
 import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
 import api from '../lib/api';
+
 import { Button } from '../components/ui/button';
-import { Card, CardContent } from '../components/ui/card';
-import { CheckCircle, XCircle } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+
+import { FileText, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
+const money = (value) => `R ${(Number(value) || 0).toFixed(2)}`;
+
 export default function ApprovalsPage() {
-  const [approvals, setApprovals] = useState([]);
-  const [error, setError] = useState(false);
+  const [approvedJobs, setApprovedJobs] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { loadApprovals(); }, []);
+  useEffect(() => {
+    loadApprovedJobs();
+  }, []);
 
-  const loadApprovals = async () => {
+  const loadApprovedJobs = async () => {
     try {
       setLoading(true);
-      setError(false);
-      const response = await api.get('/approvals');
-      setApprovals(response.data);
-    } catch (error) {
-      setError(true);
-      toast.error('Failed to load approvals');
+      const response = await api.get('/approved');
+      setApprovedJobs(response.data || []);
+    } catch {
+      toast.error('Failed to load approved jobs');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleApprove = async (id) => {
+  const downloadInvoice = async (job) => {
     try {
-      await api.post(`/approvals/${id}/approve`);
-      toast.success('Request approved');
-      loadApprovals();
-    } catch (error) {
-      toast.error('Failed to approve request');
+      const response = await api.get(`/approved/${job.id}/invoice/pdf`, {
+        responseType: 'blob',
+      });
+
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${job.invoice_number || 'invoice'}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Failed to download invoice');
     }
   };
 
-  const handleReject = async (id) => {
+  const downloadBom = async (job) => {
     try {
-      await api.post(`/approvals/${id}/reject`);
-      toast.success('Request rejected');
-      loadApprovals();
-    } catch (error) {
-      toast.error('Failed to reject request');
+      const response = await api.get(`/approved/${job.id}/bom/pdf`, {
+        responseType: 'blob',
+      });
+
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${job.invoice_number || 'job'}-BOM.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+    } catch {
+      toast.error('BOM PDF is not ready yet');
     }
+  };
+
+  const uploadProof = () => {
+    toast.info('Proof upload will be added in the next step');
   };
 
   return (
     <Layout>
-      <div className="space-y-6 fade-in">
+      <div className="space-y-6 fade-in max-w-7xl">
         <div>
-          <h1 className="text-4xl font-black tracking-tight leading-none">Markup Approvals</h1>
-          <p className="text-slate-600 mt-2">Review and approve markup override requests</p>
+          <h1 className="text-4xl font-black tracking-tight leading-none">Approved</h1>
+          <p className="text-slate-600 mt-2">
+            Approved invoices, BOM documents, and design proofs for production handover.
+          </p>
         </div>
 
         {loading ? (
-          <div className="flex justify-center p-12"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div></div>
-        ) : error ? (
-          <Card>
-            <CardContent className="py-12">
-              <div className="flex flex-col items-center justify-center text-center">
-                <div className="text-lg font-semibold text-red-600">
-                  Failed to load approvals
-                </div>
-                <div className="mt-2 text-sm text-slate-600">
-                  Please try again or refresh the page.
-                </div>
-
-                <button
-                  type="button"
-                  onClick={loadApprovals}
-                  className="mt-4 inline-flex items-center rounded bg-[#2563EB] px-4 py-2 text-sm text-white hover:bg-[#1d4ed8]"
-                >
-                  Retry
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-        ) : approvals.length === 0 ? (
-          <Card>
-            <CardContent className="py-12">
-              <div className="flex flex-col items-center justify-center text-center">
-                <div className="text-lg font-semibold text-slate-900">
-                  No approvals pending
-                </div>
-                <div className="mt-2 text-sm text-slate-600">
-                  Markup approvals will appear here when quotes require review.
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="flex justify-center p-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
+          </div>
         ) : (
-          <div className="space-y-4">
-            {approvals.map((approval) => (
-              <Card key={approval.id} className="card-technical" data-testid={`approval-${approval.id}`}>
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-2">
-                      <h3 className="font-bold text-lg">Markup Override Request</h3>
-                      <p className="text-sm text-slate-600">Requested by: <span className="font-medium">{approval.requested_by_name}</span></p>
-                      <p className="text-sm text-slate-600">Quote ID: <span className="font-mono">{approval.quote_id}</span></p>
-                      <div className="flex gap-4 mt-3">
-                        <div>
-                          <p className="text-xs text-slate-500 uppercase tracking-wider">Original Markup</p>
-                          <p className="text-xl font-mono font-bold">{approval.original_markup}%</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-slate-500 uppercase tracking-wider">Requested Markup</p>
-                          <p className="text-xl font-mono font-bold text-[#2563EB]">{approval.requested_markup}%</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button onClick={() => handleApprove(approval.id)} data-testid={`approve-${approval.id}`} className="bg-green-600 hover:bg-green-700">
-                        <CheckCircle size={18} className="mr-2" />Approve
-                      </Button>
-                      <Button onClick={() => handleReject(approval.id)} data-testid={`reject-${approval.id}`} variant="destructive">
-                        <XCircle size={18} className="mr-2" />Reject
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="overflow-x-auto rounded-xl border bg-white">
+            <Table className="w-full min-w-[900px] text-sm">
+              <TableHeader className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                <TableRow>
+                  <TableHead className="px-4 py-3">Client Name</TableHead>
+                  <TableHead className="px-4 py-3">Invoice</TableHead>
+                  <TableHead className="px-4 py-3">BOM</TableHead>
+                  <TableHead className="px-4 py-3">Design Proof</TableHead>
+                </TableRow>
+              </TableHeader>
+
+              <TableBody className="divide-y">
+                {approvedJobs.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="py-12 text-center text-slate-500">
+                      No approved invoices yet.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  approvedJobs.map((job) => (
+                    <TableRow key={job.id}>
+                      <TableCell className="px-4 py-3 font-semibold">
+                        {job.client_name}
+                      </TableCell>
+
+                      <TableCell className="px-4 py-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => downloadInvoice(job)}
+                        >
+                          <FileText size={16} className="mr-2" />
+                          {job.invoice_number || 'Invoice PDF'}
+                        </Button>
+                      </TableCell>
+
+                      <TableCell className="px-4 py-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => downloadBom(job)}
+                        >
+                          <FileText size={16} className="mr-2" />
+                          BOM PDF
+                        </Button>
+                      </TableCell>
+
+                      <TableCell className="px-4 py-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={uploadProof}
+                        >
+                          <Upload size={16} className="mr-2" />
+                          Upload Proof
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
         )}
       </div>
