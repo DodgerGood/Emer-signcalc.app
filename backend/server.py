@@ -4958,6 +4958,7 @@ async def export_bom_pdf(quote_id: str, user: dict = Depends(get_current_user)):
     estimate_lines = blueprint.get("estimate_lines") or []
 
     bom = {}
+    TILE_OVERLAP_MM = 50
 
     def add_material(material, recipe_line, estimate_line):
         material_id = material["id"]
@@ -5062,41 +5063,56 @@ async def export_bom_pdf(quote_id: str, user: dict = Depends(get_current_user)):
         if material_type == "ROLL":
             total_running_mm = 0
             breakdown = []
+            usable_width = max(raw_width - TILE_OVERLAP_MM, 1)
 
             for piece in item["pieces"]:
-                w = piece["width"]
-                h = piece["height"]
-                qty = piece["qty"]
+                w = float(piece["width"] or 0)
+                h = float(piece["height"] or 0)
+                qty = float(piece["qty"] or 0)
 
-                if raw_width <= 0 or w <= 0 or h <= 0:
+                if raw_width <= 0 or w <= 0 or h <= 0 or qty <= 0:
                     continue
 
-                # Try normal orientation
-                across_normal = math.floor(raw_width / w) if w > 0 else 0
+                # Normal fit across roll
+                across_normal = math.floor(raw_width / w) if w <= raw_width else 0
                 rows_normal = math.ceil(qty / across_normal) if across_normal > 0 else 999999
                 length_normal = rows_normal * h
 
-                # Try rotated orientation
-                across_rotated = math.floor(raw_width / h) if h > 0 else 0
+                # Rotated fit across roll
+                across_rotated = math.floor(raw_width / h) if h <= raw_width else 0
                 rows_rotated = math.ceil(qty / across_rotated) if across_rotated > 0 else 999999
                 length_rotated = rows_rotated * w
 
-                if length_rotated < length_normal:
-                    across = across_rotated
-                    rows_needed = rows_rotated
-                    running_mm = length_rotated
-                    orientation = "Rotated"
-                else:
-                    across = across_normal
-                    rows_needed = rows_normal
-                    running_mm = length_normal
-                    orientation = "Normal"
+                # Tiling fallback for oversized graphics
+                tile_across_w = math.ceil(w / usable_width)
+                tiled_length_w = tile_across_w * h * qty
+
+                tile_across_h = math.ceil(h / usable_width)
+                tiled_length_h = tile_across_h * w * qty
+
+                options = []
+
+                if across_normal > 0:
+                    options.append(("Normal nesting", length_normal, across_normal, rows_normal, 1))
+
+                if across_rotated > 0:
+                    options.append(("Rotated nesting", length_rotated, across_rotated, rows_rotated, 1))
+
+                options.append(("Tiled width", tiled_length_w, 1, qty, tile_across_w))
+                options.append(("Tiled rotated", tiled_length_h, 1, qty, tile_across_h))
+
+                mode, running_mm, across, rows_needed, tiles = min(options, key=lambda x: x[1])
 
                 total_running_mm += running_mm
 
-                breakdown.append(
-                    f"{piece['item_name']}: {qty:g} @ {w:g}x{h:g}mm | across: {across} | rows: {rows_needed} | {orientation}"
-                )
+                if "Tiled" in mode:
+                    breakdown.append(
+                        f"{piece['item_name']}: {qty:g} @ {w:g}x{h:g}mm | {tiles} tiled drop(s) per item | length: {running_mm / 1000:.2f}m | {mode}"
+                    )
+                else:
+                    breakdown.append(
+                        f"{piece['item_name']}: {qty:g} @ {w:g}x{h:g}mm | across: {across} | rows: {rows_needed} | length: {running_mm / 1000:.2f}m | {mode}"
+                    )
 
             running_m = total_running_mm / 1000
             purchase_m = running_m * (1 + waste_percent / 100)
@@ -5108,7 +5124,7 @@ async def export_bom_pdf(quote_id: str, user: dict = Depends(get_current_user)):
                 "required": f"{running_m:.2f} running m",
                 "waste": f"{waste_percent:.2f}%",
                 "purchase": f"{purchase_m:.2f} running m",
-                "instruction": f"Roll width: {raw_width:g}mm",
+                "instruction": f"Roll width: {raw_width:g}mm | tiling overlap: {TILE_OVERLAP_MM}mm",
                 "breakdown": "<br/>".join(breakdown),
             })
 
@@ -5116,31 +5132,61 @@ async def export_bom_pdf(quote_id: str, user: dict = Depends(get_current_user)):
             total_sheets = 0
             breakdown = []
 
-            for piece in item["pieces"]:
-                w = piece["width"]
-                h = piece["height"]
-                qty = piece["qty"]
+            usable_width = max(raw_width - TILE_OVERLAP_MM, 1)
+            usable_height = max(raw_height - TILE_OVERLAP_MM, 1)
 
-                if raw_width <= 0 or raw_height <= 0 or w <= 0 or h <= 0:
+            for piece in item["pieces"]:
+                w = float(piece["width"] or 0)
+                h = float(piece["height"] or 0)
+                qty = float(piece["qty"] or 0)
+
+                if raw_width <= 0 or raw_height <= 0 or w <= 0 or h <= 0 or qty <= 0:
                     continue
 
+                # Try normal non-tiled nesting
                 fit_normal = math.floor(raw_width / w) * math.floor(raw_height / h)
+                sheets_normal = math.ceil(qty / fit_normal) if fit_normal > 0 else 999999
+
+                # Try rotated non-tiled nesting
                 fit_rotated = math.floor(raw_width / h) * math.floor(raw_height / w)
+                sheets_rotated = math.ceil(qty / fit_rotated) if fit_rotated > 0 else 999999
 
-                fit_per_sheet = max(fit_normal, fit_rotated)
+                # Tiling fallback: split oversized signs into panels
+                panels_across = math.ceil(w / usable_width)
+                panels_down = math.ceil(h / usable_height)
+                panels_per_item = panels_across * panels_down
+                total_panels = panels_per_item * qty
 
-                if fit_per_sheet <= 0:
-                    sheets_needed = qty
-                    orientation = "Does not fit cleanly"
-                else:
-                    sheets_needed = math.ceil(qty / fit_per_sheet)
-                    orientation = "Rotated allowed" if fit_rotated > fit_normal else "Normal"
+                # Each tile/panel must be made from sheet/board stock.
+                # This is a safe purchase estimate. It assumes tiled panels are cut as individual panels.
+                tiled_sheets = total_panels
+
+                # Rotated tiling fallback
+                panels_across_rot = math.ceil(h / usable_width)
+                panels_down_rot = math.ceil(w / usable_height)
+                panels_per_item_rot = panels_across_rot * panels_down_rot
+                total_panels_rot = panels_per_item_rot * qty
+                tiled_sheets_rot = total_panels_rot
+
+                options = [
+                    ("Normal nesting", sheets_normal, fit_normal, 1, 1, qty),
+                    ("Rotated nesting", sheets_rotated, fit_rotated, 1, 1, qty),
+                    ("Tiled panels", tiled_sheets, 1, panels_across, panels_down, total_panels),
+                    ("Tiled rotated panels", tiled_sheets_rot, 1, panels_across_rot, panels_down_rot, total_panels_rot),
+                ]
+
+                mode, sheets_needed, fit_per_sheet, tiles_x, tiles_y, panel_count = min(options, key=lambda x: x[1])
 
                 total_sheets += sheets_needed
 
-                breakdown.append(
-                    f"{piece['item_name']}: {qty:g} @ {w:g}x{h:g}mm | fit/sheet: {fit_per_sheet} | sheets: {sheets_needed} | {orientation}"
-                )
+                if "Tiled" in mode:
+                    breakdown.append(
+                        f"{piece['item_name']}: {qty:g} @ {w:g}x{h:g}mm | tiled {tiles_x} across x {tiles_y} down = {int(panel_count)} panel(s) | sheets: {int(sheets_needed)} | {mode}"
+                    )
+                else:
+                    breakdown.append(
+                        f"{piece['item_name']}: {qty:g} @ {w:g}x{h:g}mm | fit/sheet: {int(fit_per_sheet)} | sheets: {int(sheets_needed)} | {mode}"
+                    )
 
             purchase_sheets = math.ceil(total_sheets * (1 + waste_percent / 100))
 
@@ -5148,10 +5194,10 @@ async def export_bom_pdf(quote_id: str, user: dict = Depends(get_current_user)):
                 "material": item["material_name"],
                 "type": material_type,
                 "supplier": item["supplier"],
-                "required": f"{total_sheets} sheet(s)",
+                "required": f"{int(total_sheets)} sheet(s)",
                 "waste": f"{waste_percent:.2f}%",
                 "purchase": f"{purchase_sheets} sheet(s)",
-                "instruction": f"Raw size: {raw_width:g}x{raw_height:g}mm",
+                "instruction": f"Raw size: {raw_width:g}x{raw_height:g}mm | tiling overlap: {TILE_OVERLAP_MM}mm",
                 "breakdown": "<br/>".join(breakdown),
             })
 
