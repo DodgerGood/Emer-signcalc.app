@@ -4922,7 +4922,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         "QuoteTitle",
         parent=styles["Heading1"],
         fontSize=36,
-        leading=40,
+        leading=34,
         textColor=navy,
         spaceAfter=4
     )
@@ -4974,7 +4974,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     header = Table(
         [[
             Paragraph(
-                f"QUOTE<br/><font size='14' color='#2563EB'>{quote_number}</font><br/><font size='6'>Prepared by: {quote.get('created_by_name') or '-'}<br/>Quote Date: {quote_date}</font>",
+                f"QUOTE<br/><font size='14' color='#2563EB'>{quote_number}</font><br/><font size='5'>Prepared by: {quote.get('created_by_name') or '-'}</font><br/><font size='6'>Quote Date: {quote_date}</font>",
                 title_style
             ),
             logo_placeholder
@@ -5016,12 +5016,15 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
 
     for line in estimate_lines:
         recipe_name = (
-            line.get("recipe_name")
-            or line.get("product_name")
+            line.get("product_name")
             or line.get("name")
             or line.get("description")
+            or line.get("recipe_name")
             or "Product"
         )
+
+        if recipe_name == "Quoted item":
+            recipe_name = "Product"
         width = line.get("width_mm") or "-"
         height = line.get("height_mm") or "-"
         qty = float(line.get("quantity") or 0)
