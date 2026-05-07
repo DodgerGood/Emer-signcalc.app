@@ -4943,50 +4943,6 @@ async def export_invoice_pdf(quote_id: str, user: dict = Depends(get_current_use
 
 @api_router.get("/approved/{quote_id}/bom/pdf")
 async def export_bom_pdf(quote_id: str, user: dict = Depends(get_current_user)):
-    raise HTTPException(status_code=501, detail="BOM PDF generation will be added in the next step")
-
-
-
-
-@api_router.post("/approved/{quote_id}/move-back-to-quote")
-async def move_invoice_back_to_quote(quote_id: str, user: dict = Depends(require_manager)):
-    if user["role"] not in ["MD_ADMIN", "MANAGER", "CEO"]:
-        raise HTTPException(status_code=403, detail="Only MD Admin, Management, or CEO can move invoices back to quoting")
-
-    quote = await db.quotes.find_one(
-        {"id": quote_id, "company_id": user["company_id"]},
-        {"_id": 0}
-    )
-
-    if not quote:
-        raise HTTPException(status_code=404, detail="Invoice not found")
-
-    if not quote.get("invoice_number"):
-        raise HTTPException(status_code=400, detail="This item is not an invoice")
-
-    await db.quotes.update_one(
-        {"id": quote_id, "company_id": user["company_id"]},
-        {"$set": {
-            "quote_status": "DRAFT",
-            "is_invoice_locked": False,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-            "moved_back_from_invoice_at": datetime.now(timezone.utc).isoformat(),
-            "moved_back_from_invoice_by": user["id"],
-            "moved_back_from_invoice_by_name": user["full_name"]
-        },
-        "$unset": {
-            "invoice_number": "",
-            "invoice_created_at": "",
-            "invoice_created_by": "",
-            "invoice_created_by_name": ""
-        }}
-    )
-
-    return {"message": "Invoice moved back to quoting stage"}
-
-
-@api_router.delete("/approved/{quote_id}")
-async def delete_approved_invoice(quote_id: str, user: dict = Depends(require_manager)):
     quote = await db.quotes.find_one(
         {"id": quote_id, "company_id": user["company_id"]},
         {"_id": 0}
@@ -4996,11 +4952,331 @@ async def delete_approved_invoice(quote_id: str, user: dict = Depends(require_ma
         raise HTTPException(status_code=404, detail="Approved invoice not found")
 
     if not quote.get("invoice_number"):
-        raise HTTPException(status_code=400, detail="This item is not an approved invoice")
+        raise HTTPException(status_code=400, detail="BOM is only available after invoice approval")
 
-    await db.quotes.delete_one({"id": quote_id, "company_id": user["company_id"]})
+    blueprint = quote.get("blueprint") or {}
+    estimate_lines = blueprint.get("estimate_lines") or []
 
-    return {"message": "Approved invoice deleted"}
+    bom = {}
+
+    def add_material(material, recipe_line, estimate_line):
+        material_id = material["id"]
+        material_type = material.get("material_type") or ""
+        material_name = material.get("name") or "Material"
+
+        item_name = (
+            estimate_line.get("item_name")
+            or estimate_line.get("product_name")
+            or estimate_line.get("recipe_name")
+            or "Item"
+        )
+
+        item_width = float(estimate_line.get("width_mm") or 0)
+        item_height = float(estimate_line.get("height_mm") or 0)
+        quote_qty = float(estimate_line.get("quantity") or 1)
+
+        multiplier = float(recipe_line.get("multiplier") or 1)
+        waste_percent = float(
+            recipe_line.get("waste_percent")
+            if recipe_line.get("waste_percent") is not None
+            else material.get("waste_default_percent") or 0
+        )
+
+        qty_driver = recipe_line.get("qty_driver") or "SQM"
+
+        if material_id not in bom:
+            bom[material_id] = {
+                "material_name": material_name,
+                "material_type": material_type,
+                "supplier": material.get("supplier") or "-",
+                "raw_width": float(material.get("width") or 0),
+                "raw_height": float(material.get("height") or 0),
+                "raw_length": float(material.get("length_mm") or 0),
+                "waste_percent": waste_percent,
+                "pieces": [],
+                "unit_qty": 0,
+            }
+
+        if material_type in ["ROLL", "SHEET", "BOARD"] and qty_driver == "SQM":
+            piece_qty = max(1, math.ceil(quote_qty * multiplier))
+
+            bom[material_id]["pieces"].append({
+                "item_name": item_name,
+                "width": item_width,
+                "height": item_height,
+                "qty": piece_qty,
+                "waste_percent": waste_percent,
+            })
+
+        elif material_type == "UNIT" or qty_driver == "PER_JOB":
+            bom[material_id]["unit_qty"] += quote_qty * multiplier * (1 + waste_percent / 100)
+
+        else:
+            piece_qty = max(1, math.ceil(quote_qty * multiplier))
+
+            bom[material_id]["pieces"].append({
+                "item_name": item_name,
+                "width": item_width,
+                "height": item_height,
+                "qty": piece_qty,
+                "waste_percent": waste_percent,
+            })
+
+    for estimate_line in estimate_lines:
+        recipe_id = estimate_line.get("recipe_id")
+        if not recipe_id:
+            continue
+
+        recipe = await db.recipes.find_one(
+            {"id": recipe_id, "company_id": user["company_id"]},
+            {"_id": 0}
+        )
+
+        if not recipe:
+            continue
+
+        for recipe_line in recipe.get("lines", []):
+            if recipe_line.get("line_type") != "MATERIAL":
+                continue
+
+            material_id = recipe_line.get("reference_id")
+            if not material_id:
+                continue
+
+            material = await db.materials.find_one(
+                {"id": material_id, "company_id": user["company_id"]},
+                {"_id": 0}
+            )
+
+            if material:
+                add_material(material, recipe_line, estimate_line)
+
+    rows = []
+
+    for item in bom.values():
+        material_type = item["material_type"]
+        raw_width = item["raw_width"]
+        raw_height = item["raw_height"]
+        waste_percent = item["waste_percent"]
+
+        if material_type == "ROLL":
+            total_running_mm = 0
+            breakdown = []
+
+            for piece in item["pieces"]:
+                w = piece["width"]
+                h = piece["height"]
+                qty = piece["qty"]
+
+                if raw_width <= 0 or w <= 0 or h <= 0:
+                    continue
+
+                # Try normal orientation
+                across_normal = math.floor(raw_width / w) if w > 0 else 0
+                rows_normal = math.ceil(qty / across_normal) if across_normal > 0 else 999999
+                length_normal = rows_normal * h
+
+                # Try rotated orientation
+                across_rotated = math.floor(raw_width / h) if h > 0 else 0
+                rows_rotated = math.ceil(qty / across_rotated) if across_rotated > 0 else 999999
+                length_rotated = rows_rotated * w
+
+                if length_rotated < length_normal:
+                    across = across_rotated
+                    rows_needed = rows_rotated
+                    running_mm = length_rotated
+                    orientation = "Rotated"
+                else:
+                    across = across_normal
+                    rows_needed = rows_normal
+                    running_mm = length_normal
+                    orientation = "Normal"
+
+                total_running_mm += running_mm
+
+                breakdown.append(
+                    f"{piece['item_name']}: {qty:g} @ {w:g}x{h:g}mm | across: {across} | rows: {rows_needed} | {orientation}"
+                )
+
+            running_m = total_running_mm / 1000
+            purchase_m = running_m * (1 + waste_percent / 100)
+
+            rows.append({
+                "material": item["material_name"],
+                "type": "ROLL",
+                "supplier": item["supplier"],
+                "required": f"{running_m:.2f} running m",
+                "waste": f"{waste_percent:.2f}%",
+                "purchase": f"{purchase_m:.2f} running m",
+                "instruction": f"Roll width: {raw_width:g}mm",
+                "breakdown": "<br/>".join(breakdown),
+            })
+
+        elif material_type in ["SHEET", "BOARD"]:
+            total_sheets = 0
+            breakdown = []
+
+            for piece in item["pieces"]:
+                w = piece["width"]
+                h = piece["height"]
+                qty = piece["qty"]
+
+                if raw_width <= 0 or raw_height <= 0 or w <= 0 or h <= 0:
+                    continue
+
+                fit_normal = math.floor(raw_width / w) * math.floor(raw_height / h)
+                fit_rotated = math.floor(raw_width / h) * math.floor(raw_height / w)
+
+                fit_per_sheet = max(fit_normal, fit_rotated)
+
+                if fit_per_sheet <= 0:
+                    sheets_needed = qty
+                    orientation = "Does not fit cleanly"
+                else:
+                    sheets_needed = math.ceil(qty / fit_per_sheet)
+                    orientation = "Rotated allowed" if fit_rotated > fit_normal else "Normal"
+
+                total_sheets += sheets_needed
+
+                breakdown.append(
+                    f"{piece['item_name']}: {qty:g} @ {w:g}x{h:g}mm | fit/sheet: {fit_per_sheet} | sheets: {sheets_needed} | {orientation}"
+                )
+
+            purchase_sheets = math.ceil(total_sheets * (1 + waste_percent / 100))
+
+            rows.append({
+                "material": item["material_name"],
+                "type": material_type,
+                "supplier": item["supplier"],
+                "required": f"{total_sheets} sheet(s)",
+                "waste": f"{waste_percent:.2f}%",
+                "purchase": f"{purchase_sheets} sheet(s)",
+                "instruction": f"Raw size: {raw_width:g}x{raw_height:g}mm",
+                "breakdown": "<br/>".join(breakdown),
+            })
+
+        elif material_type == "UNIT":
+            purchase_units = math.ceil(item["unit_qty"])
+
+            rows.append({
+                "material": item["material_name"],
+                "type": "UNIT",
+                "supplier": item["supplier"],
+                "required": f"{item['unit_qty']:.2f} units",
+                "waste": f"{waste_percent:.2f}%",
+                "purchase": f"{purchase_units} unit(s)",
+                "instruction": "Unit item",
+                "breakdown": "",
+            })
+
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=18 * mm,
+        leftMargin=18 * mm,
+        topMargin=16 * mm,
+        bottomMargin=16 * mm
+    )
+
+    styles = getSampleStyleSheet()
+    elements = []
+
+    title_style = ParagraphStyle(
+        "BOMTitle",
+        parent=styles["Heading1"],
+        fontSize=22,
+        leading=26,
+        textColor=colors.HexColor("#0F172A")
+    )
+
+    normal = ParagraphStyle(
+        "BOMNormal",
+        parent=styles["Normal"],
+        fontSize=8,
+        leading=10
+    )
+
+    small = ParagraphStyle(
+        "BOMSmall",
+        parent=styles["Normal"],
+        fontSize=7,
+        leading=9,
+        textColor=colors.HexColor("#475569")
+    )
+
+    elements.append(Paragraph("Bill of Materials", title_style))
+    elements.append(Paragraph(f"<b>Invoice:</b> {quote.get('invoice_number')}", normal))
+    elements.append(Paragraph(f"<b>Client:</b> {quote.get('client_name')}", normal))
+    elements.append(Spacer(1, 12))
+
+    table_data = [[
+        "Material",
+        "Type",
+        "Supplier",
+        "Required",
+        "Waste",
+        "Purchase",
+        "Instruction"
+    ]]
+
+    for row in sorted(rows, key=lambda x: x["material"].lower()):
+        instruction = row["instruction"]
+        if row["breakdown"]:
+            instruction += f"<br/><font size='6'>{row['breakdown']}</font>"
+
+        table_data.append([
+            Paragraph(row["material"], normal),
+            row["type"],
+            row["supplier"],
+            row["required"],
+            row["waste"],
+            row["purchase"],
+            Paragraph(instruction, small),
+        ])
+
+    if len(table_data) == 1:
+        table_data.append(["No material items found", "-", "-", "-", "-", "-", "-"])
+
+    table = Table(
+        table_data,
+        colWidths=[32 * mm, 17 * mm, 24 * mm, 25 * mm, 18 * mm, 25 * mm, 48 * mm]
+    )
+
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0F172A")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, 0), 7),
+        ("FONTSIZE", (0, 1), (-1, -1), 7),
+        ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#CBD5E1")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("PADDING", (0, 0), (-1, -1), 4),
+    ]))
+
+    elements.append(table)
+
+    elements.append(Spacer(1, 10))
+    elements.append(Paragraph(
+        "Nesting calculation is an estimated production purchasing guide. Final workshop nesting may vary depending on artwork orientation, bleed, joins, offcuts, machine limits, and production method.",
+        small
+    ))
+
+    doc.build(elements)
+    buffer.seek(0)
+
+    invoice_number = quote.get("invoice_number") or "invoice"
+    client_name = (quote.get("client_name") or "client").replace(" ", "_")
+
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition":
+            f'attachment; filename="{invoice_number}-{client_name}-BOM.pdf"'
+        }
+    )
 
 
 # ===== EXPORT ROUTES =====
