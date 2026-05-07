@@ -5,7 +5,7 @@ import api from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 
-import { FileText, Upload } from 'lucide-react';
+import { FileText, Upload, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const money = (value) => `R ${(Number(value) || 0).toFixed(2)}`;
@@ -80,6 +80,19 @@ export default function ApprovalsPage() {
     toast.info('Proof upload will be added in the next step');
   };
 
+  const deleteApproved = async (job) => {
+    if (!window.confirm(`Delete approved invoice ${job.invoice_number || ''}?`)) return;
+
+    try {
+      await api.delete(`/approved/${job.id}`);
+      toast.success('Approved invoice deleted');
+      loadApprovedJobs();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to delete approved invoice');
+    }
+  };
+
+
   return (
     <Layout>
       <div className="space-y-6 fade-in max-w-7xl">
@@ -103,13 +116,14 @@ export default function ApprovalsPage() {
                   <TableHead className="px-4 py-3">Invoice</TableHead>
                   <TableHead className="px-4 py-3">BOM</TableHead>
                   <TableHead className="px-4 py-3">Design Proof</TableHead>
+                  <TableHead className="px-4 py-3 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
 
               <TableBody className="divide-y">
                 {approvedJobs.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="py-12 text-center text-slate-500">
+                    <TableCell colSpan={5} className="py-12 text-center text-slate-500">
                       No approved invoices yet.
                     </TableCell>
                   </TableRow>
@@ -153,6 +167,18 @@ export default function ApprovalsPage() {
                         >
                           <Upload size={16} className="mr-2" />
                           Upload Proof
+                        </Button>
+                      </TableCell>
+
+                      <TableCell className="px-4 py-3 text-right">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteApproved(job)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 size={16} />
                         </Button>
                       </TableCell>
                     </TableRow>

@@ -200,7 +200,7 @@ export default function QuotesPage() {
 
     const belongsOnThisPage = isEstimationsPage
       ? !quote.quote_number
-      : !!quote.quote_number && !quote.invoice_number;
+      : !!quote.quote_number && !quote.invoice_number && quote.quote_status !== 'INVOICED';
 
     const matchesSearch =
       displayNumber.includes(term) ||

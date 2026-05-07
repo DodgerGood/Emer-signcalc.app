@@ -4879,18 +4879,9 @@ async def convert_quote_to_invoice(quote_id: str, user: dict = Depends(require_m
             "invoice_number": quote.get("invoice_number")
         }
 
-    last_invoice = await db.quotes.find(
-        {"company_id": user["company_id"], "invoice_number": {"$ne": None}},
-        {"invoice_number": 1, "_id": 0}
-    ).sort("invoice_created_at", -1).limit(1).to_list(1)
-
-    if last_invoice and last_invoice[0].get("invoice_number"):
-        last_number = int(last_invoice[0]["invoice_number"].replace("Inv", ""))
-        next_number = last_number + 1
-    else:
-        next_number = 1
-
-    invoice_number = f"Inv{str(next_number).zfill(5)}"
+    # Invoice number must match the quote number sequence.
+    # Example: Qu00003 becomes Inv00003.
+    invoice_number = quote["quote_number"].replace("Qu", "Inv", 1)
 
     await db.quotes.update_one(
         {"id": quote_id, "company_id": user["company_id"]},
@@ -4937,7 +4928,7 @@ async def export_invoice_pdf(quote_id: str, user: dict = Depends(get_current_use
     if not quote.get("invoice_number"):
         raise HTTPException(status_code=400, detail="This quote has not been converted to an invoice")
 
-    response = await export_quote_pdf(quote_id, user)
+    response = await export_quote_pdf(quote_id, user, document_type="INVOICE")
 
     invoice_number = quote.get("invoice_number") or "invoice"
     client_name = (quote.get("client_name") or "client").replace(" ", "_")
@@ -4955,10 +4946,29 @@ async def export_bom_pdf(quote_id: str, user: dict = Depends(get_current_user)):
     raise HTTPException(status_code=501, detail="BOM PDF generation will be added in the next step")
 
 
+
+@api_router.delete("/approved/{quote_id}")
+async def delete_approved_invoice(quote_id: str, user: dict = Depends(require_manager)):
+    quote = await db.quotes.find_one(
+        {"id": quote_id, "company_id": user["company_id"]},
+        {"_id": 0}
+    )
+
+    if not quote:
+        raise HTTPException(status_code=404, detail="Approved invoice not found")
+
+    if not quote.get("invoice_number"):
+        raise HTTPException(status_code=400, detail="This item is not an approved invoice")
+
+    await db.quotes.delete_one({"id": quote_id, "company_id": user["company_id"]})
+
+    return {"message": "Approved invoice deleted"}
+
+
 # ===== EXPORT ROUTES =====
 
 @api_router.get("/quotes/{quote_id}/export/pdf")
-async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)):
+async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user), document_type: str = "QUOTE"):
     quote = await db.quotes.find_one(
         {"id": quote_id, "company_id": user["company_id"]},
         {"_id": 0}
@@ -4970,7 +4980,12 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     company = await db.companies.find_one({"id": quote["company_id"]}, {"_id": 0}) or {}
     blueprint = quote.get("blueprint") or {}
 
-    quote_number = quote.get("quote_number") or quote.get("estimate_number") or "QUOTE"
+    if document_type == "INVOICE":
+        quote_number = quote.get("invoice_number") or quote.get("quote_number") or "INVOICE"
+        document_heading = "INVOICE"
+    else:
+        quote_number = quote.get("quote_number") or quote.get("estimate_number") or "QUOTE"
+        document_heading = "QUOTE"
     quote_date = quote.get("created_at", "")[:10] or datetime.now(timezone.utc).date().isoformat()
     estimate_lines = blueprint.get("estimate_lines") or []
     addons = blueprint.get("estimate_addons") or []
@@ -5071,7 +5086,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     header = Table(
         [[
             Paragraph(
-                f"QUOTE<br/><font size='14' color='#2563EB'>{quote_number}</font><br/><font size='5'>Prepared by: {quote.get('created_by_name') or '-'}</font><br/><font size='6'>Quote Date: {quote_date}</font>",
+                f"{document_heading}<br/><font size='14' color='#2563EB'>{quote_number}</font><br/><font size='5'>Prepared by: {quote.get('created_by_name') or '-'}</font><br/><font size='6'>{document_heading.title()} Date: {quote_date}</font>",
                 title_style
             ),
             logo_placeholder
