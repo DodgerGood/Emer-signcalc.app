@@ -5117,14 +5117,43 @@ async def export_bom_pdf(quote_id: str, user: dict = Depends(get_current_user)):
             running_m = total_running_mm / 1000
             purchase_m = running_m * (1 + waste_percent / 100)
 
+            roll_length_m = item["raw_length"] / 1000 if item.get("raw_length") else 0
+
+            if roll_length_m > 0:
+                rolls_to_buy = math.ceil(purchase_m / roll_length_m)
+                full_rolls_used = int(purchase_m // roll_length_m)
+                remaining_m = purchase_m - (full_rolls_used * roll_length_m)
+
+                if remaining_m > 0 and full_rolls_used > 0:
+                    usage_note = f"{full_rolls_used} full roll(s) + {remaining_m:.2f} running m"
+                elif remaining_m > 0:
+                    usage_note = f"{remaining_m:.2f} running m from 1 roll"
+                else:
+                    usage_note = f"{full_rolls_used} full roll(s)"
+
+                purchase_text = f"{rolls_to_buy} roll(s)"
+                instruction_text = (
+                    f"Required: {purchase_m:.2f} running m incl. waste<br/>"
+                    f"Stock: {raw_width:g}mm x {roll_length_m:g}m roll<br/>"
+                    f"Usage: {usage_note}<br/>"
+                    f"Tiling overlap: {TILE_OVERLAP_MM}mm"
+                )
+            else:
+                purchase_text = f"{purchase_m:.2f} running m"
+                instruction_text = (
+                    f"Roll width: {raw_width:g}mm<br/>"
+                    f"Required: {purchase_m:.2f} running m incl. waste<br/>"
+                    f"Tiling overlap: {TILE_OVERLAP_MM}mm"
+                )
+
             rows.append({
                 "material": item["material_name"],
                 "type": "ROLL",
                 "supplier": item["supplier"],
                 "required": f"{running_m:.2f} running m",
                 "waste": f"{waste_percent:.2f}%",
-                "purchase": f"{purchase_m:.2f} running m",
-                "instruction": f"Roll width: {raw_width:g}mm | tiling overlap: {TILE_OVERLAP_MM}mm",
+                "purchase": purchase_text,
+                "instruction": instruction_text,
                 "breakdown": "<br/>".join(breakdown),
             })
 
