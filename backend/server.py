@@ -4926,8 +4926,28 @@ async def get_approved_jobs(user: dict = Depends(get_current_user)):
 
 @api_router.get("/approved/{quote_id}/invoice/pdf")
 async def export_invoice_pdf(quote_id: str, user: dict = Depends(get_current_user)):
-    # Temporary: reuse quote PDF until invoice-specific template is added.
-    return await export_quote_pdf(quote_id, user)
+    quote = await db.quotes.find_one(
+        {"id": quote_id, "company_id": user["company_id"]},
+        {"_id": 0}
+    )
+
+    if not quote:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    if not quote.get("invoice_number"):
+        raise HTTPException(status_code=400, detail="This quote has not been converted to an invoice")
+
+    response = await export_quote_pdf(quote_id, user)
+
+    invoice_number = quote.get("invoice_number") or "invoice"
+    client_name = (quote.get("client_name") or "client").replace(" ", "_")
+    invoice_date = (quote.get("invoice_created_at") or quote.get("created_at") or "")[:10]
+
+    response.headers["Content-Disposition"] = (
+        f'attachment; filename="{invoice_number}-{client_name}-{invoice_date}.pdf"'
+    )
+
+    return response
 
 
 @api_router.get("/approved/{quote_id}/bom/pdf")

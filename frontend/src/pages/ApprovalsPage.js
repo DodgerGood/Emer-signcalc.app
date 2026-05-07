@@ -41,7 +41,9 @@ export default function ApprovalsPage() {
 
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `${job.invoice_number || 'invoice'}.pdf`);
+      const clientName = (job.client_name || 'client').replaceAll(' ', '_');
+      const datePart = (job.invoice_created_at || job.created_at || '').slice(0, 10);
+      link.setAttribute('download', `${job.invoice_number || 'invoice'}-${clientName}-${datePart}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.remove();
