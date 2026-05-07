@@ -5015,7 +5015,13 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     table_data = [["QTY", "DESCRIPTION", "UNIT PRICE", "LINE TOTAL"]]
 
     for line in estimate_lines:
-        recipe_name = line.get("recipe_name") or "Quoted item"
+        recipe_name = (
+            line.get("recipe_name")
+            or line.get("product_name")
+            or line.get("name")
+            or line.get("description")
+            or "Product"
+        )
         width = line.get("width_mm") or "-"
         height = line.get("height_mm") or "-"
         qty = float(line.get("quantity") or 0)
@@ -5036,7 +5042,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         ])
 
         if fulfilment_type == "SITE_INSTALL":
-            fulfilment_description = "<font color='#475569'><i>■ Installation</i></font>"
+            fulfilment_description = "<font color='#475569'><i>Installation</i></font>"
             if fulfilment_note:
                 fulfilment_description += f"<br/><font size='7' color='#64748B'>{fulfilment_note}</font>"
 
@@ -5048,7 +5054,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
             ])
 
         elif fulfilment_type == "DELIVERY":
-            fulfilment_description = "<font color='#475569'><i>■ Delivery</i></font>"
+            fulfilment_description = "<font color='#475569'><i>Delivery</i></font>"
             if fulfilment_note:
                 fulfilment_description += f"<br/><font size='7' color='#64748B'>{fulfilment_note}</font>"
 
