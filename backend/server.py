@@ -4974,7 +4974,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     header = Table(
         [[
             Paragraph(
-                f"QUOTE<br/><font size='14' color='#2563EB'>{quote_number}</font><br/><font size='6'>Quote Date: {quote_date}<br/>Prepared by: {quote.get('created_by_name') or '-'}</font>",
+                f"QUOTE<br/><font size='14' color='#2563EB'>{quote_number}</font><br/><font size='6'>Prepared by: {quote.get('created_by_name') or '-'}<br/>Quote Date: {quote_date}</font>",
                 title_style
             ),
             logo_placeholder
@@ -5036,9 +5036,9 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         ])
 
         if fulfilment_type == "SITE_INSTALL":
-            fulfilment_description = "<font size='7'><b>↳ Installation</b></font>"
+            fulfilment_description = "<font color='#475569'><i>■ Installation</i></font>"
             if fulfilment_note:
-                fulfilment_description += f"<br/><font size='7'>{fulfilment_note}</font>"
+                fulfilment_description += f"<br/><font size='7' color='#64748B'>{fulfilment_note}</font>"
 
             table_data.append([
                 "",
@@ -5048,9 +5048,9 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
             ])
 
         elif fulfilment_type == "DELIVERY":
-            fulfilment_description = "<font size='7'><b>↳ Delivery</b></font>"
+            fulfilment_description = "<font color='#475569'><i>■ Delivery</i></font>"
             if fulfilment_note:
-                fulfilment_description += f"<br/><font size='7'>{fulfilment_note}</font>"
+                fulfilment_description += f"<br/><font size='7' color='#64748B'>{fulfilment_note}</font>"
 
             table_data.append([
                 "",
@@ -5059,7 +5059,10 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
                 f"R {fulfilment_price:.2f}",
             ])
 
-        # Collection rows are intentionally hidden on the client quote
+        # Collection rows are hidden on the client-facing quote.
+
+        # Faint separator after each full product group
+        table_data.append(["", "", "", ""])
 
     for addon in addons:
         amount = float(addon.get("selling_price") or 0)
@@ -5069,26 +5072,49 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
             f"R {amount:.2f}",
             f"R {amount:.2f}",
         ])
+        table_data.append(["", "", "", ""])
 
     if len(table_data) == 1:
         table_data.append(["-", "No quoted items", "", ""])
 
-    quote_table = Table(table_data, colWidths=[15 * mm, 95 * mm, 30 * mm, 30 * mm])
+    quote_table = Table(table_data, colWidths=[16 * mm, 94 * mm, 30 * mm, 30 * mm])
     quote_table.setStyle(TableStyle([
         ("LINEABOVE", (0, 0), (-1, 0), 1.2, blue),
         ("LINEBELOW", (0, 0), (-1, 0), 1.2, blue),
         ("TEXTCOLOR", (0, 0), (-1, 0), navy),
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
         ("FONTSIZE", (0, 0), (-1, 0), 9),
+
+        # Center column headers over their data
+        ("ALIGN", (0, 0), (0, 0), "CENTER"),
+        ("ALIGN", (1, 0), (1, 0), "CENTER"),
+        ("ALIGN", (2, 0), (3, 0), "CENTER"),
+
+        # Body alignment
         ("FONTSIZE", (0, 1), (-1, -1), 8),
         ("ALIGN", (0, 1), (0, -1), "CENTER"),
         ("ALIGN", (2, 1), (-1, -1), "RIGHT"),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
+
+        # Tighter rows
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+
+        # Make fulfilment/sub rows lighter
+        ("TEXTCOLOR", (1, 2), (1, -1), slate),
+
+        # Light separator rows after product groups
+        ("LINEBELOW", (0, 3), (-1, 3), 0.25, border),
+        ("LINEBELOW", (0, 6), (-1, 6), 0.25, border),
+        ("LINEBELOW", (0, 9), (-1, 9), 0.25, border),
+        ("LINEBELOW", (0, 12), (-1, 12), 0.25, border),
+        ("LINEBELOW", (0, 15), (-1, 15), 0.25, border),
+        ("LINEBELOW", (0, 18), (-1, 18), 0.25, border),
+        ("LINEBELOW", (0, 21), (-1, 21), 0.25, border),
+        ("LINEBELOW", (0, 24), (-1, 24), 0.25, border),
     ]))
     elements.append(quote_table)
-    elements.append(Spacer(1, 8))
+    elements.append(Spacer(1, 6))
 
     divider = Table([[""]], colWidths=[content_width], rowHeights=[1])
     divider.setStyle(TableStyle([
