@@ -5016,7 +5016,8 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
 
     for line in estimate_lines:
         recipe_name = (
-            line.get("product_name")
+            line.get("item_name")
+            or line.get("product_name")
             or line.get("recipe_name")
             or line.get("name")
             or line.get("description")
@@ -5042,7 +5043,10 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         fulfilment_note = line.get("fulfilment_note") or ""
         fulfilment_price = float(line.get("fulfilment_price") or 0)
 
+        item_note = line.get("item_note") or ""
         description = f"<b>{recipe_name}</b><br/>Size: {width} x {height} mm"
+        if item_note:
+            description += f"<br/><font size='7' color='#64748B'>{item_note}</font>"
 
         table_data.append([
             f"{qty:g}",

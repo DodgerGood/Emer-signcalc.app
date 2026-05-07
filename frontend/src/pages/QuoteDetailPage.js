@@ -14,9 +14,11 @@ import { toast } from 'sonner';
 const money = (value) => `R ${(Number(value) || 0).toFixed(2)}`;
 
 const newLine = () => ({
+  item_name: '',
   recipe_id: '',
   width_mm: '',
   height_mm: '',
+  item_note: '',
   quantity: 1,
 
   internal_cost: 0,
@@ -182,7 +184,8 @@ export default function QuoteDetailPage() {
     const sqm = (width / 1000) * (height / 1000);
 
     const selectedRecipe = recipes.find((recipe) => recipe.id === line.recipe_id);
-    const selectedRecipeName = selectedRecipe?.name || line.recipe_name || line.product_name || '';
+    const selectedRecipeName = selectedRecipe?.name || line.recipe_name || '';
+    const itemName = line.item_name || line.product_name || selectedRecipeName;
 
     let internalCost = 0;
     let recipePriceEach = 0;
@@ -227,8 +230,10 @@ export default function QuoteDetailPage() {
 
     return {
       ...line,
+      item_name: itemName,
+      item_note: line.item_note || '',
       recipe_name: selectedRecipeName,
-      product_name: selectedRecipeName,
+      product_name: itemName,
       internal_cost: internalCost,
       recipe_price_each: recipePriceEach,
       recipe_total: recipeTotal,
@@ -494,9 +499,11 @@ export default function QuoteDetailPage() {
           <Table className="w-full min-w-[1200px] text-sm">
             <TableHeader className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <TableRow>
+                <TableHead className="px-4 py-3">Item Name</TableHead>
                 <TableHead className="px-4 py-3">Recipe</TableHead>
                 <TableHead className="px-4 py-3">Width</TableHead>
                 <TableHead className="px-4 py-3">Height</TableHead>
+                <TableHead className="px-4 py-3">Note</TableHead>
                 <TableHead className="px-4 py-3">Qty</TableHead>
                 <TableHead className="px-4 py-3">Internal Cost</TableHead>
                 <TableHead className="px-4 py-3">Selling Each</TableHead>
@@ -509,6 +516,14 @@ export default function QuoteDetailPage() {
               {lines.map((line, index) => (
                 <React.Fragment key={index}>
                   <TableRow>
+                    <TableCell className="px-4 py-3">
+                      <Input
+                        value={line.item_name || ''}
+                        onChange={(e) => updateLine(index, 'item_name', e.target.value)}
+                        placeholder="e.g., Vinyl sticker"
+                      />
+                    </TableCell>
+
                     <TableCell className="px-4 py-3">
                       <select
                         value={line.recipe_id}
@@ -539,6 +554,14 @@ export default function QuoteDetailPage() {
                         value={line.height_mm}
                         onChange={(e) => updateLine(index, 'height_mm', e.target.value)}
                         placeholder="mm"
+                      />
+                    </TableCell>
+
+                    <TableCell className="px-4 py-3">
+                      <Input
+                        value={line.item_note || ''}
+                        onChange={(e) => updateLine(index, 'item_note', e.target.value)}
+                        placeholder="Line note"
                       />
                     </TableCell>
 
@@ -596,7 +619,7 @@ export default function QuoteDetailPage() {
                   </TableRow>
 
                   <TableRow>
-                    <TableCell colSpan={8} className="px-4 py-4 bg-slate-50">
+                    <TableCell colSpan={10} className="px-4 py-4 bg-slate-50">
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                         <div className="space-y-2">
                           <Label>Delivery / Install / Collection</Label>
