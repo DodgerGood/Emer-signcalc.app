@@ -5017,14 +5017,21 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     for line in estimate_lines:
         recipe_name = (
             line.get("product_name")
+            or line.get("recipe_name")
             or line.get("name")
             or line.get("description")
-            or line.get("recipe_name")
-            or "Product"
+            or ""
         )
 
-        if recipe_name == "Quoted item":
-            recipe_name = "Product"
+        if recipe_name in ["", "Product", "Quoted item"] and line.get("recipe_id"):
+            recipe_doc = await db.recipes.find_one(
+                {"id": line.get("recipe_id"), "company_id": user["company_id"]},
+                {"_id": 0}
+            )
+            if recipe_doc:
+                recipe_name = recipe_doc.get("name") or recipe_name
+
+        recipe_name = recipe_name or "Product"
         width = line.get("width_mm") or "-"
         height = line.get("height_mm") or "-"
         qty = float(line.get("quantity") or 0)

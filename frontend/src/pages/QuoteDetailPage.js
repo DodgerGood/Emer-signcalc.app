@@ -181,6 +181,9 @@ export default function QuoteDetailPage() {
     const qty = Number(line.quantity) || 1;
     const sqm = (width / 1000) * (height / 1000);
 
+    const selectedRecipe = recipes.find((recipe) => recipe.id === line.recipe_id);
+    const selectedRecipeName = selectedRecipe?.name || line.recipe_name || line.product_name || '';
+
     let internalCost = 0;
     let recipePriceEach = 0;
     let recipeTotal = 0;
@@ -224,6 +227,8 @@ export default function QuoteDetailPage() {
 
     return {
       ...line,
+      recipe_name: selectedRecipeName,
+      product_name: selectedRecipeName,
       internal_cost: internalCost,
       recipe_price_each: recipePriceEach,
       recipe_total: recipeTotal,
