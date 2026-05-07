@@ -177,6 +177,18 @@ export default function QuotesPage() {
     }
   };
 
+
+  const handleConvertToInvoice = async (quote) => {
+    try {
+      await api.post(`/quotes/${quote.id}/convert-to-invoice`);
+
+      toast.success('Quote converted to invoice');
+      loadQuotes();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to convert invoice');
+    }
+  };
+
   
   const staffOptions = useMemo(() => {
     return [...new Set(quotes.map((q) => q.created_by_name).filter(Boolean))];
@@ -188,7 +200,7 @@ export default function QuotesPage() {
 
     const belongsOnThisPage = isEstimationsPage
       ? !quote.quote_number
-      : !!quote.quote_number;
+      : !!quote.quote_number && !quote.invoice_number;
 
     const matchesSearch =
       displayNumber.includes(term) ||
@@ -392,7 +404,7 @@ export default function QuotesPage() {
                       return (
                         <TableRow key={quote.id}>
                           <TableCell className="px-4 py-3 font-mono"><div className="flex items-center gap-2">
-        {isEstimationsPage && (
+        {isEstimationsPage ? (
           <Button
             type="button"
             variant="ghost"
@@ -400,6 +412,17 @@ export default function QuotesPage() {
             onClick={() => handleApprove(quote.id)}
             className="text-green-600 hover:text-green-700 hover:bg-green-50"
             title="Approve and convert to quote"
+          >
+            <CheckCircle size={16} />
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => handleConvertToInvoice(quote)}
+            className="text-green-600 hover:text-green-700 hover:bg-green-50"
+            title="Convert to invoice"
           >
             <CheckCircle size={16} />
           </Button>
@@ -434,7 +457,7 @@ export default function QuotesPage() {
                                 </Button>
                               </Link>
 
-                              {isEstimationsPage && (
+                              {isEstimationsPage ? (
                                 <Button
                                   type="button"
                                   variant="ghost"
@@ -442,6 +465,17 @@ export default function QuotesPage() {
                                   onClick={() => handleApprove(quote.id)}
                                   className="text-green-600 hover:text-green-700 hover:bg-green-50"
                                   title="Approve and convert to quote"
+                                >
+                                  <CheckCircle size={16} />
+                                </Button>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleConvertToInvoice(quote)}
+                                  className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                  title="Convert to invoice"
                                 >
                                   <CheckCircle size={16} />
                                 </Button>
