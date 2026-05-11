@@ -560,12 +560,14 @@ export default function ClientsPage() {
                           <div className="flex justify-end gap-2">
                             <Button
                               type="button"
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={() => openStatement(client)}
                               title="Client Statement"
+                              className="text-blue-600 border-blue-200 hover:bg-blue-50"
                             >
-                              <FileText size={16} />
+                              <FileText size={16} className="mr-2" />
+                              Statement
                             </Button>
 
                             <Button
