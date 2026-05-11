@@ -3938,23 +3938,30 @@ async def get_client_for_statement(client_id: str, user: dict):
 
 
 async def get_client_invoice_query(client: dict, user: dict):
-    client_names = [
-        client.get("company_name"),
-        client.get("contact_person"),
-    ]
-    client_names = [name for name in client_names if name]
+    company_name = (client.get("company_name") or "").strip()
+    contact_person = (client.get("contact_person") or "").strip()
+    email = (client.get("email") or "").strip()
 
-    query = {
+    or_conditions = [
+        {"statement_client_id": client["id"]},
+    ]
+
+    if email:
+        or_conditions.append({"client_email": {"$regex": f"^{email}$", "$options": "i"}})
+
+    if company_name:
+        or_conditions.append({"client_name": {"$regex": f"^{company_name}$", "$options": "i"}})
+        or_conditions.append({"client_name": {"$regex": company_name, "$options": "i"}})
+
+    if contact_person:
+        or_conditions.append({"client_name": {"$regex": f"^{contact_person}$", "$options": "i"}})
+        or_conditions.append({"client_name": {"$regex": contact_person, "$options": "i"}})
+
+    return {
         "company_id": user["company_id"],
         "invoice_number": {"$ne": None},
-        "$or": [{"client_name": {"$in": client_names}}],
+        "$or": or_conditions,
     }
-
-    if client.get("email"):
-        query["$or"].append({"client_email": client.get("email")})
-
-    return query
-
 
 @api_router.get("/clients/{client_id}/statement")
 async def get_client_statement(client_id: str, user: dict = Depends(get_current_user)):
@@ -5277,17 +5284,52 @@ async def convert_quote_to_invoice(quote_id: str, user: dict = Depends(require_m
     # Example: Qu00003 becomes Inv00003.
     invoice_number = quote["quote_number"].replace("Qu", "Inv", 1)
 
+    matched_client = None
+
+    if quote.get("client_email"):
+        matched_client = await db.clients.find_one(
+            {
+                "company_id": user["company_id"],
+                "email": quote.get("client_email")
+            },
+            {"_id": 0}
+        )
+
+    if not matched_client and quote.get("client_name"):
+        matched_client = await db.clients.find_one(
+            {
+                "company_id": user["company_id"],
+                "company_name": {"$regex": f"^{quote.get('client_name')}$", "$options": "i"}
+            },
+            {"_id": 0}
+        )
+
+    if not matched_client and quote.get("client_name"):
+        matched_client = await db.clients.find_one(
+            {
+                "company_id": user["company_id"],
+                "company_name": {"$regex": quote.get("client_name"), "$options": "i"}
+            },
+            {"_id": 0}
+        )
+
+    update_fields = {
+        "invoice_number": invoice_number,
+        "quote_status": "INVOICED",
+        "is_invoice_locked": True,
+        "payment_status": quote.get("payment_status") or "UNPAID",
+        "invoice_created_by": user["id"],
+        "invoice_created_by_name": user["full_name"],
+        "invoice_created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+
+    if matched_client:
+        update_fields["statement_client_id"] = matched_client["id"]
+
     await db.quotes.update_one(
         {"id": quote_id, "company_id": user["company_id"]},
-        {"$set": {
-            "invoice_number": invoice_number,
-            "quote_status": "INVOICED",
-            "is_invoice_locked": True,
-            "invoice_created_by": user["id"],
-            "invoice_created_by_name": user["full_name"],
-            "invoice_created_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }}
+        {"$set": update_fields}
     )
 
     return {
