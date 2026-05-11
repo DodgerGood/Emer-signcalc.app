@@ -6,10 +6,8 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 
-import { FileText, Upload, Trash2, RotateCcw } from 'lucide-react';
+import { FileText, Upload, Trash2, RotateCcw, PackageCheck, Factory } from 'lucide-react';
 import { toast } from 'sonner';
-
-const money = (value) => `R ${(Number(value) || 0).toFixed(2)}`;
 
 export default function ApprovalsPage() {
   const { user } = useAuth();
@@ -17,6 +15,9 @@ export default function ApprovalsPage() {
 
   const [approvedJobs, setApprovedJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const itemsPerPage = 10;
 
   useEffect(() => {
     loadApprovedJobs();
@@ -27,11 +28,26 @@ export default function ApprovalsPage() {
       setLoading(true);
       const response = await api.get('/approved');
       setApprovedJobs(response.data || []);
+      setCurrentPage(1);
     } catch {
       toast.error('Failed to load approved jobs');
     } finally {
       setLoading(false);
     }
+  };
+
+  const downloadFile = (response, filename) => {
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    window.URL.revokeObjectURL(url);
   };
 
   const downloadInvoice = async (job) => {
@@ -40,21 +56,11 @@ export default function ApprovalsPage() {
         responseType: 'blob',
       });
 
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-
-      const link = document.createElement('a');
-      link.href = url;
       const clientName = (job.client_name || 'client').replaceAll(' ', '_');
       const datePart = (job.invoice_created_at || job.created_at || '').slice(0, 10);
-      link.setAttribute('download', `${job.invoice_number || 'invoice'}-${clientName}-${datePart}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      window.URL.revokeObjectURL(url);
-    } catch {
-      toast.error('Failed to download invoice');
+      downloadFile(response, `${job.invoice_number || 'invoice'}-${clientName}-${datePart}.pdf`);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to download invoice');
     }
   };
 
@@ -64,24 +70,22 @@ export default function ApprovalsPage() {
         responseType: 'blob',
       });
 
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `${job.invoice_number || 'job'}-BOM.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      window.URL.revokeObjectURL(url);
-    } catch {
-      toast.error('BOM PDF is not ready yet');
+      downloadFile(response, `${job.invoice_number || 'job'}-BOM.pdf`);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'BOM PDF is not ready yet');
     }
   };
 
   const uploadProof = () => {
-    toast.info('Proof upload will be added in the next step');
+    toast.info('Proof upload will be connected in the next step');
+  };
+
+  const createJobPack = async (job) => {
+    toast.info(`Create Job Pack for ${job.invoice_number || 'invoice'} will be connected in the next step`);
+  };
+
+  const trackProduction = async (job) => {
+    toast.info(`Production tracking for ${job.invoice_number || 'invoice'} will be connected in the next step`);
   };
 
   const deleteApproved = async (job) => {
@@ -108,15 +112,20 @@ export default function ApprovalsPage() {
     }
   };
 
+  const totalPages = Math.max(1, Math.ceil(approvedJobs.length / itemsPerPage));
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedJobs = approvedJobs.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <Layout>
       <div className="space-y-6 fade-in max-w-7xl">
-        <div>
-          <h1 className="text-4xl font-black tracking-tight leading-none">Approved</h1>
-          <p className="text-slate-600 mt-2">
-            Approved invoices, BOM documents, and design proofs for production handover.
-          </p>
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h1 className="text-4xl font-black tracking-tight leading-none">Approved</h1>
+            <p className="text-slate-600 mt-2">
+              Approved invoices, BOM documents, design proofs, job packs, and production handover.
+            </p>
+          </div>
         </div>
 
         {loading ? (
@@ -125,13 +134,15 @@ export default function ApprovalsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border bg-white">
-            <Table className="w-full min-w-[900px] text-sm">
+            <Table className="w-full min-w-[1200px] text-sm">
               <TableHeader className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                 <TableRow>
                   <TableHead className="px-4 py-3">Client Name</TableHead>
                   <TableHead className="px-4 py-3">Invoice</TableHead>
                   <TableHead className="px-4 py-3">BOM</TableHead>
                   <TableHead className="px-4 py-3">Design Proof</TableHead>
+                  <TableHead className="px-4 py-3">Job Pack</TableHead>
+                  <TableHead className="px-4 py-3">Production</TableHead>
                   <TableHead className="px-4 py-3 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -139,12 +150,12 @@ export default function ApprovalsPage() {
               <TableBody className="divide-y">
                 {approvedJobs.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="py-12 text-center text-slate-500">
+                    <TableCell colSpan={7} className="py-12 text-center text-slate-500">
                       No approved invoices yet.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  approvedJobs.map((job) => (
+                  paginatedJobs.map((job) => (
                     <TableRow key={job.id}>
                       <TableCell className="px-4 py-3 font-semibold">
                         {job.client_name}
@@ -186,6 +197,30 @@ export default function ApprovalsPage() {
                         </Button>
                       </TableCell>
 
+                      <TableCell className="px-4 py-3">
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => createJobPack(job)}
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          <PackageCheck size={16} className="mr-2" />
+                          Create Job Pack
+                        </Button>
+                      </TableCell>
+
+                      <TableCell className="px-4 py-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => trackProduction(job)}
+                        >
+                          <Factory size={16} className="mr-2" />
+                          Track Production
+                        </Button>
+                      </TableCell>
+
                       <TableCell className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-2">
                           {canMoveBackToQuote && (
@@ -218,6 +253,38 @@ export default function ApprovalsPage() {
                 )}
               </TableBody>
             </Table>
+          </div>
+        )}
+
+        {!loading && approvedJobs.length > 0 && (
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between text-sm text-slate-600">
+            <div>
+              Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, approvedJobs.length)} of {approvedJobs.length}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              >
+                Previous
+              </Button>
+
+              <span className="px-3">
+                Page {currentPage} of {totalPages}
+              </span>
+
+              <Button
+                type="button"
+                variant="outline"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+              >
+                Next
+              </Button>
+            </div>
           </div>
         )}
       </div>
