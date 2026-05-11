@@ -5269,20 +5269,31 @@ async def submit_quote_for_approval(quote_id: str, user: dict = Depends(require_
 
 @api_router.post("/quotes/{quote_id}/approve")
 async def approve_quote(quote_id: str, user: dict = Depends(require_manager)):
-    quote = await db.quotes.find_one({"id": quote_id, "company_id": user["company_id"]}, {"_id": 0})
+    quote = await db.quotes.find_one(
+        {"id": quote_id, "company_id": user["company_id"]},
+        {"_id": 0}
+    )
+
     if not quote:
         raise HTTPException(status_code=404, detail="Quote not found")
 
     if quote["created_by"] == user["id"] and user["role"] != "MD_ADMIN":
         raise HTTPException(status_code=403, detail="You cannot approve your own estimation")
 
-    if quote.get("quote_number"):
-        quote_number = quote["quote_number"]
-    else:
-        quote_number = linked_number_from_estimate(quote.get("estimate_number"), "Qu")
+    estimate_number = quote.get("estimate_number")
+
+    if not estimate_number or not estimate_number.startswith("Es"):
+        raise HTTPException(status_code=400, detail="Estimate number is missing or invalid")
+
+    sequence = estimate_number.replace("Es", "", 1)
+
+    if not sequence.isdigit():
+        raise HTTPException(status_code=400, detail="Estimate number is invalid")
+
+    quote_number = f"Qu{sequence.zfill(5)}"
 
     await db.quotes.update_one(
-        {"id": quote_id},
+        {"id": quote_id, "company_id": user["company_id"]},
         {"$set": {
             "quote_number": quote_number,
             "quote_approval_status": "APPROVED",
@@ -5293,7 +5304,11 @@ async def approve_quote(quote_id: str, user: dict = Depends(require_manager)):
         }}
     )
 
-    return {"message": "Quote approved successfully"}
+    return {
+        "message": "Quote approved successfully",
+        "quote_number": quote_number
+    }
+
 
 @api_router.post("/quotes/{quote_id}/reject")
 async def reject_quote(quote_id: str, rejection_reason: str, user: dict = Depends(require_manager)):
