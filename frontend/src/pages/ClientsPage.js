@@ -557,46 +557,58 @@ export default function ClientsPage() {
                         <TableCell className="px-4 py-3">{client.phone || '-'}</TableCell>
                         <TableCell className="px-4 py-3">{client.vat_number || '-'}</TableCell>
                         <TableCell className="px-4 py-3">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openStatement(client)}
-                              title="Client Statement"
-                              className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                            >
-                              <FileText size={16} className="mr-2" />
-                              Statement
-                            </Button>
+                          <div className="flex justify-end gap-3 items-start">
+                            <div className="flex flex-col items-center gap-1">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openStatement(client)}
+                                title="Client Statement"
+                                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                              >
+                                <FileText size={16} className="mr-2" />
+                                Statement
+                              </Button>
+                              <span className="text-[10px] leading-none text-slate-400">Statement</span>
+                            </div>
 
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setInfoClient(client)}
-                            >
-                              <Info size={16} />
-                            </Button>
+                            <div className="flex flex-col items-center gap-1">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setInfoClient(client)}
+                              >
+                                <Info size={16} />
+                              </Button>
+                              <span className="text-[10px] leading-none text-slate-400">Info</span>
+                            </div>
 
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEdit(client)}
-                            >
-                              <Pencil size={16} />
-                            </Button>
+                            <div className="flex flex-col items-center gap-1">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEdit(client)}
+                              >
+                                <Pencil size={16} />
+                              </Button>
+                              <span className="text-[10px] leading-none text-slate-400">Edit</span>
+                            </div>
 
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(client.id)}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              <Trash2 size={16} />
-                            </Button>
+                            <div className="flex flex-col items-center gap-1">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDelete(client.id)}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 size={16} />
+                              </Button>
+                              <span className="text-[10px] leading-none text-slate-400">Delete</span>
+                            </div>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -712,7 +724,7 @@ export default function ClientsPage() {
                               )}
                             </TableCell>
                             <TableCell className="px-4 py-3 text-right">
-                              <div className="flex justify-end gap-2">
+                              <div className="flex justify-end gap-3 items-start">
                                 <Button
                                   type="button"
                                   variant="ghost"
