@@ -3932,10 +3932,17 @@ async def get_client_for_statement(client_id: str, user: dict):
         {"id": client_id, "company_id": user["company_id"]},
         {"_id": 0}
     )
+
+    if not client:
+        client = await db.clients.find_one(
+            {"id": client_id, "company_id": user["company_id"]},
+            {"_id": 0}
+        )
+
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
-    return client
 
+    return client
 
 async def get_client_invoice_query(client: dict, user: dict):
     company_name = (client.get("company_name") or "").strip()

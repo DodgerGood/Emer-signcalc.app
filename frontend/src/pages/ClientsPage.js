@@ -631,7 +631,7 @@ export default function ClientsPage() {
 
 
         <Dialog open={!!statementClient} onOpenChange={(open) => !open && setStatementClient(null)}>
-          <DialogContent className="max-w-6xl">
+          <DialogContent className="w-[96vw] max-w-[1200px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 Client Statement - {statementClient?.company_name}
@@ -656,7 +656,7 @@ export default function ClientsPage() {
                 </div>
               ) : (
                 <div className="overflow-x-auto rounded-xl border bg-white">
-                  <Table className="w-full min-w-[1100px] text-sm">
+                  <Table className="w-full min-w-[980px] text-sm">
                     <TableHeader className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                       <TableRow>
                         <TableHead className="px-4 py-3">Invoice #</TableHead>
