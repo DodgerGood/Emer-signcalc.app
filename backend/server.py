@@ -3062,7 +3062,7 @@ async def get_stock(user: dict = Depends(can_view_stock)):
             "width": material.get("width"),
             "height": material.get("height"),
             "length_mm": material.get("length_mm"),
-            "unit_label": "running m" if material.get("material_type") == "ROLL" else ("sheet(s)" if material.get("material_type") in ["SHEET", "BOARD"] else "unit(s)"),
+            "unit_label": "roll(s)" if material.get("material_type") == "ROLL" else ("sheet(s)" if material.get("material_type") in ["SHEET", "BOARD"] else "unit(s)"),
             "current_stock": current_stock,
             "reserved_stock": reserved_stock,
             "available_stock": available_stock,
