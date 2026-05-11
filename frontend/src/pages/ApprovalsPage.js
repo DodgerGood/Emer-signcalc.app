@@ -77,7 +77,8 @@ export default function ApprovalsPage() {
         responseType: 'blob',
       });
 
-      downloadFile(response, `${job.invoice_number || 'job'}-BOM.pdf`);
+      const clientName = (job.client_name || 'Client').replaceAll(' ', '_');
+      downloadFile(response, `${job.invoice_number || 'Inv'}-${clientName}-BOM.pdf`);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'BOM PDF is not ready yet');
     }
