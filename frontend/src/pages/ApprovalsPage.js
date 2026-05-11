@@ -4,6 +4,7 @@ import api from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import ActionIconButton from '../components/ActionIconButton';
 
@@ -17,12 +18,17 @@ export default function ApprovalsPage() {
   const [approvedJobs, setApprovedJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const itemsPerPage = 10;
 
   useEffect(() => {
     loadApprovedJobs();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   const loadApprovedJobs = async () => {
     try {
@@ -113,9 +119,20 @@ export default function ApprovalsPage() {
     }
   };
 
-  const totalPages = Math.max(1, Math.ceil(approvedJobs.length / itemsPerPage));
+  const filteredJobs = approvedJobs.filter((job) => {
+    const term = searchTerm.toLowerCase();
+
+    return (
+      job.client_name?.toLowerCase().includes(term) ||
+      job.invoice_number?.toLowerCase().includes(term) ||
+      job.quote_number?.toLowerCase().includes(term) ||
+      job.estimate_number?.toLowerCase().includes(term)
+    );
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filteredJobs.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedJobs = approvedJobs.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedJobs = filteredJobs.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <Layout>
@@ -127,6 +144,15 @@ export default function ApprovalsPage() {
               Approved invoices, BOM documents, design proofs, job packs, and production handover.
             </p>
           </div>
+        </div>
+
+        <div className="w-full md:max-w-sm space-y-2">
+          <label className="text-sm font-medium">Search Approved</label>
+          <Input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search client, invoice, or quote #"
+          />
         </div>
 
         {loading ? (
@@ -149,7 +175,7 @@ export default function ApprovalsPage() {
               </TableHeader>
 
               <TableBody className="divide-y">
-                {approvedJobs.length === 0 ? (
+                {filteredJobs.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="py-12 text-center text-slate-500">
                       No approved invoices yet.
@@ -245,10 +271,10 @@ export default function ApprovalsPage() {
           </div>
         )}
 
-        {!loading && approvedJobs.length > 0 && (
+        {!loading && filteredJobs.length > 0 && (
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between text-sm text-slate-600">
             <div>
-              Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, approvedJobs.length)} of {approvedJobs.length}
+              Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredJobs.length)} of {filteredJobs.length}
             </div>
 
             <div className="flex items-center gap-2">
