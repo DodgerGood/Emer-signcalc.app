@@ -186,13 +186,13 @@ const canEdit =
 return (
     <Layout>
       <div className="space-y-6 fade-in">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-start">
           <div>
             <h1 className="text-4xl font-black tracking-tight leading-none">Ink Profiles</h1>
             <p className="text-slate-600 mt-2">Manage ink profiles and costs (ZAR)</p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-start gap-2">
             <input
               ref={importFileRef}
               type="file"
@@ -471,7 +471,7 @@ return (
                 Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredItems.length)} of {filteredItems.length} ink profiles
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-start gap-2">
                 <Button
                   type="button"
                   variant="outline"

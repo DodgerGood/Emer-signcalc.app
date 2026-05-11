@@ -374,7 +374,7 @@ export default function ClientsPage() {
   return (
     <Layout>
       <div className="space-y-6 fade-in max-w-7xl">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-start">
           <div>
             <h1 className="text-4xl font-black tracking-tight leading-none">Clients</h1>
             <p className="text-slate-600 mt-2">
@@ -382,7 +382,7 @@ export default function ClientsPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-start gap-2">
             <input
               ref={importFileRef}
               type="file"
@@ -527,6 +527,10 @@ export default function ClientsPage() {
           </div>
         </div>
 
+        <p className="text-sm text-slate-500">
+          Use the exported CSV as your template. Matching names update existing clients, new names are added.
+        </p>
+
         <div className="w-full md:max-w-sm space-y-2">
           <Label>Search Clients</Label>
           <Input
@@ -615,7 +619,7 @@ export default function ClientsPage() {
                 {Math.min(startIndex + itemsPerPage, filteredClients.length)} of {filteredClients.length} clients
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-start gap-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -750,7 +754,7 @@ export default function ClientsPage() {
                     Showing {statementStartIndex + 1} to {Math.min(statementStartIndex + statementItemsPerPage, statementRows.length)} of {statementRows.length} invoices
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-start gap-2">
                     <Button
                       type="button"
                       variant="outline"

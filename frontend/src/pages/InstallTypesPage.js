@@ -297,7 +297,7 @@ export default function InstallTypesPage() {
   return (
     <Layout>
       <div className="space-y-6 fade-in max-w-7xl">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-start">
           <div>
             <h1 className="text-4xl font-black tracking-tight leading-none">Installation Pricelist</h1>
             <p className="text-slate-600 mt-2">
@@ -305,7 +305,7 @@ export default function InstallTypesPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-start gap-2">
             <input
               ref={importFileRef}
               type="file"
@@ -648,7 +648,7 @@ export default function InstallTypesPage() {
                 {Math.min(startIndex + itemsPerPage, filteredItems.length)} of {filteredItems.length} installation types
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-start gap-2">
                 <Button
                   type="button"
                   variant="outline"

@@ -307,13 +307,13 @@ export default function LabourTypesPage() {
   return (
     <Layout>
       <div className="space-y-6 fade-in">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-start">
           <div>
             <h1 className="text-4xl font-black tracking-tight leading-none">Labour & Machine Pricelist</h1>
             <p className="text-slate-600 mt-2">Manage labour rates and costing categories (ZAR)</p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-start gap-2">
             <input
               ref={importFileRef}
               type="file"
@@ -880,7 +880,7 @@ export default function LabourTypesPage() {
                 {filteredItems.length} labour types
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-start gap-2">
                 <Button
                   type="button"
                   variant="outline"

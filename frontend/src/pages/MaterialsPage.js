@@ -400,7 +400,7 @@ export default function MaterialsPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 whitespace-nowrap">
+          <div className="flex items-start gap-2 whitespace-nowrap">
             <input
               ref={importFileRef}
               type="file"
@@ -932,7 +932,7 @@ export default function MaterialsPage() {
                 {filteredMaterials.length} materials
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-start gap-2">
                 <Button
                   type="button"
                   variant="outline"

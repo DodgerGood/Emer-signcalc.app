@@ -679,12 +679,7 @@ export default function RecipesPage() {
             </Dialog>
           )}
         </div>
-
-        <p className="text-sm text-slate-500">
-          Use the exported CSV as your template. Matching names update existing recipes, new names are added.
-        </p>
-
-        <div className="w-full md:max-w-sm space-y-2">
+<div className="w-full md:max-w-sm space-y-2">
           <Label htmlFor="recipe-search">Search Recipes</Label>
           <Input
             id="recipe-search"
