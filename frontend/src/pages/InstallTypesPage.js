@@ -456,7 +456,7 @@ export default function InstallTypesPage() {
                           Remove
                         </Button>
                       </div>
-                    ))}
+))}
 
                     <Button type="button" variant="outline" onClick={addTool}>
                       + Add Tool
@@ -542,6 +542,10 @@ export default function InstallTypesPage() {
             </Dialog>
           </div>
         </div>
+
+        <p className="text-sm text-slate-500">
+          Use the exported CSV as your template. Matching names update existing installation types, new names are added.
+        </p>
 
         <div className="w-full md:max-w-sm space-y-2">
           <Label htmlFor="install-search">Search Installation Types</Label>
