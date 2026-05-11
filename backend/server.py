@@ -20,6 +20,7 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.units import mm
 from io import BytesIO
 from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 import math
 import base64
 import smtplib
@@ -3618,6 +3619,144 @@ async def delete_install_type(install_id: str, user: dict = Depends(require_mana
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Install type not found")
     return {"message": "Install type deleted"}
+
+
+@api_router.get("/stock/export/stock-take")
+async def export_stock_take_sheet(user: dict = Depends(get_current_user)):
+    allowed_roles = {"MD_ADMIN", "PROCUREMENT", "MANAGER", "CEO"}
+    if user.get("role") not in allowed_roles:
+        raise HTTPException(status_code=403, detail="You do not have permission to export stock take sheets")
+
+    materials = await db.materials.find(
+        {"company_id": user["company_id"]},
+        {"_id": 0}
+    ).sort("name", 1).to_list(5000)
+
+    stock_rows = await db.stock.find(
+        {"company_id": user["company_id"]},
+        {"_id": 0}
+    ).to_list(5000)
+
+    stock_by_material = {row.get("material_id"): row for row in stock_rows}
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Stock Take"
+
+    headers = [
+        "Material",
+        "Category",
+        "Supplier",
+        "Dimensions",
+        "System Stock",
+        "Reserved",
+        "Available",
+        "Minimum",
+        "Physical Count",
+        "Variance",
+        "Audit Note",
+    ]
+
+    ws.append(headers)
+
+    header_fill = PatternFill("solid", fgColor="0F172A")
+    header_font = Font(color="FFFFFF", bold=True)
+    thin = Side(style="thin", color="CBD5E1")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    for cell in ws[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.border = border
+
+    def unit_label(material_type):
+        if material_type == "ROLL":
+            return "roll(s)"
+        if material_type == "SHEET":
+            return "sheet(s)"
+        if material_type == "BOARD":
+            return "board(s)"
+        if material_type == "PROFILE":
+            return "length(s)"
+        if material_type == "INK":
+            return "container(s)"
+        return "unit(s)"
+
+    for material in materials:
+        stock = stock_by_material.get(material.get("id"), {})
+        material_type = material.get("material_type") or ""
+        unit = unit_label(material_type)
+
+        width = material.get("width")
+        height = material.get("height")
+        length_mm = material.get("length_mm")
+
+        if material_type in ["SHEET", "ROLL", "BOARD"] and width and height:
+            dimensions = f"{width}mm x {height}mm"
+        elif material_type == "PROFILE" and length_mm:
+            dimensions = f"{length_mm}mm"
+        else:
+            dimensions = material.get("product_specs") or ""
+
+        current_stock = float(stock.get("current_stock") or 0)
+        reserved_stock = float(stock.get("reserved_stock") or 0)
+        minimum_stock = float(stock.get("minimum_stock") or 0)
+        available_stock = current_stock - reserved_stock
+
+        ws.append([
+            material.get("name") or "",
+            material_type,
+            material.get("supplier") or "",
+            dimensions,
+            f"{current_stock:.2f} {unit}",
+            f"{reserved_stock:.2f} {unit}",
+            f"{available_stock:.2f} {unit}",
+            f"{minimum_stock:.2f} {unit}",
+            "",
+            "",
+            stock.get("audit_note") or "",
+        ])
+
+    for row in ws.iter_rows(min_row=2):
+        for cell in row:
+            cell.border = border
+            cell.alignment = Alignment(vertical="top", wrap_text=True)
+
+    for row_idx in range(2, ws.max_row + 1):
+        ws[f"J{row_idx}"] = f'=IF(I{row_idx}="","",I{row_idx}-VALUE(LEFT(E{row_idx},FIND(" ",E{row_idx}&" ")-1)))'
+
+    widths = {
+        "A": 28,
+        "B": 14,
+        "C": 22,
+        "D": 24,
+        "E": 18,
+        "F": 18,
+        "G": 18,
+        "H": 18,
+        "I": 18,
+        "J": 14,
+        "K": 34,
+    }
+
+    for col, width in widths.items():
+        ws.column_dimensions[col].width = width
+
+    ws.freeze_panes = "A2"
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return Response(
+        content=output.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": 'attachment; filename="stock-take-sheet.xlsx"'
+        }
+    )
+
 
 # ===== CLIENT ROUTES =====
 

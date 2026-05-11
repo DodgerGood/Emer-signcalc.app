@@ -44,6 +44,32 @@ export default function StockPage() {
     return () => window.removeEventListener('beforeunload', beforeUnload);
   }, [dirtyRows]);
 
+  const downloadStockTake = async () => {
+    try {
+      const response = await api.get('/stock/export/stock-take', {
+        responseType: 'blob',
+      });
+
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+
+      link.href = url;
+      link.setAttribute('download', 'stock-take-sheet.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+      toast.success('Stock take sheet downloaded');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to download stock take sheet');
+    }
+  };
+
   const loadStock = async () => {
     try {
       setLoading(true);
@@ -146,11 +172,22 @@ export default function StockPage() {
   return (
     <Layout>
       <div className="space-y-6 fade-in max-w-7xl">
-        <div>
-          <h1 className="text-4xl font-black tracking-tight leading-none">Stock</h1>
-          <p className="text-slate-600 mt-2">
-            Audit current stock, track available quantities, and flag shortages against production requirements.
-          </p>
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h1 className="text-4xl font-black tracking-tight leading-none">Stock</h1>
+            <p className="text-slate-600 mt-2">
+              Audit current stock, track available quantities, and flag shortages against production requirements.
+            </p>
+          </div>
+
+          <Button
+            type="button"
+            onClick={downloadStockTake}
+            className="bg-[#2563EB] text-white hover:bg-[#1d4ed8]"
+          >
+            <Download size={18} className="mr-2" />
+            Stock Take Excel
+          </Button>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
