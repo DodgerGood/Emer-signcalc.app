@@ -400,7 +400,7 @@ export default function MaterialsPage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 whitespace-nowrap">
             <input
               ref={importFileRef}
               type="file"
@@ -436,7 +436,7 @@ export default function MaterialsPage() {
                     type="button"
                     onClick={handleOpenCreateMaterial}
                     data-testid="add-material-btn"
-                    className="bg-[#2563EB] text-white hover:bg-[#1d4ed8]"
+                    className="bg-[#2563EB] text-white hover:bg-[#1d4ed8] whitespace-nowrap"
                   >
                     <Plus size={18} className="mr-2" />
                     Add Material
