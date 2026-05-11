@@ -34,6 +34,9 @@ export default function ClientsPage() {
   const [statementRows, setStatementRows] = useState([]);
   const [statementTotal, setStatementTotal] = useState(0);
   const [statementLoading, setStatementLoading] = useState(false);
+  const [statementPage, setStatementPage] = useState(1);
+
+  const statementItemsPerPage = 10;
 
   const [formData, setFormData] = useState(emptyForm());
   const [searchTerm, setSearchTerm] = useState('');
@@ -89,6 +92,7 @@ export default function ClientsPage() {
 
   const openStatement = async (client) => {
     setStatementClient(client);
+    setStatementPage(1);
     setStatementLoading(true);
 
     try {
@@ -357,6 +361,13 @@ export default function ClientsPage() {
   const totalPages = Math.max(1, Math.ceil(filteredClients.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedClients = filteredClients.slice(startIndex, startIndex + itemsPerPage);
+
+  const statementTotalPages = Math.max(1, Math.ceil(statementRows.length / statementItemsPerPage));
+  const statementStartIndex = (statementPage - 1) * statementItemsPerPage;
+  const paginatedStatementRows = statementRows.slice(
+    statementStartIndex,
+    statementStartIndex + statementItemsPerPage
+  );
 
   return (
     <Layout>
@@ -678,7 +689,7 @@ export default function ClientsPage() {
                           </TableCell>
                         </TableRow>
                       ) : (
-                        statementRows.map((row) => (
+                        paginatedStatementRows.map((row) => (
                           <TableRow key={row.id}>
                             <TableCell className="px-4 py-3 font-mono font-semibold">{row.invoice_number}</TableCell>
                             <TableCell className="px-4 py-3">
@@ -693,37 +704,34 @@ export default function ClientsPage() {
                               </span>
                             </TableCell>
                             <TableCell className="px-4 py-3">
-                              <Button type="button" variant="outline" size="sm" onClick={() => loadPo(row)}>
-                                <Upload size={16} className="mr-2" />
-                                {row.po_uploaded ? 'Replace P.O.' : 'Load P.O.'}
-                              </Button>
+                              <div className="flex flex-col items-center gap-1">
+                                <Button type="button" variant="outline" size="sm" onClick={() => loadPo(row)}>
+                                  <Upload size={16} className="mr-2" />
+                                  {row.po_uploaded ? 'Replace P.O.' : 'Load P.O.'}
+                                </Button>
+                                <span className="text-[10px] text-slate-400">P.O.</span>
+                              </div>
                               {row.po_filename && (
                                 <div className="mt-1 text-xs text-slate-500">{row.po_filename}</div>
                               )}
                             </TableCell>
                             <TableCell className="px-4 py-3 text-right">
                               <div className="flex justify-end gap-3 items-start">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
+                                <ActionIconButton
+                                  icon={row.payment_status === 'PAID' ? <XCircle size={16} /> : <CheckCircle size={16} />}
+                                  label={row.payment_status === 'PAID' ? 'Unpaid' : 'Paid'}
+                                  tone={row.payment_status === 'PAID' ? 'return' : 'approve'}
                                   onClick={() => togglePaid(row)}
-                                  className={row.payment_status === 'PAID' ? 'text-amber-600 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'}
                                   title={row.payment_status === 'PAID' ? 'Mark unpaid' : 'Mark paid'}
-                                >
-                                  {row.payment_status === 'PAID' ? <XCircle size={16} /> : <CheckCircle size={16} />}
-                                </Button>
+                                />
 
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
+                                <ActionIconButton
+                                  icon={<CreditCard size={16} />}
+                                  label="Credit"
+                                  tone="credit"
                                   onClick={() => createCredit(row)}
-                                  className="text-purple-600 hover:bg-purple-50"
                                   title="Credit note"
-                                >
-                                  <CreditCard size={16} />
-                                </Button>
+                                />
                               </div>
                             </TableCell>
                           </TableRow>
@@ -731,6 +739,40 @@ export default function ClientsPage() {
                       )}
                     </TableBody>
                   </Table>
+                </div>
+              )}
+
+              {statementRows.length > 0 && (
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between text-sm text-slate-600">
+                  <div>
+                    Showing {statementStartIndex + 1} to {Math.min(statementStartIndex + statementItemsPerPage, statementRows.length)} of {statementRows.length} invoices
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={statementPage === 1}
+                      onClick={() => setStatementPage((page) => Math.max(1, page - 1))}
+                    >
+                      Previous
+                    </Button>
+
+                    <span>
+                      Page {statementPage} of {statementTotalPages}
+                    </span>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={statementPage === statementTotalPages}
+                      onClick={() => setStatementPage((page) => Math.min(statementTotalPages, page + 1))}
+                    >
+                      Next
+                    </Button>
+                  </div>
                 </div>
               )}
 
