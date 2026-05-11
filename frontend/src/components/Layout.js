@@ -10,6 +10,7 @@ import {
   BookOpen,
   FileText,
   CheckCircle,
+  Warehouse,
   LogOut,
   Settings,
   Calculator,
@@ -39,27 +40,32 @@ const role = user?.role;
       return [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/materials', icon: Package, label: 'Materials' },
+        { to: '/stock', icon: Warehouse, label: 'Stock' },
         { to: '/labour-types', icon: Users, label: 'Labour & Machine' },
         { to: '/install-types', icon: Wrench, label: 'Installation Pricelist' },
         { to: '/recipes', icon: BookOpen, label: 'Recipes' },
         { to: '/clients', icon: Building2, label: 'Clients' },
         { to: '/estimations', icon: Calculator, label: 'Estimations' },
         { to: '/quotes', icon: FileText, label: 'Quotes' },
-        { to: '/approvals', icon: CheckCircle, label: 'Approved' },
+        { to: '/approvals', icon: CheckCircle,
+  Warehouse, label: 'Approved' },
       ];
     } else if (role === 'MANAGER') {
       return [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/materials', icon: Package, label: 'Materials' },
+        { to: '/stock', icon: Warehouse, label: 'Stock' },
         { to: '/labour-types', icon: Users, label: 'Labour & Machine' },
         { to: '/install-types', icon: Wrench, label: 'Installation Pricelist' },
         { to: '/recipes', icon: BookOpen, label: 'Recipes' },
-        { to: '/approvals', icon: CheckCircle, label: 'Approved' },
+        { to: '/approvals', icon: CheckCircle,
+  Warehouse, label: 'Approved' },
       ];
     } else if (role === 'PROCUREMENT') {
       return [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/materials', icon: Package, label: 'Materials' },
+        { to: '/stock', icon: Warehouse, label: 'Stock' },
       ];
     } else if (role === 'QUOTING_STAFF') {
       return [
@@ -67,19 +73,22 @@ const role = user?.role;
         { to: '/clients', icon: Building2, label: 'Clients' },
         { to: '/estimations', icon: Calculator, label: 'Estimations' },
         { to: '/quotes', icon: FileText, label: 'Quotes' },
-        { to: '/approvals', icon: CheckCircle, label: 'Approved' },
+        { to: '/approvals', icon: CheckCircle,
+  Warehouse, label: 'Approved' },
       ];
     } else if (role === 'CEO') {
       return [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/materials', icon: Package, label: 'Materials' },
+        { to: '/stock', icon: Warehouse, label: 'Stock' },
         { to: '/labour-types', icon: Users, label: 'Labour & Machine' },
         { to: '/install-types', icon: Wrench, label: 'Installation Pricelist' },
         { to: '/recipes', icon: BookOpen, label: 'Recipes' },
         { to: '/clients', icon: Building2, label: 'Clients' },
         { to: '/estimations', icon: Calculator, label: 'Estimations' },
         { to: '/quotes', icon: FileText, label: 'Quotes' },
-        { to: '/approvals', icon: CheckCircle, label: 'Approved' },
+        { to: '/approvals', icon: CheckCircle,
+  Warehouse, label: 'Approved' },
       ];
     }
     return [];

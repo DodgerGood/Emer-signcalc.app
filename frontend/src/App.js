@@ -8,6 +8,7 @@ import '@/App.css';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import MaterialsPage from './pages/MaterialsPage';
+import StockPage from './pages/StockPage';
 import InkProfilesPage from './pages/InkProfilesPage';
 import LabourTypesPage from './pages/LabourTypesPage';
 import InstallTypesPage from './pages/InstallTypesPage';
@@ -78,6 +79,15 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <MaterialsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/stock"
+        element={
+          <ProtectedRoute>
+            <StockPage />
           </ProtectedRoute>
         }
       />

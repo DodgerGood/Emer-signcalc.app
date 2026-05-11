@@ -3008,6 +3008,112 @@ async def delete_material(material_id: str, user: dict = Depends(can_edit_materi
         raise HTTPException(status_code=404, detail="Material not found")
     return {"message": "Material deleted"}
 
+
+# ===== STOCK ROUTES =====
+
+async def can_view_stock(user: dict = Depends(get_current_user)) -> dict:
+    if user["role"] not in [UserRole.MD_ADMIN, UserRole.PROCUREMENT, UserRole.MANAGER, UserRole.CEO]:
+        raise HTTPException(status_code=403, detail="Stock access required")
+    return user
+
+
+async def can_edit_stock(user: dict = Depends(get_current_user)) -> dict:
+    if user["role"] not in [UserRole.MD_ADMIN, UserRole.PROCUREMENT]:
+        raise HTTPException(status_code=403, detail="Stock edit access required")
+    return user
+
+
+@api_router.get("/stock")
+async def get_stock(user: dict = Depends(can_view_stock)):
+    materials = await db.materials.find(
+        {"company_id": user["company_id"]},
+        {"_id": 0}
+    ).sort("name", 1).to_list(5000)
+
+    stock_records = await db.stock.find(
+        {"company_id": user["company_id"]},
+        {"_id": 0}
+    ).to_list(5000)
+
+    stock_by_material = {s.get("material_id"): s for s in stock_records}
+
+    rows = []
+    for material in materials:
+        stock = stock_by_material.get(material["id"], {})
+
+        current_stock = float(stock.get("current_stock") or 0)
+        minimum_stock = float(stock.get("minimum_stock") or 0)
+        reserved_stock = float(stock.get("reserved_stock") or 0)
+        available_stock = current_stock - reserved_stock
+
+        if available_stock <= 0:
+            stock_status = "OUT_OF_STOCK"
+        elif minimum_stock and available_stock <= minimum_stock:
+            stock_status = "LOW_STOCK"
+        else:
+            stock_status = "OK"
+
+        rows.append({
+            "id": stock.get("id") or str(uuid.uuid4()),
+            "material_id": material["id"],
+            "material_name": material.get("name"),
+            "material_type": material.get("material_type"),
+            "supplier": material.get("supplier"),
+            "width": material.get("width"),
+            "height": material.get("height"),
+            "length_mm": material.get("length_mm"),
+            "unit_label": "running m" if material.get("material_type") == "ROLL" else ("sheet(s)" if material.get("material_type") in ["SHEET", "BOARD"] else "unit(s)"),
+            "current_stock": current_stock,
+            "reserved_stock": reserved_stock,
+            "available_stock": available_stock,
+            "minimum_stock": minimum_stock,
+            "stock_status": stock_status,
+            "last_audited_at": stock.get("last_audited_at"),
+            "last_audited_by_name": stock.get("last_audited_by_name"),
+            "notes": stock.get("notes") or "",
+        })
+
+    return rows
+
+
+@api_router.put("/stock/{material_id}")
+async def update_stock(material_id: str, payload: dict, user: dict = Depends(can_edit_stock)):
+    material = await db.materials.find_one(
+        {"id": material_id, "company_id": user["company_id"]},
+        {"_id": 0}
+    )
+
+    if not material:
+        raise HTTPException(status_code=404, detail="Material not found")
+
+    current_stock = float(payload.get("current_stock") or 0)
+    minimum_stock = float(payload.get("minimum_stock") or 0)
+    reserved_stock = float(payload.get("reserved_stock") or 0)
+    notes = payload.get("notes") or ""
+
+    stock_doc = {
+        "id": payload.get("id") or str(uuid.uuid4()),
+        "company_id": user["company_id"],
+        "material_id": material_id,
+        "current_stock": current_stock,
+        "reserved_stock": reserved_stock,
+        "minimum_stock": minimum_stock,
+        "notes": notes,
+        "last_audited_at": datetime.now(timezone.utc).isoformat(),
+        "last_audited_by": user["id"],
+        "last_audited_by_name": user["full_name"],
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    await db.stock.update_one(
+        {"company_id": user["company_id"], "material_id": material_id},
+        {"$set": stock_doc},
+        upsert=True
+    )
+
+    return {"message": "Stock updated", "stock": stock_doc}
+
+
 # ===== INK PROFILE ROUTES =====
 
 @api_router.post("/ink-profiles", response_model=InkProfile)
