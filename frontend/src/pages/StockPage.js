@@ -21,16 +21,35 @@ export default function StockPage() {
   const [savingId, setSavingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [dirtyRows, setDirtyRows] = useState({});
+
+  const itemsPerPage = 10;
 
   useEffect(() => {
     loadStock();
   }, []);
+
+  useEffect(() => {
+    const hasUnsavedChanges = Object.keys(dirtyRows).length > 0;
+
+    const beforeUnload = (event) => {
+      if (!hasUnsavedChanges) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', beforeUnload);
+    return () => window.removeEventListener('beforeunload', beforeUnload);
+  }, [dirtyRows]);
 
   const loadStock = async () => {
     try {
       setLoading(true);
       const response = await api.get('/stock');
       setStockRows(response.data || []);
+      setCurrentPage(1);
+      setDirtyRows({});
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to load stock');
     } finally {
@@ -44,6 +63,11 @@ export default function StockPage() {
         row.material_id === materialId ? { ...row, [field]: value } : row
       )
     );
+
+    setDirtyRows((rows) => ({
+      ...rows,
+      [materialId]: true,
+    }));
   };
 
   const saveStock = async (row) => {
@@ -57,6 +81,11 @@ export default function StockPage() {
         notes: row.notes,
       });
       toast.success('Stock updated');
+      setDirtyRows((rows) => {
+        const next = { ...rows };
+        delete next[row.material_id];
+        return next;
+      });
       loadStock();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to update stock');
@@ -80,6 +109,14 @@ export default function StockPage() {
 
     return matchesSearch && matchesCategory;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / itemsPerPage));
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedRows = filteredRows.slice(startIndex, startIndex + itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, categoryFilter]);
 
   const statusBadge = (status) => {
     if (status === 'OUT_OF_STOCK') {
@@ -175,19 +212,19 @@ export default function StockPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredRows.map((row) => (
-                    <TableRow key={row.material_id}>
-                      <TableCell className="px-4 py-3">
+                  paginatedRows.map((row) => (
+                    <TableRow key={row.material_id} className="align-top">
+                      <TableCell className="px-4 py-3 align-top">
                         <div className="font-semibold">{row.material_name}</div>
                         <div className="text-xs text-slate-500">
                           {row.width ? `${row.width}mm` : ''}{row.height ? ` x ${row.height}mm` : ''}{row.length_mm ? ` x ${row.length_mm / 1000}m` : ''}
                         </div>
                       </TableCell>
 
-                      <TableCell className="px-4 py-3">{row.material_type}</TableCell>
-                      <TableCell className="px-4 py-3">{row.supplier || '-'}</TableCell>
+                      <TableCell className="px-4 py-3 align-top">{row.material_type}</TableCell>
+                      <TableCell className="px-4 py-3 align-top">{row.supplier || '-'}</TableCell>
 
-                      <TableCell className="px-4 py-3">
+                      <TableCell className="px-4 py-3 align-top">
                         <Input
                           type="number"
                           value={row.current_stock}
@@ -197,7 +234,7 @@ export default function StockPage() {
                         <div className="mt-1 text-xs text-slate-500">{row.unit_label}</div>
                       </TableCell>
 
-                      <TableCell className="px-4 py-3">
+                      <TableCell className="px-4 py-3 align-top">
                         <Input
                           type="number"
                           value={row.reserved_stock}
@@ -206,11 +243,11 @@ export default function StockPage() {
                         />
                       </TableCell>
 
-                      <TableCell className="px-4 py-3 font-semibold">
+                      <TableCell className="px-4 py-3 align-top font-semibold">
                         {fmt(row.available_stock)} {row.unit_label}
                       </TableCell>
 
-                      <TableCell className="px-4 py-3">
+                      <TableCell className="px-4 py-3 align-top">
                         <Input
                           type="number"
                           value={row.minimum_stock}
@@ -219,9 +256,9 @@ export default function StockPage() {
                         />
                       </TableCell>
 
-                      <TableCell className="px-4 py-3">{statusBadge(row.stock_status)}</TableCell>
+                      <TableCell className="px-4 py-3 align-top">{statusBadge(row.stock_status)}</TableCell>
 
-                      <TableCell className="px-4 py-3">
+                      <TableCell className="px-4 py-3 align-top">
                         <Input
                           value={row.notes || ''}
                           disabled={!canEditStock}
@@ -235,17 +272,25 @@ export default function StockPage() {
                         )}
                       </TableCell>
 
-                      <TableCell className="px-4 py-3 text-right">
+                      <TableCell className="px-4 py-3 align-top text-right">
                         {canEditStock ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={() => saveStock(row)}
-                            disabled={savingId === row.material_id}
-                          >
-                            <Save size={16} className="mr-2" />
-                            Save
-                          </Button>
+                          <div className="flex flex-col items-end gap-1">
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => saveStock(row)}
+                              disabled={savingId === row.material_id}
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                              <Save size={16} className="mr-2" />
+                              Save
+                            </Button>
+                            {dirtyRows[row.material_id] && (
+                              <span className="text-xs font-medium text-amber-600">
+                                Unsaved
+                              </span>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-xs text-slate-500">View only</span>
                         )}
@@ -255,6 +300,38 @@ export default function StockPage() {
                 )}
               </TableBody>
             </Table>
+          </div>
+        )}
+
+        {!loading && filteredRows.length > 0 && (
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between text-sm text-slate-600">
+            <div>
+              Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredRows.length)} of {filteredRows.length}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              >
+                Previous
+              </Button>
+
+              <span className="px-3">
+                Page {currentPage} of {totalPages}
+              </span>
+
+              <Button
+                type="button"
+                variant="outline"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+              >
+                Next
+              </Button>
+            </div>
           </div>
         )}
       </div>
