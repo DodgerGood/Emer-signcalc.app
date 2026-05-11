@@ -678,7 +678,7 @@ export default function ClientsPage() {
                         <TableHead className="px-4 py-3 text-right">Credit</TableHead>
                         <TableHead className="px-4 py-3 text-right">Balance</TableHead>
                         <TableHead className="px-4 py-3">Status</TableHead>
-                        <TableHead className="px-4 py-3">P.O.</TableHead>
+                        <TableHead className="px-4 py-3">P.O.P</TableHead>
                         <TableHead className="px-4 py-3 text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -709,9 +709,9 @@ export default function ClientsPage() {
                               <div className="flex flex-col items-center gap-1">
                                 <Button type="button" variant="outline" size="sm" onClick={() => loadPo(row)}>
                                   <Upload size={16} className="mr-2" />
-                                  {row.po_uploaded ? 'Replace P.O.' : 'Load P.O.'}
+                                  {row.po_uploaded ? 'Replace P.O.P' : 'Load P.O.P'}
                                 </Button>
-                                <span className="text-[10px] text-slate-400">P.O.</span>
+                                <span className="text-[10px] text-slate-400">P.O.P</span>
                               </div>
                               {row.po_filename && (
                                 <div className="mt-1 text-xs text-slate-500">{row.po_filename}</div>
