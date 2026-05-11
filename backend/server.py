@@ -5965,13 +5965,14 @@ async def export_bom_pdf(quote_id: str, user: dict = Depends(get_current_user)):
 
     invoice_number = quote.get("invoice_number") or "invoice"
     client_name = (quote.get("client_name") or "client").replace(" ", "_")
+    invoice_date = (quote.get("invoice_created_at") or quote.get("created_at") or "")[:10]
 
     return Response(
         content=buffer.getvalue(),
         media_type="application/pdf",
         headers={
             "Content-Disposition":
-            f'attachment; filename="{invoice_number}-{client_name}-BOM.pdf"'
+            f'attachment; filename="{invoice_number}-{client_name}-{invoice_date}-BOM.pdf"'
         }
     )
 
