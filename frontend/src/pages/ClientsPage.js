@@ -35,6 +35,9 @@ export default function ClientsPage() {
   const [statementTotal, setStatementTotal] = useState(0);
   const [statementLoading, setStatementLoading] = useState(false);
   const [statementPage, setStatementPage] = useState(1);
+  const [statementStatusFilter, setStatementStatusFilter] = useState('ALL');
+  const [statementDateFrom, setStatementDateFrom] = useState('');
+  const [statementDateTo, setStatementDateTo] = useState('');
 
   const statementItemsPerPage = 10;
 
@@ -93,6 +96,9 @@ export default function ClientsPage() {
   const openStatement = async (client) => {
     setStatementClient(client);
     setStatementPage(1);
+    setStatementStatusFilter('ALL');
+    setStatementDateFrom('');
+    setStatementDateTo('');
     setStatementLoading(true);
 
     try {
@@ -364,12 +370,40 @@ export default function ClientsPage() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedClients = filteredClients.slice(startIndex, startIndex + itemsPerPage);
 
-  const statementTotalPages = Math.max(1, Math.ceil(statementRows.length / statementItemsPerPage));
+  const filteredStatementRows = statementRows.filter((row) => {
+    const invoiceDate = row.invoice_date ? new Date(row.invoice_date) : null;
+    const fromDate = statementDateFrom ? new Date(`${statementDateFrom}T00:00:00`) : null;
+    const toDate = statementDateTo ? new Date(`${statementDateTo}T23:59:59`) : null;
+
+    if (statementStatusFilter === 'UNPAID' && row.payment_status === 'PAID') {
+      return false;
+    }
+
+    if (fromDate && invoiceDate && invoiceDate < fromDate) {
+      return false;
+    }
+
+    if (toDate && invoiceDate && invoiceDate > toDate) {
+      return false;
+    }
+
+    return true;
+  });
+
+  const filteredStatementUnpaidTotal = filteredStatementRows
+    .filter((row) => row.payment_status !== 'PAID')
+    .reduce((sum, row) => sum + (Number(row.balance_amount) || 0), 0);
+
+  const statementTotalPages = Math.max(1, Math.ceil(filteredStatementRows.length / statementItemsPerPage));
   const statementStartIndex = (statementPage - 1) * statementItemsPerPage;
-  const paginatedStatementRows = statementRows.slice(
+  const paginatedStatementRows = filteredStatementRows.slice(
     statementStartIndex,
     statementStartIndex + statementItemsPerPage
   );
+
+  useEffect(() => {
+    setStatementPage(1);
+  }, [statementStatusFilter, statementDateFrom, statementDateTo]);
 
   return (
     <Layout>
@@ -656,15 +690,49 @@ export default function ClientsPage() {
             </DialogHeader>
 
             <div className="space-y-4">
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="text-sm text-slate-600">
-                  Showing latest 20 invoices. Statement PDF includes unpaid invoices only.
+              <div className="space-y-3">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-600">From Date</label>
+                      <Input
+                        type="date"
+                        value={statementDateFrom}
+                        onChange={(e) => setStatementDateFrom(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-600">To Date</label>
+                      <Input
+                        type="date"
+                        value={statementDateTo}
+                        onChange={(e) => setStatementDateTo(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-600">Filter</label>
+                      <select
+                        value={statementStatusFilter}
+                        onChange={(e) => setStatementStatusFilter(e.target.value)}
+                        className="w-full rounded border px-3 py-2 text-sm"
+                      >
+                        <option value="ALL">All invoices</option>
+                        <option value="UNPAID">Unpaid only</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <Button type="button" onClick={downloadStatement} className="bg-blue-600 hover:bg-blue-700 text-white">
+                    <FileText size={16} className="mr-2" />
+                    Send Statement
+                  </Button>
                 </div>
 
-                <Button type="button" onClick={downloadStatement} className="bg-blue-600 hover:bg-blue-700 text-white">
-                  <FileText size={16} className="mr-2" />
-                  Send Statement
-                </Button>
+                <div className="text-sm text-slate-600">
+                  Statement shows paid and unpaid invoices in the selected date range. The total below only adds unpaid invoices.
+                </div>
               </div>
 
               {statementLoading ? (
@@ -688,7 +756,7 @@ export default function ClientsPage() {
                     </TableHeader>
 
                     <TableBody className="divide-y">
-                      {statementRows.length === 0 ? (
+                      {filteredStatementRows.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={8} className="py-10 text-center text-slate-500">
                             No invoices found for this client.
@@ -748,10 +816,10 @@ export default function ClientsPage() {
                 </div>
               )}
 
-              {statementRows.length > 0 && (
+              {filteredStatementRows.length > 0 && (
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between text-sm text-slate-600">
                   <div>
-                    Showing {statementStartIndex + 1} to {Math.min(statementStartIndex + statementItemsPerPage, statementRows.length)} of {statementRows.length} invoices
+                    Showing {filteredStatementRows.length === 0 ? 0 : statementStartIndex + 1} to {Math.min(statementStartIndex + statementItemsPerPage, filteredStatementRows.length)} of {filteredStatementRows.length} invoices
                   </div>
 
                   <div className="flex items-start gap-2">
@@ -783,7 +851,7 @@ export default function ClientsPage() {
               )}
 
               <div className="text-right text-lg font-black text-slate-900">
-                Unpaid Total: R {(Number(statementTotal) || 0).toFixed(2)}
+                Unpaid Total: R {(Number(filteredStatementUnpaidTotal) || 0).toFixed(2)}
               </div>
             </div>
           </DialogContent>
