@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Card, CardContent } from '../components/ui/card';
 import ActionIconButton from '../components/ActionIconButton';
-import { Plus, Trash2, Info, Edit } from 'lucide-react';
+import { Plus, Trash2, Info, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 
 const MATERIAL_CATEGORIES = [
@@ -757,7 +757,7 @@ export default function RecipesPage() {
                             {canManage && (
                               <>
                                 <ActionIconButton
-                                  icon={<Edit size={16} />}
+                                  icon={<Pencil size={16} />}
                                   label="Edit"
                                   tone="edit"
                                   onClick={() => handleEdit(recipe)}
