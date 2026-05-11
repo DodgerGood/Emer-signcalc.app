@@ -97,7 +97,9 @@ export default function ClientsPage() {
 
     try {
       const response = await api.get(`/clients/${client.id}/statement`);
-      setStatementRows(response.data?.rows || []);
+      const rows = response.data?.rows || [];
+      rows.sort((a, b) => new Date(b.invoice_date || 0) - new Date(a.invoice_date || 0));
+      setStatementRows(rows);
       setStatementTotal(response.data?.unpaid_total || 0);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to load statement');
