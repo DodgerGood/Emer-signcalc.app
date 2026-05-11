@@ -8,6 +8,7 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import ActionIconButton from '../components/ActionIconButton';
 
 import { Plus, Pencil, Trash2, Info, FileText, Upload, CreditCard, CheckCircle, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -558,57 +559,34 @@ export default function ClientsPage() {
                         <TableCell className="px-4 py-3">{client.vat_number || '-'}</TableCell>
                         <TableCell className="px-4 py-3">
                           <div className="flex justify-end gap-3 items-start">
-                            <div className="flex flex-col items-center gap-1">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openStatement(client)}
-                                title="Client Statement"
-                                className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                              >
-                                <FileText size={16} className="mr-2" />
-                                Statement
-                              </Button>
-                              <span className="text-[10px] leading-none text-slate-400">Statement</span>
-                            </div>
+                            <ActionIconButton
+                              icon={<FileText size={16} />}
+                              label="Statement"
+                              tone="pdf"
+                              variant="outline"
+                              onClick={() => openStatement(client)}
+                            />
 
-                            <div className="flex flex-col items-center gap-1">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setInfoClient(client)}
-                              >
-                                <Info size={16} />
-                              </Button>
-                              <span className="text-[10px] leading-none text-slate-400">Info</span>
-                            </div>
+                            <ActionIconButton
+                              icon={<Info size={16} />}
+                              label="Info"
+                              tone="info"
+                              onClick={() => setInfoClient(client)}
+                            />
 
-                            <div className="flex flex-col items-center gap-1">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEdit(client)}
-                              >
-                                <Pencil size={16} />
-                              </Button>
-                              <span className="text-[10px] leading-none text-slate-400">Edit</span>
-                            </div>
+                            <ActionIconButton
+                              icon={<Pencil size={16} />}
+                              label="Edit"
+                              tone="edit"
+                              onClick={() => handleEdit(client)}
+                            />
 
-                            <div className="flex flex-col items-center gap-1">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDelete(client.id)}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              >
-                                <Trash2 size={16} />
-                              </Button>
-                              <span className="text-[10px] leading-none text-slate-400">Delete</span>
-                            </div>
+                            <ActionIconButton
+                              icon={<Trash2 size={16} />}
+                              label="Delete"
+                              tone="delete"
+                              onClick={() => handleDelete(client.id)}
+                            />
                           </div>
                         </TableCell>
                       </TableRow>

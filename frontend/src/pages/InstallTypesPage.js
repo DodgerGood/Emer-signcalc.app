@@ -6,6 +6,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import ActionIconButton from '../components/ActionIconButton';
 import { Plus, Pencil, Trash2, Info } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -604,36 +605,29 @@ export default function InstallTypesPage() {
                           </TableCell>
                           <TableCell className="px-4 py-3">{item.sqm_per_hour || '-'}</TableCell>
                           <TableCell className="px-4 py-3">{item.hire_machine_name || '-'}</TableCell>
-                          <TableCell className="px-4 py-3">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
+                          <TableCell className="px-4 py-3 align-top">
+                            <div className="flex justify-end gap-3 items-start">
+                              <ActionIconButton
+                                icon={<Info size={16} />}
+                                label="Usage"
+                                tone="info"
                                 onClick={() => handleShowUsage(item.id)}
                                 title="Show recipe usage"
-                              >
-                                <Info size={16} />
-                              </Button>
+                              />
 
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
+                              <ActionIconButton
+                                icon={<Pencil size={16} />}
+                                label="Edit"
+                                tone="edit"
                                 onClick={() => handleEdit(item)}
-                              >
-                                <Pencil size={16} />
-                              </Button>
+                              />
 
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
+                              <ActionIconButton
+                                icon={<Trash2 size={16} />}
+                                label="Delete"
+                                tone="delete"
                                 onClick={() => handleDelete(item.id)}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              >
-                                <Trash2 size={16} />
-                              </Button>
+                              />
                             </div>
                           </TableCell>
                         </TableRow>

@@ -8,6 +8,7 @@ import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Card, CardContent } from '../components/ui/card';
+import ActionIconButton from '../components/ActionIconButton';
 import { Plus, Trash2, Info, Edit } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -512,17 +513,13 @@ export default function RecipesPage() {
                             <div className="flex items-center justify-between gap-3">
                               <h3 className="text-lg font-bold">Material {groupIndex + 1}</h3>
 
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
+                              <ActionIconButton
+                                icon={<Trash2 size={16} />}
+                                label="Remove"
+                                tone="delete"
                                 onClick={() => removeMaterialGroup(group.temp_id)}
                                 disabled={formData.material_groups.length === 1}
-                                className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                              >
-                                <Trash2 size={16} className="mr-2" />
-                                Remove Material
-                              </Button>
+                              />
                             </div>
 
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -620,16 +617,13 @@ export default function RecipesPage() {
                                       {money(getLabourMachineCost(selectedItem))}
                                     </div>
 
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
+                                    <ActionIconButton
+                                      icon={<Trash2 size={16} />}
+                                      label="Remove"
+                                      tone="delete"
                                       onClick={() => removeLabourMachineLine(group.temp_id, line.temp_id)}
                                       disabled={group.labour_machine_lines.length === 1}
-                                      className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                                    >
-                                      <Trash2 size={16} />
-                                    </Button>
+                                    />
                                   </div>
                                 );
                               })}
@@ -752,27 +746,29 @@ export default function RecipesPage() {
                         <td className="px-4 py-3">{money(totals.markupValue)}</td>
                         <td className="px-4 py-3 font-bold">{money(totals.totalSellingPrice)}</td>
                         <td className="px-4 py-3">
-                          <div className="flex justify-end gap-2">
-                            <Button type="button" variant="ghost" size="sm" onClick={() => setInfoRecipe(recipe)}>
-                              <Info size={16} />
-                            </Button>
+                          <div className="flex justify-end gap-3 items-start">
+                            <ActionIconButton
+                              icon={<Info size={16} />}
+                              label="Info"
+                              tone="info"
+                              onClick={() => setInfoRecipe(recipe)}
+                            />
 
                             {canManage && (
                               <>
-                                <Button type="button" variant="ghost" size="sm" onClick={() => handleEdit(recipe)}>
-                                  <Edit size={16} />
-                                </Button>
+                                <ActionIconButton
+                                  icon={<Edit size={16} />}
+                                  label="Edit"
+                                  tone="edit"
+                                  onClick={() => handleEdit(recipe)}
+                                />
 
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
+                                <ActionIconButton
+                                  icon={<Trash2 size={16} />}
+                                  label="Delete"
+                                  tone="delete"
                                   onClick={() => handleDelete(recipe.id)}
-                                  data-testid={`delete-recipe-${recipe.id}`}
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <Trash2 size={16} />
-                                </Button>
+                                />
                               </>
                             )}
                           </div>

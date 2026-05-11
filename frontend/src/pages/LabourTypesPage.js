@@ -7,6 +7,7 @@ import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import ActionIconButton from '../components/ActionIconButton';
 import { Plus, Pencil, Trash2, Info } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -839,32 +840,30 @@ export default function LabourTypesPage() {
                           <TableCell className="data-mono">
                             {item.sqm_per_hour ? item.sqm_per_hour : '-'}
                           </TableCell>
-                          <TableCell className="text-right whitespace-nowrap">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleShowUsage(item.id)}
-                              title="Show recipe usage"
-                            >
-                              <Info size={16} />
-                            </Button>
+                          <TableCell className="text-right whitespace-nowrap align-top">
+                            <div className="flex justify-end gap-3 items-start">
+                              <ActionIconButton
+                                icon={<Info size={16} />}
+                                label="Usage"
+                                tone="info"
+                                onClick={() => handleShowUsage(item.id)}
+                                title="Show recipe usage"
+                              />
 
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEdit(item)}
-                            >
-                              <Pencil size={16} />
-                            </Button>
+                              <ActionIconButton
+                                icon={<Pencil size={16} />}
+                                label="Edit"
+                                tone="edit"
+                                onClick={() => handleEdit(item)}
+                              />
 
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(item.id)}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              <Trash2 size={16} />
-                            </Button>
+                              <ActionIconButton
+                                icon={<Trash2 size={16} />}
+                                label="Delete"
+                                tone="delete"
+                                onClick={() => handleDelete(item.id)}
+                              />
+                            </div>
                           </TableCell>
                         </TableRow>
                       );

@@ -8,6 +8,7 @@ import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import ActionIconButton from '../components/ActionIconButton';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -440,13 +441,22 @@ return (
                         <TableCell className="data-mono">R {item.price_per_sqm_coverage.toFixed(2)}</TableCell>
 
                         {canEdit && (
-                          <TableCell className="text-right">
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(item)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                          <TableCell className="text-right align-top">
+                            <div className="flex justify-end gap-3 items-start">
+                              <ActionIconButton
+                                icon={<Pencil size={16} />}
+                                label="Edit"
+                                tone="edit"
+                                onClick={() => handleEdit(item)}
+                              />
+
+                              <ActionIconButton
+                                icon={<Trash2 size={16} />}
+                                label="Delete"
+                                tone="delete"
+                                onClick={() => handleDelete(item.id)}
+                              />
+                            </div>
                           </TableCell>
                         )}
                       </TableRow>

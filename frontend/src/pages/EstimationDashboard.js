@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import ActionIconButton from '../components/ActionIconButton';
 import { Plus, Trash2, Calculator, FileText, Check, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -429,9 +430,12 @@ export default function EstimationDashboard() {
                             <div className="flex items-center gap-4">
                               {showCosts && <span className="text-sm text-slate-500">Cost: R{item.cost}</span>}
                               <span className="text-sm font-medium">Sell: R{item.selling_price}</span>
-                              <Button variant="ghost" size="sm" onClick={() => removeCustomItem(idx)}>
-                                <Trash2 size={14} className="text-red-500" />
-                              </Button>
+                              <ActionIconButton
+                                icon={<Trash2 size={14} />}
+                                label="Remove"
+                                tone="delete"
+                                onClick={() => removeCustomItem(idx)}
+                              />
                             </div>
                           </div>
                         ))}
@@ -614,14 +618,12 @@ export default function EstimationDashboard() {
                             <p className="text-sm text-slate-500">{sign.recipe_name}</p>
                           </div>
                           {canEdit && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
+                            <ActionIconButton
+                              icon={<Trash2 size={16} />}
+                              label="Remove"
+                              tone="delete"
                               onClick={() => removeSign(sign.id)}
-                              className="text-red-600"
-                            >
-                              <Trash2 size={16} />
-                            </Button>
+                            />
                           )}
                         </div>
                         <div className="flex justify-between text-sm">

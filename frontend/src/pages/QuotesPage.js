@@ -10,6 +10,7 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import ActionIconButton from '../components/ActionIconButton';
 
 import { Plus, Info, Pencil, Trash2, CheckCircle, FileText } from 'lucide-react';
 import { toast } from 'sonner';
@@ -443,68 +444,56 @@ export default function QuotesPage() {
                             {quote.quote_status || 'DRAFT'}
                           </TableCell>
                           <TableCell className="px-4 py-3">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
+                            <div className="flex justify-end gap-3 items-start">
+                              <ActionIconButton
+                                icon={<Info size={16} />}
+                                label="Info"
+                                tone="info"
                                 onClick={() => setInfoQuote({ ...quote, quoteNumber })}
-                              >
-                                <Info size={16} />
-                              </Button>
+                              />
 
                               <Link to={`/quotes/${quote.id}`}>
-                                <Button type="button" variant="ghost" size="sm">
-                                  <Pencil size={16} />
-                                </Button>
+                                <ActionIconButton
+                                  icon={<Pencil size={16} />}
+                                  label="Edit"
+                                  tone="edit"
+                                />
                               </Link>
 
                               {isEstimationsPage ? (
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
+                                <ActionIconButton
+                                  icon={<CheckCircle size={16} />}
+                                  label="Approve"
+                                  tone="approve"
                                   onClick={() => handleApprove(quote.id)}
-                                  className="text-green-600 hover:text-green-700 hover:bg-green-50"
                                   title="Approve and convert to quote"
-                                >
-                                  <CheckCircle size={16} />
-                                </Button>
+                                />
                               ) : (
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
+                                <ActionIconButton
+                                  icon={<CheckCircle size={16} />}
+                                  label="Invoice"
+                                  tone="approve"
                                   onClick={() => handleConvertToInvoice(quote)}
-                                  className="text-green-600 hover:text-green-700 hover:bg-green-50"
                                   title="Convert to invoice"
-                                >
-                                  <CheckCircle size={16} />
-                                </Button>
+                                />
                               )}
 
                               {!isEstimationsPage && quote.quote_number && (
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
+                                <ActionIconButton
+                                  icon={<FileText size={16} />}
+                                  label="PDF"
+                                  tone="pdf"
                                   onClick={() => handleExportPdf(quote)}
-                                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                                   title="Create PDF"
-                                >
-                                  <FileText size={16} />
-                                </Button>
+                                />
                               )}
 
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
+                              <ActionIconButton
+                                icon={<Trash2 size={16} />}
+                                label="Delete"
+                                tone="delete"
                                 onClick={() => handleDelete(quote.id)}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              >
-                                <Trash2 size={16} />
-                              </Button>
+                              />
                             </div>
                           </TableCell>
                         </TableRow>

@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import ActionIconButton from '../components/ActionIconButton';
 
 import { Save, Search, Warehouse, AlertTriangle, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -275,16 +276,14 @@ export default function StockPage() {
                       <TableCell className="px-4 py-3 align-top text-right">
                         {canEditStock ? (
                           <div className="flex flex-col items-end gap-1">
-                            <Button
-                              type="button"
-                              size="sm"
+                            <ActionIconButton
+                              icon={<Save size={16} />}
+                              label="Save"
+                              tone="pdf"
                               onClick={() => saveStock(row)}
                               disabled={savingId === row.material_id}
                               className="bg-blue-600 hover:bg-blue-700 text-white"
-                            >
-                              <Save size={16} className="mr-2" />
-                              Save
-                            </Button>
+                            />
                             {dirtyRows[row.material_id] && (
                               <span className="text-xs font-medium text-amber-600">
                                 Unsaved

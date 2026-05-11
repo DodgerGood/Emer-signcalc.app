@@ -7,6 +7,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import ActionIconButton from '../components/ActionIconButton';
 
 import { Plus, Trash2, Calculator } from 'lucide-react';
 import { toast } from 'sonner';
@@ -593,26 +594,23 @@ export default function QuoteDetailPage() {
                           </div>
                         )}
 
-                        <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() => calculateLine(index)}
-                          className="bg-[#2563EB] text-white hover:bg-[#1d4ed8]"
-                        >
-                          <Calculator size={14} className="mr-1" />
-                          Calculate
-                        </Button>
+                        <div className="flex gap-3 items-start">
+                          <ActionIconButton
+                            icon={<Calculator size={16} />}
+                            label="Calc"
+                            tone="pdf"
+                            onClick={() => calculateLine(index)}
+                            title="Calculate line"
+                          />
 
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => removeLine(index)}
-                          disabled={lines.length === 1}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 size={16} />
-                        </Button>
+                          <ActionIconButton
+                            icon={<Trash2 size={16} />}
+                            label="Remove"
+                            tone="delete"
+                            onClick={() => removeLine(index)}
+                            disabled={lines.length === 1}
+                            title="Remove line"
+                          />
                         </div>
                       </div>
                     </TableCell>
@@ -718,14 +716,13 @@ export default function QuoteDetailPage() {
                     onChange={(e) => updateAddon(index, 'selling_price', e.target.value)}
                     placeholder="Selling price"
                   />
-                  <Button
-                    type="button"
-                    variant="ghost"
+                  <ActionIconButton
+                    icon={<Trash2 size={16} />}
+                    label="Remove"
+                    tone="delete"
                     onClick={() => removeAddon(index)}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <Trash2 size={16} />
-                  </Button>
+                    title="Remove add-on"
+                  />
                 </div>
               ))}
             </div>

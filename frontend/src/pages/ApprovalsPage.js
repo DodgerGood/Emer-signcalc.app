@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 
 import { Button } from '../components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import ActionIconButton from '../components/ActionIconButton';
 
 import { FileText, Upload, Trash2, RotateCcw, PackageCheck, Factory } from 'lucide-react';
 import { toast } from 'sonner';
@@ -162,90 +163,78 @@ export default function ApprovalsPage() {
                       </TableCell>
 
                       <TableCell className="px-4 py-3">
-                        <Button
-                          type="button"
+                        <ActionIconButton
+                          icon={<FileText size={16} />}
+                          label={job.invoice_number || 'Invoice'}
+                          tone="pdf"
                           variant="outline"
-                          size="sm"
                           onClick={() => downloadInvoice(job)}
-                        >
-                          <FileText size={16} className="mr-2" />
-                          {job.invoice_number || 'Invoice PDF'}
-                        </Button>
+                          title="Download invoice PDF"
+                        />
                       </TableCell>
 
                       <TableCell className="px-4 py-3">
-                        <Button
-                          type="button"
+                        <ActionIconButton
+                          icon={<FileText size={16} />}
+                          label="BOM"
+                          tone="pdf"
                           variant="outline"
-                          size="sm"
                           onClick={() => downloadBom(job)}
-                        >
-                          <FileText size={16} className="mr-2" />
-                          BOM PDF
-                        </Button>
+                          title="Download BOM PDF"
+                        />
                       </TableCell>
 
                       <TableCell className="px-4 py-3">
-                        <Button
-                          type="button"
+                        <ActionIconButton
+                          icon={<Upload size={16} />}
+                          label="Proof"
+                          tone="upload"
                           variant="outline"
-                          size="sm"
                           onClick={uploadProof}
-                        >
-                          <Upload size={16} className="mr-2" />
-                          Upload Proof
-                        </Button>
+                          title="Upload proof"
+                        />
                       </TableCell>
 
                       <TableCell className="px-4 py-3">
-                        <Button
-                          type="button"
-                          size="sm"
+                        <ActionIconButton
+                          icon={<PackageCheck size={16} />}
+                          label="Job Pack"
+                          tone="approve"
                           onClick={() => createJobPack(job)}
-                          className="bg-green-600 hover:bg-green-700 text-white"
-                        >
-                          <PackageCheck size={16} className="mr-2" />
-                          Create Job Pack
-                        </Button>
+                          title="Create job pack"
+                        />
                       </TableCell>
 
                       <TableCell className="px-4 py-3">
-                        <Button
-                          type="button"
+                        <ActionIconButton
+                          icon={<Factory size={16} />}
+                          label="Track"
+                          tone="production"
                           variant="outline"
-                          size="sm"
                           onClick={() => trackProduction(job)}
-                        >
-                          <Factory size={16} className="mr-2" />
-                          Track Production
-                        </Button>
+                          title="Track production"
+                        />
                       </TableCell>
 
                       <TableCell className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-3 items-start">
                           {canMoveBackToQuote && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
+                            <ActionIconButton
+                              icon={<RotateCcw size={16} />}
+                              label="Return"
+                              tone="return"
                               onClick={() => moveBackToQuote(job)}
-                              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                               title="Move back to quoting"
-                            >
-                              <RotateCcw size={16} />
-                            </Button>
+                            />
                           )}
 
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
+                          <ActionIconButton
+                            icon={<Trash2 size={16} />}
+                            label="Delete"
+                            tone="delete"
                             onClick={() => deleteApproved(job)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
                             title="Delete approved invoice"
-                          >
-                            <Trash2 size={16} />
-                          </Button>
+                          />
                         </div>
                       </TableCell>
                     </TableRow>
