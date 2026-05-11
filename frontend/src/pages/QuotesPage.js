@@ -234,6 +234,82 @@ export default function QuotesPage() {
                 : 'Manage client-facing quotes.'}
             </p>
           </div>
+          {isEstimationsPage && isQuotingStaff && (
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  type="button"
+                  data-testid="new-quote-btn"
+                  className="bg-[#2563EB] text-white hover:bg-[#1d4ed8]"
+                >
+                  <Plus size={18} className="mr-2" />
+                  New Estimate
+                </Button>
+              </DialogTrigger>
+
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Create New Estimate</DialogTitle>
+                </DialogHeader>
+
+                <form onSubmit={handleCreate} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Client Name *</Label>
+                    <Input
+                      value={formData.client_name}
+                      onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Email</Label>
+                    <Input
+                      value={formData.client_email}
+                      onChange={(e) => setFormData({ ...formData, client_email: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Phone</Label>
+                    <Input
+                      value={formData.client_phone}
+                      onChange={(e) => setFormData({ ...formData, client_phone: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Address</Label>
+                    <Textarea
+                      value={formData.client_address}
+                      onChange={(e) => setFormData({ ...formData, client_address: e.target.value })}
+                      rows={2}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Description</Label>
+                    <Textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      placeholder="Brief project description..."
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <Button type="submit" className="bg-[#2563EB] hover:bg-[#1e40af]">
+                      Create & Estimate
+                    </Button>
+
+                    <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         <div className="flex flex-col gap-4 md:flex-row md:items-end">
