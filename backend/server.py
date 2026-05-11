@@ -4497,22 +4497,56 @@ async def calculate_quote_line(recipe: dict, width_mm: float, height_mm: float, 
         "approval_required": approval_required
     }
 
+def extract_sequence_number(value: str, prefix: str) -> Optional[int]:
+    if not value or not isinstance(value, str):
+        return None
+
+    if not value.startswith(prefix):
+        return None
+
+    digits = value.replace(prefix, "", 1)
+    if not digits.isdigit():
+        return None
+
+    number = int(digits)
+    if number < 1 or number > 1000000:
+        return None
+
+    return number
+
+
+async def get_next_estimate_number(company_id: str) -> str:
+    quotes = await db.quotes.find(
+        {"company_id": company_id, "estimate_number": {"$ne": None}},
+        {"estimate_number": 1, "_id": 0}
+    ).to_list(100000)
+
+    highest = 0
+    for quote in quotes:
+        number = extract_sequence_number(quote.get("estimate_number"), "Es")
+        if number and number > highest:
+            highest = number
+
+    next_number = highest + 1
+    if next_number > 1000000:
+        raise HTTPException(status_code=400, detail="Estimate number limit reached")
+
+    return f"Es{str(next_number).zfill(5)}"
+
+
+def linked_number_from_estimate(estimate_number: str, new_prefix: str) -> str:
+    number = extract_sequence_number(estimate_number, "Es")
+    if not number:
+        raise HTTPException(status_code=400, detail="Estimate number is missing or invalid")
+
+    return f"{new_prefix}{str(number).zfill(5)}"
+
+
+
 @api_router.post("/quotes", response_model=Quote)
 async def create_quote(quote: QuoteCreate, user: dict = Depends(require_quoting_staff)):
 
-    # 🔹 Get last ESTIMATE number
-    last_estimate = await db.quotes.find(
-        {"company_id": user["company_id"]},
-        {"estimate_number": 1, "_id": 0}
-    ).sort("created_at", -1).limit(1).to_list(1)
-
-    if last_estimate and last_estimate[0].get("estimate_number"):
-        last_number = int(last_estimate[0]["estimate_number"].replace("Es", ""))
-        next_number = last_number + 1
-    else:
-        next_number = 1
-
-    estimate_number = f"Es{str(next_number).zfill(5)}"
+    estimate_number = await get_next_estimate_number(user["company_id"])
 
     quote_obj = Quote(
         **quote.model_dump(),
@@ -5242,19 +5276,10 @@ async def approve_quote(quote_id: str, user: dict = Depends(require_manager)):
     if quote["created_by"] == user["id"] and user["role"] != "MD_ADMIN":
         raise HTTPException(status_code=403, detail="You cannot approve your own estimation")
 
-    # 🔹 Get last QUOTE number
-    last_quote = await db.quotes.find(
-        {"company_id": user["company_id"], "quote_number": {"$ne": None}},
-        {"quote_number": 1, "_id": 0}
-    ).sort("approved_at", -1).limit(1).to_list(1)
-
-    if last_quote and last_quote[0].get("quote_number"):
-        last_number = int(last_quote[0]["quote_number"].replace("Qu", ""))
-        next_number = last_number + 1
+    if quote.get("quote_number"):
+        quote_number = quote["quote_number"]
     else:
-        next_number = 1
-
-    quote_number = f"Qu{str(next_number).zfill(5)}"
+        quote_number = linked_number_from_estimate(quote.get("estimate_number"), "Qu")
 
     await db.quotes.update_one(
         {"id": quote_id},
@@ -5426,8 +5451,8 @@ async def convert_quote_to_invoice(quote_id: str, user: dict = Depends(require_m
             "invoice_number": quote.get("invoice_number")
         }
 
-    # Invoice number must match the quote number sequence.
-    # Example: Qu00003 becomes Inv00003.
+    # Invoice number must match the original estimate sequence.
+    # Example: Es00005 -> Qu00005 -> Inv00005.
     invoice_number = quote["quote_number"].replace("Qu", "Inv", 1)
 
     matched_client = None
