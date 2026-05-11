@@ -3928,7 +3928,7 @@ async def delete_recipe(recipe_id: str, user: dict = Depends(require_manager)):
 # ===== CLIENT STATEMENT ROUTES =====
 
 async def get_client_for_statement(client_id: str, user: dict):
-    client = await db.clients.find_one(
+    client = await db.client_records.find_one(
         {"id": client_id, "company_id": user["company_id"]},
         {"_id": 0}
     )
@@ -5287,7 +5287,7 @@ async def convert_quote_to_invoice(quote_id: str, user: dict = Depends(require_m
     matched_client = None
 
     if quote.get("client_email"):
-        matched_client = await db.clients.find_one(
+        matched_client = await db.client_records.find_one(
             {
                 "company_id": user["company_id"],
                 "email": quote.get("client_email")
@@ -5296,7 +5296,7 @@ async def convert_quote_to_invoice(quote_id: str, user: dict = Depends(require_m
         )
 
     if not matched_client and quote.get("client_name"):
-        matched_client = await db.clients.find_one(
+        matched_client = await db.client_records.find_one(
             {
                 "company_id": user["company_id"],
                 "company_name": {"$regex": f"^{quote.get('client_name')}$", "$options": "i"}
@@ -5305,7 +5305,7 @@ async def convert_quote_to_invoice(quote_id: str, user: dict = Depends(require_m
         )
 
     if not matched_client and quote.get("client_name"):
-        matched_client = await db.clients.find_one(
+        matched_client = await db.client_records.find_one(
             {
                 "company_id": user["company_id"],
                 "company_name": {"$regex": quote.get("client_name"), "$options": "i"}
