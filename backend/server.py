@@ -4143,6 +4143,7 @@ async def get_client_statement(client_id: str, user: dict = Depends(get_current_
             "paid_at": invoice.get("paid_at"),
             "po_uploaded": bool(po),
             "po_filename": po.get("filename") if po else None,
+            "po_uploaded_at": po.get("uploaded_at") if po else None,
             "credit_note": invoice.get("credit_note") or False,
             "credit_note_reason": invoice.get("credit_note_reason"),
         })
@@ -4266,7 +4267,22 @@ async def upload_statement_po(
         upsert=True
     )
 
-    return {"message": "P.O. uploaded", "filename": file.filename}
+    await db.quotes.update_one(
+        {
+            "id": quote_id,
+            "company_id": user["company_id"],
+            "invoice_number": {"$ne": None},
+        },
+        {"$set": {
+            "payment_status": "PAID",
+            "paid_at": po_doc["uploaded_at"],
+            "paid_by": user["id"],
+            "paid_by_name": user["full_name"],
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }}
+    )
+
+    return {"message": "P.O.P uploaded and invoice marked paid", "filename": file.filename}
 
 
 @api_router.get("/clients/{client_id}/statement/pdf")

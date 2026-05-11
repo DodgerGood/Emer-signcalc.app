@@ -175,7 +175,7 @@ export default function ClientsPage() {
         await api.post(`/clients/${statementClient.id}/statement/${row.id}/po`, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
-        toast.success('P.O. loaded');
+        toast.success('P.O.P loaded and invoice marked paid');
         reloadStatement();
       } catch (error) {
         toast.error(error.response?.data?.detail || 'Failed to load P.O.');
@@ -771,11 +771,18 @@ export default function ClientsPage() {
                             </TableCell>
                             <TableCell className="px-4 py-3 text-right">R {(Number(row.total_amount) || 0).toFixed(2)}</TableCell>
                             <TableCell className="px-4 py-3 text-right">R {(Number(row.credit_amount) || 0).toFixed(2)}</TableCell>
-                            <TableCell className="px-4 py-3 text-right font-bold">R {(Number(row.balance_amount) || 0).toFixed(2)}</TableCell>
+                            <TableCell className="px-4 py-3 text-right font-bold">
+                              R {row.payment_status === 'PAID' ? '0.00' : (Number(row.balance_amount) || 0).toFixed(2)}
+                            </TableCell>
                             <TableCell className="px-4 py-3">
                               <span className={row.payment_status === 'PAID' ? 'rounded-full bg-green-50 px-2 py-1 text-xs font-semibold text-green-700' : 'rounded-full bg-red-50 px-2 py-1 text-xs font-semibold text-red-700'}>
                                 {row.payment_status || 'UNPAID'}
                               </span>
+                              {row.payment_status === 'PAID' && (row.paid_at || row.po_uploaded_at) && (
+                                <div className="mt-1 text-[10px] text-slate-500">
+                                  Paid: {new Date(row.paid_at || row.po_uploaded_at).toLocaleDateString()}
+                                </div>
+                              )}
                             </TableCell>
                             <TableCell className="px-4 py-3">
                               <div className="flex flex-col items-center gap-1">
