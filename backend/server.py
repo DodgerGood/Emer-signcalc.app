@@ -21,6 +21,7 @@ from reportlab.lib.units import mm
 from io import BytesIO
 from openpyxl import Workbook
 import math
+import base64
 import smtplib
 from email.message import EmailMessage
 from fastapi.responses import StreamingResponse
@@ -3922,6 +3923,293 @@ async def delete_recipe(recipe_id: str, user: dict = Depends(require_manager)):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Recipe not found")
     return {"message": "Recipe deleted"}
+
+
+# ===== CLIENT STATEMENT ROUTES =====
+
+async def get_client_for_statement(client_id: str, user: dict):
+    client = await db.clients.find_one(
+        {"id": client_id, "company_id": user["company_id"]},
+        {"_id": 0}
+    )
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    return client
+
+
+async def get_client_invoice_query(client: dict, user: dict):
+    client_names = [
+        client.get("company_name"),
+        client.get("contact_person"),
+    ]
+    client_names = [name for name in client_names if name]
+
+    query = {
+        "company_id": user["company_id"],
+        "invoice_number": {"$ne": None},
+        "$or": [{"client_name": {"$in": client_names}}],
+    }
+
+    if client.get("email"):
+        query["$or"].append({"client_email": client.get("email")})
+
+    return query
+
+
+@api_router.get("/clients/{client_id}/statement")
+async def get_client_statement(client_id: str, user: dict = Depends(get_current_user)):
+    client = await get_client_for_statement(client_id, user)
+    query = await get_client_invoice_query(client, user)
+
+    invoices = await db.quotes.find(query, {"_id": 0}).sort("invoice_created_at", -1).to_list(20)
+
+    rows = []
+    for invoice in invoices:
+        po = await db.purchase_orders.find_one(
+            {
+                "company_id": user["company_id"],
+                "client_id": client_id,
+                "quote_id": invoice["id"],
+            },
+            {"_id": 0, "content_base64": 0}
+        )
+
+        total = float(invoice.get("total_amount") or 0)
+        credit_amount = float(invoice.get("credit_amount") or 0)
+        balance = max(0, total - credit_amount)
+
+        rows.append({
+            "id": invoice["id"],
+            "invoice_number": invoice.get("invoice_number"),
+            "invoice_date": invoice.get("invoice_created_at") or invoice.get("created_at"),
+            "client_name": invoice.get("client_name"),
+            "total_amount": round(total, 2),
+            "credit_amount": round(credit_amount, 2),
+            "balance_amount": round(balance, 2),
+            "payment_status": invoice.get("payment_status") or "UNPAID",
+            "paid_at": invoice.get("paid_at"),
+            "po_uploaded": bool(po),
+            "po_filename": po.get("filename") if po else None,
+            "credit_note": invoice.get("credit_note") or False,
+            "credit_note_reason": invoice.get("credit_note_reason"),
+        })
+
+    unpaid_total = sum(row["balance_amount"] for row in rows if row["payment_status"] != "PAID")
+
+    return {
+        "client": client,
+        "rows": rows,
+        "unpaid_total": round(unpaid_total, 2),
+    }
+
+
+@api_router.post("/clients/{client_id}/statement/{quote_id}/payment")
+async def update_statement_payment(client_id: str, quote_id: str, payload: dict, user: dict = Depends(require_manager)):
+    await get_client_for_statement(client_id, user)
+
+    paid = bool(payload.get("paid"))
+
+    update = {
+        "payment_status": "PAID" if paid else "UNPAID",
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    if paid:
+        update["paid_at"] = datetime.now(timezone.utc).isoformat()
+        update["paid_by"] = user["id"]
+        update["paid_by_name"] = user["full_name"]
+    else:
+        update["paid_at"] = None
+        update["paid_by"] = None
+        update["paid_by_name"] = None
+
+    result = await db.quotes.update_one(
+        {
+            "id": quote_id,
+            "company_id": user["company_id"],
+            "invoice_number": {"$ne": None},
+        },
+        {"$set": update}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    return {"message": "Payment status updated"}
+
+
+@api_router.post("/clients/{client_id}/statement/{quote_id}/credit")
+async def create_statement_credit(client_id: str, quote_id: str, payload: dict, user: dict = Depends(require_manager)):
+    await get_client_for_statement(client_id, user)
+
+    credit_amount = float(payload.get("credit_amount") or 0)
+    reason = payload.get("reason") or ""
+
+    if credit_amount < 0:
+        raise HTTPException(status_code=400, detail="Credit amount cannot be negative")
+
+    result = await db.quotes.update_one(
+        {
+            "id": quote_id,
+            "company_id": user["company_id"],
+            "invoice_number": {"$ne": None},
+        },
+        {"$set": {
+            "credit_note": True,
+            "credit_amount": credit_amount,
+            "credit_note_reason": reason,
+            "credit_note_created_at": datetime.now(timezone.utc).isoformat(),
+            "credit_note_created_by": user["id"],
+            "credit_note_created_by_name": user["full_name"],
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    return {"message": "Credit note recorded"}
+
+
+@api_router.post("/clients/{client_id}/statement/{quote_id}/po")
+async def upload_statement_po(
+    client_id: str,
+    quote_id: str,
+    file: UploadFile = File(...),
+    user: dict = Depends(require_manager)
+):
+    await get_client_for_statement(client_id, user)
+
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="File is required")
+
+    allowed = [".pdf", ".png", ".jpg", ".jpeg"]
+    filename_lower = file.filename.lower()
+    if not any(filename_lower.endswith(ext) for ext in allowed):
+        raise HTTPException(status_code=400, detail="Only PDF, PNG, JPG, or JPEG files are supported")
+
+    content = await file.read()
+
+    po_doc = {
+        "id": str(uuid.uuid4()),
+        "company_id": user["company_id"],
+        "client_id": client_id,
+        "quote_id": quote_id,
+        "filename": file.filename,
+        "content_type": file.content_type,
+        "content_base64": base64.b64encode(content).decode("utf-8"),
+        "uploaded_by": user["id"],
+        "uploaded_by_name": user["full_name"],
+        "uploaded_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    await db.purchase_orders.update_one(
+        {
+            "company_id": user["company_id"],
+            "client_id": client_id,
+            "quote_id": quote_id,
+        },
+        {"$set": po_doc},
+        upsert=True
+    )
+
+    return {"message": "P.O. uploaded", "filename": file.filename}
+
+
+@api_router.get("/clients/{client_id}/statement/pdf")
+async def export_client_statement_pdf(client_id: str, user: dict = Depends(get_current_user)):
+    client = await get_client_for_statement(client_id, user)
+    query = await get_client_invoice_query(client, user)
+    query["payment_status"] = {"$ne": "PAID"}
+
+    invoices = await db.quotes.find(query, {"_id": 0}).sort("invoice_created_at", -1).to_list(500)
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=18 * mm,
+        leftMargin=18 * mm,
+        topMargin=16 * mm,
+        bottomMargin=16 * mm
+    )
+
+    styles = getSampleStyleSheet()
+    elements = []
+
+    title_style = ParagraphStyle(
+        "StatementTitle",
+        parent=styles["Heading1"],
+        fontSize=22,
+        leading=26,
+        textColor=colors.HexColor("#0F172A")
+    )
+
+    normal = ParagraphStyle(
+        "StatementNormal",
+        parent=styles["Normal"],
+        fontSize=8,
+        leading=10
+    )
+
+    elements.append(Paragraph("Client Statement", title_style))
+    elements.append(Paragraph(f"<b>Client:</b> {client.get('company_name')}", normal))
+    elements.append(Paragraph(f"<b>Date:</b> {datetime.now(timezone.utc).date().isoformat()}", normal))
+    elements.append(Spacer(1, 12))
+
+    table_data = [["Invoice #", "Date", "Total", "Credit", "Balance", "Status"]]
+    unpaid_total = 0.0
+
+    for invoice in invoices:
+        total = float(invoice.get("total_amount") or 0)
+        credit = float(invoice.get("credit_amount") or 0)
+        balance = max(0, total - credit)
+        unpaid_total += balance
+
+        table_data.append([
+            invoice.get("invoice_number") or "-",
+            (invoice.get("invoice_created_at") or invoice.get("created_at") or "")[:10],
+            f"R {total:.2f}",
+            f"R {credit:.2f}",
+            f"R {balance:.2f}",
+            invoice.get("payment_status") or "UNPAID",
+        ])
+
+    if len(table_data) == 1:
+        table_data.append(["No unpaid invoices", "-", "-", "-", "-", "-"])
+
+    table = Table(
+        table_data,
+        colWidths=[30 * mm, 28 * mm, 30 * mm, 30 * mm, 30 * mm, 30 * mm]
+    )
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0F172A")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, 0), 8),
+        ("FONTSIZE", (0, 1), (-1, -1), 8),
+        ("ALIGN", (2, 1), (4, -1), "RIGHT"),
+        ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#CBD5E1")),
+        ("PADDING", (0, 0), (-1, -1), 5),
+    ]))
+
+    elements.append(table)
+    elements.append(Spacer(1, 12))
+    elements.append(Paragraph(f"<b>Total Due: R {unpaid_total:.2f}</b>", styles["Heading2"]))
+
+    doc.build(elements)
+    buffer.seek(0)
+
+    client_name = (client.get("company_name") or "client").replace(" ", "_")
+
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{client_name}-statement.pdf"'
+        }
+    )
+
 
 # ===== QUOTE ROUTES =====
 

@@ -9,7 +9,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 
-import { Plus, Pencil, Trash2, Info } from 'lucide-react';
+import { Plus, Pencil, Trash2, Info, FileText, Upload, CreditCard, CheckCircle, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 const emptyForm = () => ({
@@ -29,6 +29,10 @@ export default function ClientsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [infoClient, setInfoClient] = useState(null);
+  const [statementClient, setStatementClient] = useState(null);
+  const [statementRows, setStatementRows] = useState([]);
+  const [statementTotal, setStatementTotal] = useState(0);
+  const [statementLoading, setStatementLoading] = useState(false);
 
   const [formData, setFormData] = useState(emptyForm());
   const [searchTerm, setSearchTerm] = useState('');
@@ -81,6 +85,119 @@ export default function ClientsPage() {
     });
     setDialogOpen(true);
   };
+
+  const openStatement = async (client) => {
+    setStatementClient(client);
+    setStatementLoading(true);
+
+    try {
+      const response = await api.get(`/clients/${client.id}/statement`);
+      setStatementRows(response.data?.rows || []);
+      setStatementTotal(response.data?.unpaid_total || 0);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to load statement');
+    } finally {
+      setStatementLoading(false);
+    }
+  };
+
+  const reloadStatement = async () => {
+    if (!statementClient) return;
+    await openStatement(statementClient);
+  };
+
+  const downloadStatement = async () => {
+    if (!statementClient) return;
+
+    try {
+      const response = await api.get(`/clients/${statementClient.id}/statement/pdf`, {
+        responseType: 'blob',
+      });
+
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${statementClient.company_name || 'client'}-statement.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to download statement');
+    }
+  };
+
+  const togglePaid = async (row) => {
+    if (!statementClient) return;
+
+    const paid = row.payment_status !== 'PAID';
+
+    try {
+      await api.post(`/clients/${statementClient.id}/statement/${row.id}/payment`, { paid });
+      toast.success(paid ? 'Invoice marked paid' : 'Invoice marked unpaid');
+      reloadStatement();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to update payment');
+    }
+  };
+
+  const loadPo = async (row) => {
+    if (!statementClient) return;
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf,.png,.jpg,.jpeg';
+
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        await api.post(`/clients/${statementClient.id}/statement/${row.id}/po`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        toast.success('P.O. loaded');
+        reloadStatement();
+      } catch (error) {
+        toast.error(error.response?.data?.detail || 'Failed to load P.O.');
+      }
+    };
+
+    input.click();
+  };
+
+  const createCredit = async (row) => {
+    if (!statementClient) return;
+
+    const amountText = window.prompt('Credit amount:', row.balance_amount || row.total_amount || 0);
+    if (amountText === null) return;
+
+    const reason = window.prompt('Credit reason:', 'Credit note') || '';
+    const creditAmount = Number(amountText);
+
+    if (Number.isNaN(creditAmount) || creditAmount < 0) {
+      toast.error('Invalid credit amount');
+      return;
+    }
+
+    try {
+      await api.post(`/clients/${statementClient.id}/statement/${row.id}/credit`, {
+        credit_amount: creditAmount,
+        reason,
+      });
+      toast.success('Credit note recorded');
+      reloadStatement();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to create credit note');
+    }
+  };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -445,6 +562,16 @@ export default function ClientsPage() {
                               type="button"
                               variant="ghost"
                               size="sm"
+                              onClick={() => openStatement(client)}
+                              title="Client Statement"
+                            >
+                              <FileText size={16} />
+                            </Button>
+
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
                               onClick={() => setInfoClient(client)}
                             >
                               <Info size={16} />
@@ -509,6 +636,119 @@ export default function ClientsPage() {
             </div>
           </>
         )}
+
+
+        <Dialog open={!!statementClient} onOpenChange={(open) => !open && setStatementClient(null)}>
+          <DialogContent className="max-w-6xl">
+            <DialogHeader>
+              <DialogTitle>
+                Client Statement - {statementClient?.company_name}
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="text-sm text-slate-600">
+                  Showing latest 20 invoices. Statement PDF includes unpaid invoices only.
+                </div>
+
+                <Button type="button" onClick={downloadStatement} className="bg-blue-600 hover:bg-blue-700 text-white">
+                  <FileText size={16} className="mr-2" />
+                  Send Statement
+                </Button>
+              </div>
+
+              {statementLoading ? (
+                <div className="flex justify-center p-8">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-accent"></div>
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border bg-white">
+                  <Table className="w-full min-w-[1100px] text-sm">
+                    <TableHeader className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                      <TableRow>
+                        <TableHead className="px-4 py-3">Invoice #</TableHead>
+                        <TableHead className="px-4 py-3">Invoice Date</TableHead>
+                        <TableHead className="px-4 py-3 text-right">Total</TableHead>
+                        <TableHead className="px-4 py-3 text-right">Credit</TableHead>
+                        <TableHead className="px-4 py-3 text-right">Balance</TableHead>
+                        <TableHead className="px-4 py-3">Status</TableHead>
+                        <TableHead className="px-4 py-3">P.O.</TableHead>
+                        <TableHead className="px-4 py-3 text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+
+                    <TableBody className="divide-y">
+                      {statementRows.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={8} className="py-10 text-center text-slate-500">
+                            No invoices found for this client.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        statementRows.map((row) => (
+                          <TableRow key={row.id}>
+                            <TableCell className="px-4 py-3 font-mono font-semibold">{row.invoice_number}</TableCell>
+                            <TableCell className="px-4 py-3">
+                              {row.invoice_date ? new Date(row.invoice_date).toLocaleDateString() : '-'}
+                            </TableCell>
+                            <TableCell className="px-4 py-3 text-right">R {(Number(row.total_amount) || 0).toFixed(2)}</TableCell>
+                            <TableCell className="px-4 py-3 text-right">R {(Number(row.credit_amount) || 0).toFixed(2)}</TableCell>
+                            <TableCell className="px-4 py-3 text-right font-bold">R {(Number(row.balance_amount) || 0).toFixed(2)}</TableCell>
+                            <TableCell className="px-4 py-3">
+                              <span className={row.payment_status === 'PAID' ? 'rounded-full bg-green-50 px-2 py-1 text-xs font-semibold text-green-700' : 'rounded-full bg-red-50 px-2 py-1 text-xs font-semibold text-red-700'}>
+                                {row.payment_status || 'UNPAID'}
+                              </span>
+                            </TableCell>
+                            <TableCell className="px-4 py-3">
+                              <Button type="button" variant="outline" size="sm" onClick={() => loadPo(row)}>
+                                <Upload size={16} className="mr-2" />
+                                {row.po_uploaded ? 'Replace P.O.' : 'Load P.O.'}
+                              </Button>
+                              {row.po_filename && (
+                                <div className="mt-1 text-xs text-slate-500">{row.po_filename}</div>
+                              )}
+                            </TableCell>
+                            <TableCell className="px-4 py-3 text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => togglePaid(row)}
+                                  className={row.payment_status === 'PAID' ? 'text-amber-600 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'}
+                                  title={row.payment_status === 'PAID' ? 'Mark unpaid' : 'Mark paid'}
+                                >
+                                  {row.payment_status === 'PAID' ? <XCircle size={16} /> : <CheckCircle size={16} />}
+                                </Button>
+
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => createCredit(row)}
+                                  className="text-purple-600 hover:bg-purple-50"
+                                  title="Credit note"
+                                >
+                                  <CreditCard size={16} />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+
+              <div className="text-right text-lg font-black text-slate-900">
+                Unpaid Total: R {(Number(statementTotal) || 0).toFixed(2)}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
 
         <Dialog open={!!infoClient} onOpenChange={(open) => !open && setInfoClient(null)}>
           <DialogContent>
