@@ -8,7 +8,7 @@ import { Input } from '../components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import ActionIconButton from '../components/ActionIconButton';
 
-import { Save, Search, Warehouse, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Save, Search, Warehouse, AlertTriangle, CheckCircle, Download } from 'lucide-react';
 import { toast } from 'sonner';
 
 const fmt = (value) => `${(Number(value) || 0).toFixed(2)}`;
