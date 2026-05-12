@@ -4552,6 +4552,34 @@ async def export_client_statement_pdf(
     )
 
 
+
+async def get_next_estimate_number(company_id: str):
+    last_estimate = await db.quotes.find(
+        {
+            "company_id": company_id,
+            "estimate_number": {"$ne": None}
+        },
+        {"estimate_number": 1, "_id": 0}
+    ).sort("estimate_number", -1).limit(1).to_list(1)
+
+    if last_estimate and last_estimate[0].get("estimate_number"):
+        try:
+            last_number = int(last_estimate[0]["estimate_number"].replace("Es", ""))
+        except Exception:
+            last_number = 0
+    else:
+        last_number = 0
+
+    next_number = min(last_number + 1, 1000000)
+    return f"Es{str(next_number).zfill(5)}"
+
+
+def convert_estimate_number_to_quote_number(estimate_number: str | None):
+    if not estimate_number:
+        return None
+
+    return estimate_number.replace("Es", "Qu", 1)
+
 @api_router.post("/quotes", response_model=Quote)
 async def create_quote(quote: QuoteCreate, user: dict = Depends(require_quoting_staff)):
 
