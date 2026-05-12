@@ -291,7 +291,7 @@ export default function QuotesPage() {
                       </div>
                     )}
 
-                    {formData.client_name && !exactClientExists && (
+                    {formData.client_name && !exactClientExists && matchedClients.length === 0 && (
                       <p className="text-xs text-blue-700">
                         New client will be saved to Clients when you create the estimate.
                       </p>
