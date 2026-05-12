@@ -133,8 +133,9 @@ export default function QuotesPage() {
     } catch (error) {
       console.log('Create estimate error:', error.response?.data || error);
       const apiUrl = api.defaults?.baseURL || 'API URL not found';
+      const token = localStorage.getItem('token');
       toast.error(
-        `${error.response?.data?.detail || JSON.stringify(error.response?.data) || error.message || 'Failed to create estimate'} | API: ${apiUrl}`
+        `${error.response?.data?.detail || JSON.stringify(error.response?.data) || error.message || 'Failed to create estimate'} | API: ${apiUrl} | Token: ${token ? 'YES' : 'NO'}`
       );
     }
   };
