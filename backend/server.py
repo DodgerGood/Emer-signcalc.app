@@ -4314,7 +4314,21 @@ async def export_client_statement_pdf(
 
         filtered_invoices.append(invoice)
 
+    company = await db.companies.find_one({"id": user["company_id"]}, {"_id": 0}) or {}
+
+    company_name = company.get("name") or "Your Company Name"
+    company_address = company.get("address") or "Company address placeholder"
+    company_phone = company.get("phone") or "Telephone placeholder"
+    company_email = company.get("email") or "Email placeholder"
+    company_vat = company.get("vat_number") or "VAT number placeholder"
+    banking_details = company.get("banking_details") or "Banking details placeholder"
+
+    statement_date = datetime.now(timezone.utc).date().isoformat()
+    client_name = client.get("company_name") or "Client"
+    safe_client_name = client_name.replace(" ", "_")
+
     buffer = BytesIO()
+
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
@@ -4337,7 +4351,7 @@ async def export_client_statement_pdf(
         fontSize=28,
         leading=32,
         textColor=navy,
-        spaceAfter=6,
+        spaceAfter=4,
     )
 
     normal = ParagraphStyle(
@@ -4351,27 +4365,17 @@ async def export_client_statement_pdf(
     small = ParagraphStyle(
         "StatementSmall",
         parent=styles["Normal"],
-        fontSize=7,
-        leading=9,
+        fontSize=6,
+        leading=8,
         textColor=slate,
     )
 
     elements = []
 
-    company = await db.companies.find_one({"id": user["company_id"]}, {"_id": 0}) or {}
-    company_name = company.get("name") or "Your Company Name"
-    company_address = company.get("address") or "Company address placeholder"
-    company_phone = company.get("phone") or "Telephone placeholder"
-    company_email = company.get("email") or "Email placeholder"
-    company_vat = company.get("vat_number") or "VAT number placeholder"
-
-    statement_date = datetime.now(timezone.utc).date().isoformat()
-    client_name = client.get("company_name") or "Client"
-
     logo_placeholder = Table(
         [[Paragraph("<font color='white'><b>LOGO</b></font>", normal)]],
-        colWidths=[25 * mm],
-        rowHeights=[25 * mm]
+        colWidths=[28 * mm],
+        rowHeights=[28 * mm]
     )
     logo_placeholder.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#94A3B8")),
@@ -4379,7 +4383,7 @@ async def export_client_statement_pdf(
         ("ALIGN", (0, 0), (-1, -1), "CENTER"),
     ]))
 
-    heading = Table(
+    header = Table(
         [[
             Paragraph(
                 f"STATEMENT<br/><font size='14' color='#2563EB'>{client_name}</font><br/><font size='5'>Statement Date: {statement_date}</font>",
@@ -4389,12 +4393,11 @@ async def export_client_statement_pdf(
         ]],
         colWidths=[120 * mm, 50 * mm]
     )
-    heading.setStyle(TableStyle([
+    header.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("ALIGN", (1, 0), (1, 0), "RIGHT"),
     ]))
-
-    elements.append(heading)
+    elements.append(header)
     elements.append(Spacer(1, 18))
 
     client_to = Paragraph(
@@ -4411,17 +4414,30 @@ async def export_client_statement_pdf(
     info_table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
     ]))
-
     elements.append(info_table)
-    elements.append(Spacer(1, 14))
+    elements.append(Spacer(1, 16))
 
     period_text = "All available invoice dates"
     if date_from or date_to:
         period_text = f"{date_from or 'Start'} to {date_to or 'Today'}"
 
-    elements.append(Paragraph(f"<b>Statement Period:</b> {period_text}", normal))
-    elements.append(Paragraph(f"<b>Filter:</b> {'Unpaid invoices only' if status_filter == 'UNPAID' else 'Paid and unpaid invoices'}", normal))
-    elements.append(Spacer(1, 10))
+    meta_table = Table(
+        [[
+            Paragraph(f"<b>Statement Period:</b> {period_text}", normal),
+            Paragraph(f"<para alignment='right'><b>Filter:</b> {'Unpaid invoices only' if status_filter == 'UNPAID' else 'Paid and unpaid invoices'}</para>", normal)
+        ]],
+        colWidths=[85 * mm, 85 * mm]
+    )
+    meta_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ]))
+    elements.append(meta_table)
+    elements.append(Spacer(1, 8))
+
+    elements.append(Table([[""]], colWidths=[170 * mm], rowHeights=[1]))
+    elements[-1].setStyle(TableStyle([
+        ("LINEABOVE", (0, 0), (-1, -1), 0.8, blue),
+    ]))
 
     table_data = [["Invoice #", "Date", "Total", "Credit", "Outstanding", "Status", "Paid Date"]]
     unpaid_total = 0.0
@@ -4450,12 +4466,11 @@ async def export_client_statement_pdf(
     if len(table_data) == 1:
         table_data.append(["No invoices found", "-", "-", "-", "-", "-", "-"])
 
-    table = Table(
+    statement_table = Table(
         table_data,
-        colWidths=[25 * mm, 24 * mm, 25 * mm, 24 * mm, 28 * mm, 22 * mm, 24 * mm]
+        colWidths=[24 * mm, 23 * mm, 25 * mm, 24 * mm, 28 * mm, 22 * mm, 24 * mm]
     )
-
-    table.setStyle(TableStyle([
+    statement_table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), navy),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
@@ -4468,16 +4483,69 @@ async def export_client_statement_pdf(
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
     ]))
 
-    elements.append(table)
-    elements.append(Spacer(1, 14))
-    elements.append(Paragraph(f"<b>Total Outstanding: R {unpaid_total:.2f}</b>", styles["Heading2"]))
+    elements.append(statement_table)
+    elements.append(Spacer(1, 12))
+
+    total_table = Table(
+        [[
+            "",
+            Paragraph("<b>TOTAL OUTSTANDING</b>", normal),
+            Paragraph(f"<b>R {unpaid_total:.2f}</b>", ParagraphStyle(
+                "TotalAmount",
+                parent=normal,
+                fontSize=13,
+                leading=15,
+                textColor=navy,
+                alignment=2,
+            ))
+        ]],
+        colWidths=[85 * mm, 45 * mm, 40 * mm]
+    )
+    total_table.setStyle(TableStyle([
+        ("LINEABOVE", (0, 0), (-1, 0), 0.8, blue),
+        ("PADDING", (0, 0), (-1, -1), 6),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    elements.append(total_table)
     elements.append(Spacer(1, 8))
     elements.append(Paragraph("Paid invoices are shown for record purposes and carry R 0.00 outstanding.", small))
 
-    doc.build(elements)
-    buffer.seek(0)
+    def draw_header_footer(canvas_obj, doc_obj):
+        content_left = 18 * mm
+        content_right = 188 * mm
+        page_number = canvas_obj._pageNumber
 
-    safe_client_name = client_name.replace(" ", "_")
+        if page_number > 1:
+            canvas_obj.setFillColor(navy)
+            canvas_obj.setFont("Helvetica-Bold", 9)
+            canvas_obj.drawString(18 * mm, 285 * mm, company_name)
+            canvas_obj.setFillColor(blue)
+            canvas_obj.drawRightString(188 * mm, 285 * mm, "STATEMENT")
+            canvas_obj.setStrokeColor(blue)
+            canvas_obj.setLineWidth(0.6)
+            canvas_obj.line(content_left, 281 * mm, content_right, 281 * mm)
+
+        canvas_obj.setStrokeColor(blue)
+        canvas_obj.setLineWidth(0.8)
+        canvas_obj.line(content_left, 32 * mm, content_right, 32 * mm)
+
+        canvas_obj.setFillColor(navy)
+        canvas_obj.setFont("Helvetica-Bold", 18)
+        canvas_obj.drawString(18 * mm, 22 * mm, "THANK YOU")
+
+        canvas_obj.setFillColor(slate)
+        canvas_obj.setFont("Helvetica-Bold", 7)
+        canvas_obj.drawString(18 * mm, 15 * mm, "TERMS & CONDITIONS")
+        canvas_obj.setFont("Helvetica", 6)
+        canvas_obj.drawString(18 * mm, 11 * mm, "Payment terms placeholder. Paid invoices are shown for record purposes.")
+
+        canvas_obj.setFont("Helvetica-Bold", 7)
+        canvas_obj.drawRightString(188 * mm, 20 * mm, "BANKING DETAILS")
+        canvas_obj.setFont("Helvetica", 6)
+        canvas_obj.drawRightString(188 * mm, 16 * mm, str(banking_details)[:70])
+
+    doc.build(elements, onFirstPage=draw_header_footer, onLaterPages=draw_header_footer)
+    buffer.seek(0)
 
     return Response(
         content=buffer.getvalue(),
