@@ -248,6 +248,29 @@ export default function CompanyDetailsPage() {
               />
             </div>
 
+            <div className="space-y-2">
+              <Label>Company Logo</Label>
+              <p className="text-xs text-slate-500">
+                Logo should be a full colour PNG logo with a transparent background.
+              </p>
+
+              <Input
+                value={formData.logo_url || ''}
+                onChange={(e) => handleChange('logo_url', e.target.value)}
+                placeholder="Paste logo image URL here"
+              />
+
+              {formData.logo_url && (
+                <div className="rounded-lg border bg-white p-4">
+                  <img
+                    src={formData.logo_url}
+                    alt="Company Logo"
+                    className="max-h-32 object-contain"
+                  />
+                </div>
+              )}
+            </div>
+
             <Button
               onClick={handleSave}
               disabled={saving}
