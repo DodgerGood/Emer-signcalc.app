@@ -123,6 +123,9 @@ export default function CompanyDetailsPage() {
 
               <div className="space-y-2">
                 <Label>Company Name</Label>
+              <p className="text-xs text-slate-500">
+                Official registered company name used on quotes, invoices and statements.
+              </p>
                 <Input
                   value={formData.company_name}
                   onChange={(e) => handleChange('company_name', e.target.value)}
@@ -131,6 +134,9 @@ export default function CompanyDetailsPage() {
 
               <div className="space-y-2">
                 <Label>Registration Number</Label>
+              <p className="text-xs text-slate-500">
+                Official business or company registration number.
+              </p>
                 <Input
                   value={formData.registration_number}
                   onChange={(e) => handleChange('registration_number', e.target.value)}
@@ -139,6 +145,9 @@ export default function CompanyDetailsPage() {
 
               <div className="space-y-2">
                 <Label>VAT Number</Label>
+              <p className="text-xs text-slate-500">
+                VAT number displayed on invoices and statements.
+              </p>
                 <Input
                   value={formData.vat_number}
                   onChange={(e) => handleChange('vat_number', e.target.value)}
