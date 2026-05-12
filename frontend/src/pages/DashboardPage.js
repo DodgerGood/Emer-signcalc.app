@@ -40,8 +40,10 @@ export default function DashboardPage() {
     estimations: 0,
     quotes: 0,
     approved: 0,
+    companyDetails: 0,
   });
 
+  const canViewCompanyDetails = () => isManager() || isCEO() || isMDAdmin();
   const canViewMaterials = () => isProcurement() || isManager() || isCEO() || isMDAdmin();
   const canViewStock = () => isProcurement() || isManager() || isCEO() || isMDAdmin();
   const canViewLabour = () => isManager() || isCEO() || isMDAdmin();
@@ -57,6 +59,7 @@ export default function DashboardPage() {
       setLoading(true);
 
       const requests = {
+        companyDetails: canViewCompanyDetails() ? api.get('/company-details') : Promise.resolve({ data: {} }),
         materials: canViewMaterials() ? api.get('/materials') : Promise.resolve({ data: [] }),
         stock: canViewStock() ? api.get('/stock') : Promise.resolve({ data: [] }),
         labourTypes: canViewLabour() ? api.get('/labour-types') : Promise.resolve({ data: [] }),
@@ -68,6 +71,7 @@ export default function DashboardPage() {
       };
 
       const [
+        companyDetails,
         materials,
         stock,
         labourTypes,
@@ -77,6 +81,7 @@ export default function DashboardPage() {
         quotes,
         approved,
       ] = await Promise.all([
+        requests.companyDetails,
         requests.materials,
         requests.stock,
         requests.labourTypes,
@@ -88,6 +93,13 @@ export default function DashboardPage() {
       ]);
 
       const quoteRows = quotes.data || [];
+      const companyDetailsData = companyDetails.data || {};
+      const companyDetailsComplete = Boolean(
+        companyDetailsData.company_name ||
+        companyDetailsData.logo_data_url ||
+        companyDetailsData.vat_number ||
+        companyDetailsData.bank_account_number
+      );
 
       setStats({
         materials: (materials.data || []).length,
@@ -99,6 +111,7 @@ export default function DashboardPage() {
         estimations: quoteRows.filter((q) => !q.quote_number && !q.invoice_number).length,
         quotes: quoteRows.filter((q) => q.quote_number && !q.invoice_number && q.quote_status !== 'INVOICED').length,
         approved: (approved.data || []).length,
+        companyDetails: companyDetailsComplete ? 1 : 0,
       });
     } catch (error) {
       console.error('Failed to load dashboard stats:', error);
@@ -114,6 +127,16 @@ export default function DashboardPage() {
 
   const dashboardItems = useMemo(() => {
     const items = [
+      {
+        key: 'companyDetails',
+        title: 'Company Details',
+        value: stats.companyDetails,
+        link: '/company-details',
+        icon: Building2,
+        canView: canViewCompanyDetails(),
+        helperTitle: 'Complete Company Details',
+        helperText: 'Add your logo, VAT number, banking details and document footers for quotes, invoices and statements.',
+      },
       {
         key: 'materials',
         title: 'Materials',
