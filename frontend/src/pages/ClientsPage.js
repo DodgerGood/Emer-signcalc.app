@@ -125,6 +125,11 @@ export default function ClientsPage() {
     try {
       const response = await api.get(`/clients/${statementClient.id}/statement/pdf`, {
         responseType: 'blob',
+        params: {
+          date_from: statementDateFrom || undefined,
+          date_to: statementDateTo || undefined,
+          status_filter: statementStatusFilter,
+        },
       });
 
       const blob = new Blob([response.data], { type: 'application/pdf' });

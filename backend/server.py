@@ -4286,12 +4286,33 @@ async def upload_statement_po(
 
 
 @api_router.get("/clients/{client_id}/statement/pdf")
-async def export_client_statement_pdf(client_id: str, user: dict = Depends(get_current_user)):
+async def export_client_statement_pdf(
+    client_id: str,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    status_filter: Optional[str] = "ALL",
+    user: dict = Depends(get_current_user)
+):
     client = await get_client_for_statement(client_id, user)
     query = await get_client_invoice_query(client, user)
-    query["payment_status"] = {"$ne": "PAID"}
 
     invoices = await db.quotes.find(query, {"_id": 0}).sort("invoice_created_at", -1).to_list(500)
+
+    filtered_invoices = []
+    for invoice in invoices:
+        invoice_date_raw = invoice.get("invoice_created_at") or invoice.get("created_at") or ""
+        invoice_date = invoice_date_raw[:10]
+
+        if date_from and invoice_date and invoice_date < date_from:
+            continue
+
+        if date_to and invoice_date and invoice_date > date_to:
+            continue
+
+        if status_filter == "UNPAID" and invoice.get("payment_status") == "PAID":
+            continue
+
+        filtered_invoices.append(invoice)
 
     buffer = BytesIO()
     doc = SimpleDocTemplate(
@@ -4304,36 +4325,90 @@ async def export_client_statement_pdf(client_id: str, user: dict = Depends(get_c
     )
 
     styles = getSampleStyleSheet()
-    elements = []
+
+    navy = colors.HexColor("#0F172A")
+    blue = colors.HexColor("#2563EB")
+    slate = colors.HexColor("#475569")
+    light_border = colors.HexColor("#CBD5E1")
 
     title_style = ParagraphStyle(
         "StatementTitle",
         parent=styles["Heading1"],
-        fontSize=22,
-        leading=26,
-        textColor=colors.HexColor("#0F172A")
+        fontSize=26,
+        leading=30,
+        textColor=navy,
+        spaceAfter=6,
     )
 
     normal = ParagraphStyle(
         "StatementNormal",
         parent=styles["Normal"],
         fontSize=8,
-        leading=10
+        leading=10,
+        textColor=navy,
     )
 
-    elements.append(Paragraph("Client Statement", title_style))
-    elements.append(Paragraph(f"<b>Client:</b> {client.get('company_name')}", normal))
-    elements.append(Paragraph(f"<b>Date:</b> {datetime.now(timezone.utc).date().isoformat()}", normal))
+    small = ParagraphStyle(
+        "StatementSmall",
+        parent=styles["Normal"],
+        fontSize=7,
+        leading=9,
+        textColor=slate,
+    )
+
+    elements = []
+
+    company = await db.companies.find_one({"id": user["company_id"]}, {"_id": 0}) or {}
+    company_name = company.get("name") or "Your Company Name"
+    company_address = company.get("address") or "Company address placeholder"
+    company_phone = company.get("phone") or "Telephone placeholder"
+    company_email = company.get("email") or "Email placeholder"
+    company_vat = company.get("vat_number") or "VAT number placeholder"
+
+    statement_date = datetime.now(timezone.utc).date().isoformat()
+    client_name = client.get("company_name") or "Client"
+
+    heading = Table(
+        [[
+            Paragraph(
+                f"STATEMENT<br/><font size='12' color='#2563EB'>{client_name}</font><br/><font size='6'>Statement Date: {statement_date}</font>",
+                title_style
+            ),
+            Paragraph(
+                f"<para alignment='right'><b>{company_name}</b><br/>{company_address}<br/>Tel: {company_phone}<br/>Email: {company_email}<br/>VAT No: {company_vat}</para>",
+                normal
+            )
+        ]],
+        colWidths=[95 * mm, 75 * mm]
+    )
+    heading.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ]))
+
+    elements.append(heading)
     elements.append(Spacer(1, 12))
 
-    table_data = [["Invoice #", "Date", "Total", "Credit", "Balance", "Status"]]
+    period_text = "All available invoice dates"
+    if date_from or date_to:
+        period_text = f"{date_from or 'Start'} to {date_to or 'Today'}"
+
+    elements.append(Paragraph(f"<b>Statement Period:</b> {period_text}", normal))
+    elements.append(Paragraph(f"<b>Filter:</b> {'Unpaid invoices only' if status_filter == 'UNPAID' else 'Paid and unpaid invoices'}", normal))
+    elements.append(Spacer(1, 10))
+
+    table_data = [["Invoice #", "Date", "Total", "Credit", "Outstanding", "Status", "Paid Date"]]
     unpaid_total = 0.0
 
-    for invoice in invoices:
+    for invoice in filtered_invoices:
         total = float(invoice.get("total_amount") or 0)
         credit = float(invoice.get("credit_amount") or 0)
-        balance = max(0, total - credit)
-        unpaid_total += balance
+        is_paid = invoice.get("payment_status") == "PAID"
+        balance = 0.0 if is_paid else max(0, total - credit)
+
+        if not is_paid:
+            unpaid_total += balance
+
+        paid_date = (invoice.get("paid_at") or "")[:10]
 
         table_data.append([
             invoice.get("invoice_number") or "-",
@@ -4341,222 +4416,49 @@ async def export_client_statement_pdf(client_id: str, user: dict = Depends(get_c
             f"R {total:.2f}",
             f"R {credit:.2f}",
             f"R {balance:.2f}",
-            invoice.get("payment_status") or "UNPAID",
+            "PAID" if is_paid else "UNPAID",
+            paid_date or "-",
         ])
 
     if len(table_data) == 1:
-        table_data.append(["No unpaid invoices", "-", "-", "-", "-", "-"])
+        table_data.append(["No invoices found", "-", "-", "-", "-", "-", "-"])
 
     table = Table(
         table_data,
-        colWidths=[30 * mm, 28 * mm, 30 * mm, 30 * mm, 30 * mm, 30 * mm]
+        colWidths=[25 * mm, 24 * mm, 25 * mm, 24 * mm, 28 * mm, 22 * mm, 24 * mm]
     )
+
     table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0F172A")),
+        ("BACKGROUND", (0, 0), (-1, 0), navy),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, 0), 8),
-        ("FONTSIZE", (0, 1), (-1, -1), 8),
+        ("FONTSIZE", (0, 0), (-1, 0), 7),
+        ("FONTSIZE", (0, 1), (-1, -1), 7),
         ("ALIGN", (2, 1), (4, -1), "RIGHT"),
-        ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#CBD5E1")),
+        ("ALIGN", (5, 1), (6, -1), "CENTER"),
+        ("GRID", (0, 0), (-1, -1), 0.25, light_border),
         ("PADDING", (0, 0), (-1, -1), 5),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
     ]))
 
     elements.append(table)
-    elements.append(Spacer(1, 12))
-    elements.append(Paragraph(f"<b>Total Due: R {unpaid_total:.2f}</b>", styles["Heading2"]))
+    elements.append(Spacer(1, 14))
+    elements.append(Paragraph(f"<b>Total Outstanding: R {unpaid_total:.2f}</b>", styles["Heading2"]))
+    elements.append(Spacer(1, 8))
+    elements.append(Paragraph("Paid invoices are shown for record purposes and carry R 0.00 outstanding.", small))
 
     doc.build(elements)
     buffer.seek(0)
 
-    client_name = (client.get("company_name") or "client").replace(" ", "_")
+    safe_client_name = client_name.replace(" ", "_")
 
     return Response(
         content=buffer.getvalue(),
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f'attachment; filename="{client_name}-statement.pdf"'
+            "Content-Disposition": f'attachment; filename="{safe_client_name}-statement.pdf"'
         }
     )
-
-
-# ===== QUOTE ROUTES =====
-
-async def calculate_quote_line(recipe: dict, width_mm: float, height_mm: float, quantity: int, company_id: str, markup_override: Optional[float] = None) -> dict:
-    sqm = (width_mm / 1000) * (height_mm / 1000) * quantity
-    
-    line_items = []
-    subtotal = 0.0
-    approval_required = False
-    
-    for recipe_line in recipe["lines"]:
-        line_type = recipe_line["line_type"]
-        qty_driver = recipe_line["qty_driver"]
-        multiplier = recipe_line["multiplier"]
-        waste_percent = recipe_line["waste_percent"]
-        default_markup = recipe_line["default_markup_percent"]
-        markup_allowed = recipe_line["markup_allowed"]
-        override_requires_approval = recipe_line["override_requires_approval"]
-        
-        # Determine quantity based on driver
-        if qty_driver == QtyDriver.SQM:
-            line_qty = sqm * multiplier
-            # Apply waste before rounding
-            line_qty = line_qty * (1 + waste_percent / 100)
-        elif qty_driver == QtyDriver.HOURS:
-            line_qty = multiplier
-        else:  # PER_JOB
-            line_qty = multiplier
-        
-        # Get reference data and calculate cost
-        cost_per_unit = 0.0
-        item_name = recipe_line.get("custom_name", "")
-        
-        if line_type == LineType.MATERIAL and recipe_line.get("reference_id"):
-            material = await db.materials.find_one({"id": recipe_line["reference_id"], "company_id": company_id}, {"_id": 0})
-            if material:
-                # For UNIT type materials, use unit_price and don't apply sqm calculation
-                if material.get("material_type") == "UNIT":
-                    cost_per_unit = material.get("unit_price", 0)
-                    # For units, qty_driver should be PER_JOB and multiplier is the quantity
-                    line_qty = multiplier  # Direct quantity, no sqm calculation
-                else:
-                    # For SHEET, ROLL, BOARD - use sqm_price
-                    cost_per_unit = material.get("sqm_price", 0)
-                item_name = item_name or material["name"]
-        elif line_type == LineType.INK and recipe_line.get("reference_id"):
-            ink = await db.ink_profiles.find_one({"id": recipe_line["reference_id"], "company_id": company_id}, {"_id": 0})
-            if ink:
-                cost_per_unit = ink["price_per_sqm_coverage"]
-                item_name = item_name or ink["name"]
-        elif line_type in [LineType.LABOUR, LineType.SPRAY_LABOUR] and recipe_line.get("reference_id"):
-            labour = await db.labour_types.find_one(
-                {"id": recipe_line["reference_id"], "company_id": company_id},
-                {"_id": 0}
-            )
-            if labour:
-                people = labour.get("number_of_people", 1)
-                rate = labour.get("rate_per_hour", 0)
-
-                tools_rate = sum([
-                    (t.get("quantity", 0) * t.get("cost_per_hour", 0))
-                    for t in labour.get("tools", [])
-                ])
-
-                hourly_total = (rate * people) + tools_rate
-                sqm_per_hour = labour.get("sqm_per_hour") or 0
-
-                cost_per_unit = hourly_total / sqm_per_hour if sqm_per_hour > 0 else 0
-
-                item_name = item_name or labour["name"]
-        elif line_type == LineType.INSTALL and recipe_line.get("reference_id"):
-            install = await db.install_types.find_one(
-                {"id": recipe_line["reference_id"], "company_id": company_id},
-                {"_id": 0}
-            )
-            if install:
-                people = install.get("quantity_of_people", 1)
-                rate = install.get("rate_per_hour", 0)
-
-                tools_rate = sum([
-                    (t.get("quantity", 0) * t.get("cost_per_hour", 0))
-                    for t in install.get("tools", [])
-                ])
-
-                hire_rate = install.get("hire_machine_rate_per_hour") or 0
-
-                hourly_total = (rate * people) + tools_rate + hire_rate
-                sqm_per_hour = install.get("sqm_per_hour") or 0
-
-                cost_per_unit = hourly_total / sqm_per_hour if sqm_per_hour > 0 else 0
-
-                item_name = item_name or install["name"]
-        elif line_type == LineType.TRAVEL:
-            # Travel is now handled per-quote, not in recipe calculation
-            cost_per_unit = 0
-            item_name = item_name or "Travel"
-        elif line_type == LineType.SPRAY_CONSUMABLE:
-            cost_per_unit = 50.0  # Default consumable cost (in ZAR)
-            item_name = item_name or "Spray Consumable"
-        
-        line_cost = line_qty * cost_per_unit
-        
-        # Apply markup if allowed
-        markup_to_apply = markup_override if markup_override is not None and markup_allowed else default_markup
-        if markup_allowed:
-            markup_amount = line_cost * (markup_to_apply / 100)
-            line_total = line_cost + markup_amount
-            
-            # Check if approval required
-            if markup_override is not None and override_requires_approval and markup_override != default_markup:
-                approval_required = True
-        else:
-            line_total = line_cost
-        
-        line_items.append({
-            "name": item_name,
-            "type": line_type,
-            "quantity": round(line_qty, 2),
-            "unit_cost": round(cost_per_unit, 2),
-            "line_cost": round(line_cost, 2),
-            "markup_percent": markup_to_apply if markup_allowed else 0,
-            "markup_allowed": markup_allowed,
-            "total": round(line_total, 2)
-        })
-        
-        subtotal += line_total
-    
-    return {
-        "line_items": line_items,
-        "calculated_sqm": round(sqm, 2),
-        "subtotal": round(subtotal, 2),
-        "approval_required": approval_required
-    }
-
-def extract_sequence_number(value: str, prefix: str) -> Optional[int]:
-    if not value or not isinstance(value, str):
-        return None
-
-    if not value.startswith(prefix):
-        return None
-
-    digits = value.replace(prefix, "", 1)
-    if not digits.isdigit():
-        return None
-
-    number = int(digits)
-    if number < 1 or number > 1000000:
-        return None
-
-    return number
-
-
-async def get_next_estimate_number(company_id: str) -> str:
-    quotes = await db.quotes.find(
-        {"company_id": company_id, "estimate_number": {"$ne": None}},
-        {"estimate_number": 1, "_id": 0}
-    ).to_list(100000)
-
-    highest = 0
-    for quote in quotes:
-        number = extract_sequence_number(quote.get("estimate_number"), "Es")
-        if number and number > highest:
-            highest = number
-
-    next_number = highest + 1
-    if next_number > 1000000:
-        raise HTTPException(status_code=400, detail="Estimate number limit reached")
-
-    return f"Es{str(next_number).zfill(5)}"
-
-
-def linked_number_from_estimate(estimate_number: str, new_prefix: str) -> str:
-    number = extract_sequence_number(estimate_number, "Es")
-    if not number:
-        raise HTTPException(status_code=400, detail="Estimate number is missing or invalid")
-
-    return f"{new_prefix}{str(number).zfill(5)}"
-
 
 
 @api_router.post("/quotes", response_model=Quote)
