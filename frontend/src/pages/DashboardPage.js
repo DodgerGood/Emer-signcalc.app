@@ -1,23 +1,24 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { Layout } from '../components/Layout';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Layout } from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import api from '../lib/api';
+
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+
 import {
   Package,
-  Droplet,
+  Warehouse,
   Users,
-  FileText,
-  Clock,
-  TrendingUp,
   Wrench,
+  Building2,
   BookOpen,
-  LayoutDashboard,
+  Calculator,
+  FileText,
+  CheckCircle,
 } from 'lucide-react';
 
 export default function DashboardPage() {
-
   const {
     user,
     isManager,
@@ -27,170 +28,215 @@ export default function DashboardPage() {
     isMDAdmin,
   } = useAuth();
 
+  const [loading, setLoading] = useState(true);
+
   const [stats, setStats] = useState({
     materials: 0,
-    inkProfiles: 0,
+    stock: 0,
     labourTypes: 0,
     installTypes: 0,
+    clients: 0,
     recipes: 0,
+    estimations: 0,
     quotes: 0,
-    pendingApprovals: 0,
-    pendingQuoteApprovals: 0,
+    approved: 0,
   });
 
-  const [loading, setLoading] = useState(true);
+  const canViewMaterials = () => isProcurement() || isManager() || isCEO() || isMDAdmin();
+  const canViewStock = () => isProcurement() || isManager() || isCEO() || isMDAdmin();
+  const canViewLabour = () => isManager() || isCEO() || isMDAdmin();
+  const canViewInstallations = () => isManager() || isCEO() || isMDAdmin();
+  const canViewClients = () => isQuotingStaff() || isManager() || isCEO() || isMDAdmin();
+  const canViewRecipes = () => isManager() || isCEO() || isMDAdmin();
+  const canViewEstimations = () => isQuotingStaff() || isMDAdmin();
+  const canViewQuotes = () => isQuotingStaff() || isCEO() || isMDAdmin();
+  const canViewApproved = () => isQuotingStaff() || isManager() || isCEO() || isMDAdmin();
 
   const loadStats = useCallback(async () => {
     try {
       setLoading(true);
 
-      const requests = [];
-
-      if (isProcurement() || isManager() || isCEO() || isMDAdmin()) {
-        requests.push(
-          api.get('/materials'),
-          api.get('/ink-profiles')
-        );
-      } else {
-        requests.push(
-          Promise.resolve({ data: [] }),
-          Promise.resolve({ data: [] })
-        );
-      }
-
-      if (isManager() || isCEO() || isMDAdmin()) {
-        requests.push(
-          api.get('/labour-types'),
-          api.get('/install-types'),
-          api.get('/recipes')
-        );
-      } else {
-        requests.push(
-          Promise.resolve({ data: [] }),
-          Promise.resolve({ data: [] }),
-          Promise.resolve({ data: [] })
-        );
-      }
-
-      if (isQuotingStaff() || isMDAdmin()) {
-        requests.push(api.get('/quotes'));
-      } else {
-        requests.push(Promise.resolve({ data: [] }));
-      }
-
-      if (isQuotingStaff() || isManager() || isCEO() || isMDAdmin()) {
-        requests.push(api.get('/approvals'));
-      } else {
-        requests.push(Promise.resolve({ data: [] }));
-      }
-
-      if (isCEO()) {
-        requests.push(api.get('/quotes/pending-approval/list'));
-      } else {
-        requests.push(Promise.resolve({ data: [] }));
-      }
+      const requests = {
+        materials: canViewMaterials() ? api.get('/materials') : Promise.resolve({ data: [] }),
+        stock: canViewStock() ? api.get('/stock') : Promise.resolve({ data: [] }),
+        labourTypes: canViewLabour() ? api.get('/labour-types') : Promise.resolve({ data: [] }),
+        installTypes: canViewInstallations() ? api.get('/install-types') : Promise.resolve({ data: [] }),
+        clients: canViewClients() ? api.get('/clients') : Promise.resolve({ data: [] }),
+        recipes: canViewRecipes() ? api.get('/recipes') : Promise.resolve({ data: [] }),
+        quotes: api.get('/quotes'),
+        approved: canViewApproved() ? api.get('/approved') : Promise.resolve({ data: [] }),
+      };
 
       const [
         materials,
-        inks,
+        stock,
         labourTypes,
         installTypes,
+        clients,
         recipes,
         quotes,
-        approvals,
-        pendingQuotes,
-      ] = await Promise.all(requests);
+        approved,
+      ] = await Promise.all([
+        requests.materials,
+        requests.stock,
+        requests.labourTypes,
+        requests.installTypes,
+        requests.clients,
+        requests.recipes,
+        requests.quotes,
+        requests.approved,
+      ]);
+
+      const quoteRows = quotes.data || [];
 
       setStats({
-        materials: materials.data.length,
-        inkProfiles: inks.data.length,
-        labourTypes: labourTypes.data.length,
-        installTypes: installTypes.data.length,
-        recipes: recipes.data.length,
-        quotes: quotes.data.length,
-        pendingApprovals: approvals.data.length,
-        pendingQuoteApprovals: pendingQuotes.data.length,
+        materials: (materials.data || []).length,
+        stock: (stock.data || []).length,
+        labourTypes: (labourTypes.data || []).length,
+        installTypes: (installTypes.data || []).length,
+        clients: (clients.data || []).length,
+        recipes: (recipes.data || []).length,
+        estimations: quoteRows.filter((q) => !q.quote_number && !q.invoice_number).length,
+        quotes: quoteRows.filter((q) => q.quote_number && !q.invoice_number && q.quote_status !== 'INVOICED').length,
+        approved: (approved.data || []).length,
       });
     } catch (error) {
-      console.error('Failed to load stats:', error);
+      console.error('Failed to load dashboard stats:', error);
     } finally {
       setLoading(false);
     }
-  }, [isProcurement, isManager, isCEO, isQuotingStaff, isMDAdmin]);
+  }, []);
 
   useEffect(() => {
     loadStats();
   }, [loadStats]);
 
-  const setupSteps = [];
+  const dashboardItems = useMemo(() => {
+    const items = [
+      {
+        key: 'materials',
+        title: 'Materials',
+        value: stats.materials,
+        link: '/materials',
+        icon: Package,
+        canView: canViewMaterials(),
+        helperTitle: 'Add Materials',
+        helperText: 'Add at least one material before relying on material costing.',
+      },
+      {
+        key: 'stock',
+        title: 'Stock',
+        value: stats.stock,
+        link: '/stock',
+        icon: Warehouse,
+        canView: canViewStock(),
+        helperTitle: 'Set Up Stock',
+        helperText: 'Stock will appear here once materials have stock rows to audit.',
+      },
+      {
+        key: 'labourTypes',
+        title: 'Labour & Machine',
+        value: stats.labourTypes,
+        link: '/labour-types',
+        icon: Users,
+        canView: canViewLabour(),
+        helperTitle: 'Add Labour / Machine',
+        helperText: 'Add at least one labour or machine cost type.',
+      },
+      {
+        key: 'installTypes',
+        title: 'Installations',
+        value: stats.installTypes,
+        link: '/install-types',
+        icon: Wrench,
+        canView: canViewInstallations(),
+        helperTitle: 'Add Installation',
+        helperText: 'Add at least one installation rate before quoting installation work.',
+      },
+      {
+        key: 'clients',
+        title: 'Clients',
+        value: stats.clients,
+        link: '/clients',
+        icon: Building2,
+        canView: canViewClients(),
+        helperTitle: 'Add Clients',
+        helperText: 'Add your first client to speed up estimates and statements.',
+      },
+      {
+        key: 'recipes',
+        title: 'Recipes',
+        value: stats.recipes,
+        link: '/recipes',
+        icon: BookOpen,
+        canView: canViewRecipes(),
+        helperTitle: 'Build Recipes',
+        helperText: 'Create reusable 1 m² recipes for quoting.',
+      },
+      {
+        key: 'estimations',
+        title: 'Estimations',
+        value: stats.estimations,
+        link: '/estimations',
+        icon: Calculator,
+        canView: canViewEstimations(),
+        helperTitle: 'Create Estimation',
+        helperText: 'Create your first estimate before it becomes a quote.',
+      },
+      {
+        key: 'quotes',
+        title: 'Quotes',
+        value: stats.quotes,
+        link: '/quotes',
+        icon: FileText,
+        canView: canViewQuotes(),
+        helperTitle: 'Approve Quote',
+        helperText: 'Quotes will show here once estimations are approved.',
+      },
+      {
+        key: 'approved',
+        title: 'Approved',
+        value: stats.approved,
+        link: '/approvals',
+        icon: CheckCircle,
+        canView: canViewApproved(),
+        helperTitle: 'Approved Jobs',
+        helperText: 'Approved invoices will appear here after quote conversion.',
+      },
+    ];
 
-  if ((isProcurement() || isManager() || isCEO() || isMDAdmin()) && stats.materials === 0) {
-    setupSteps.push({
-      label: 'Add Materials',
-      description: 'Set up the substrates and material costs your business uses.',
-      link: '/materials',
-    });
-  }
+    return items.filter((item) => item.canView);
+  }, [stats]);
 
-  if ((isProcurement() || isManager() || isCEO() || isMDAdmin()) && stats.inkProfiles === 0) {
-    setupSteps.push({
-      label: 'Add Ink Profiles',
-      description: 'Define your ink cost profiles for accurate print costing.',
-      link: '/ink-profiles',
-    });
-  }
+  const helperItems = dashboardItems.filter((item) => item.value === 0);
 
-  if ((isManager() || isCEO() || isMDAdmin()) && stats.labourTypes === 0) {
-    setupSteps.push({
-      label: 'Add Labour Rates',
-      description: 'Set your labour pricing for production work.',
-      link: '/labour-types',
-    });
-  }
+  const StatCard = ({ item }) => {
+    const Icon = item.icon;
 
-  if ((isManager() || isCEO() || isMDAdmin()) && stats.installTypes === 0) {
-    setupSteps.push({
-      label: 'Add Installation Rates',
-      description: 'Set your installation pricing for crew, equipment, and site work.',
-      link: '/install-types',
-    });
-  }
-
-  if ((isManager() || isCEO() || isMDAdmin()) && stats.recipes === 0) {
-    setupSteps.push({
-      label: 'Build Recipes',
-      description: 'Create reusable pricing assemblies from your costing inputs.',
-      link: '/recipes',
-    });
-  }
-
-  const showSetup = setupSteps.length > 0;
-
-  const StatCard = ({ icon: Icon, title, value, linkTo }) => {
-    const content = (
-      <Card className={`card-technical col-span-1 ${linkTo ? 'cursor-pointer hover:shadow-md transition' : ''}`}>
-        <CardHeader className="flex flex-row items-start justify-between pb-1">
-          <CardTitle className="text-xs font-medium text-slate-600 uppercase tracking-wide">
-            {title}
-          </CardTitle>
-          <Icon size={18} className="text-slate-400" strokeWidth={1.5} />
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="text-2xl font-black tracking-tight data-mono">
-            {value}
-          </div>
-        </CardContent>
-      </Card>
+    return (
+      <Link to={item.link}>
+        <Card className="card-technical cursor-pointer hover:shadow-md transition h-full">
+          <CardHeader className="flex flex-row items-start justify-between pb-1">
+            <CardTitle className="text-xs font-medium text-slate-600 uppercase tracking-wide">
+              {item.title}
+            </CardTitle>
+            <Icon size={18} className="text-slate-400" strokeWidth={1.5} />
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="text-2xl font-black tracking-tight data-mono">
+              {item.value}
+            </div>
+          </CardContent>
+        </Card>
+      </Link>
     );
-
-    return linkTo ? <Link to={linkTo}>{content}</Link> : content;
   };
 
   if (loading) {
     return (
       <Layout>
         <div className="flex items-center justify-center h-96">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
         </div>
       </Layout>
     );
@@ -206,30 +252,30 @@ export default function DashboardPage() {
           <p className="text-slate-600 mt-2">Here&apos;s your overview</p>
         </div>
 
-        {showSetup && (
+        {helperItems.length > 0 && (
           <Card className="card-technical border-blue-200 bg-blue-50">
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-semibold text-blue-900">
-                Complete your costing setup
+                Complete your setup
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm text-blue-900">
-                Complete the missing setup items below before relying on live costing totals.
+                These helper blocks disappear automatically once that page has at least one item.
               </p>
 
               <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                {setupSteps.map((step) => (
+                {helperItems.map((item) => (
                   <Link
-                    key={step.label}
-                    to={step.link}
+                    key={item.key}
+                    to={item.link}
                     className="rounded-lg border border-blue-200 bg-white p-3 hover:border-blue-300 hover:shadow-sm transition"
                   >
                     <div className="text-sm font-semibold text-slate-900">
-                      {step.label}
+                      {item.helperTitle}
                     </div>
                     <div className="mt-1 text-xs text-slate-600">
-                      {step.description}
+                      {item.helperText}
                     </div>
                   </Link>
                 ))}
@@ -239,78 +285,9 @@ export default function DashboardPage() {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {(isProcurement() || isManager() || isCEO() || isMDAdmin()) && (
-            <StatCard
-              icon={Package}
-              title="Materials"
-              value={stats.materials}
-              linkTo="/materials"
-            />
-          )}
-
-          {(isProcurement() || isManager() || isCEO() || isMDAdmin()) && (
-            <StatCard
-              icon={Droplet}
-              title="Ink Profiles"
-              value={stats.inkProfiles}
-              linkTo="/ink-profiles"
-            />
-          )}
- 
-          {(isManager() || isCEO() || isMDAdmin()) && ( 
-            <StatCard
-              icon={Users}
-              title="Labour Pricelist"
-              value={stats.labourTypes}
-              linkTo="/labour-types"
-            />
-          )}
-
-          {(isManager() || isCEO() || isMDAdmin()) && (
-            <StatCard
-              icon={Wrench}
-              title="Installation Pricelist"
-              value={stats.installTypes}
-              linkTo="/install-types"
-            />
-          )}
-
-          {(isManager() || isCEO() || isMDAdmin()) && (
-            <StatCard
-              icon={BookOpen}
-              title="Recipes"
-              value={stats.recipes}
-              linkTo="/recipes"
-            />
-          )}
-
-          {(isQuotingStaff() || isMDAdmin()) && (
-            <StatCard
-              icon={FileText}
-              title="Quotes"
-              value={stats.quotes}
-              linkTo="/quotes"
-            />
-          )}
-
-          {(isQuotingStaff() || isManager() || isCEO() || isMDAdmin()) &&
-            stats.pendingApprovals > 0 && (
-              <StatCard
-                icon={Clock}
-                title="Pending Markup Approvals"
-                value={stats.pendingApprovals}
-                linkTo="/approvals"
-              />
-          )}
-
-          {(isCEO() || isMDAdmin()) && stats.pendingQuoteApprovals > 0 && (
-            <StatCard
-              icon={LayoutDashboard}
-              title="Quotes Awaiting Approval"
-              value={stats.pendingQuoteApprovals}
-              linkTo="/quotes"
-            />
-          )}
+          {dashboardItems.map((item) => (
+            <StatCard key={item.key} item={item} />
+          ))}
         </div>
       </div>
     </Layout>
