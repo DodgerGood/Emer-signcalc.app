@@ -6528,10 +6528,16 @@ async def export_quote_bom(quote_id: str, user: dict = Depends(get_current_user)
 # Include router
 app.include_router(api_router)
 
+cors_origins = os.environ.get(
+    "CORS_ORIGINS",
+    "https://signomics-frontend.vercel.app,https://signomics-frontend-oldrlswzs-roger-s-projects-25e63bc5.vercel.app,https://signomics-frontend-p9avtelm1-roger-s-projects-25e63bc5.vercel.app"
+).split(",")
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=[origin.strip() for origin in cors_origins if origin.strip()],
+    allow_origin_regex=r"https://signomics-frontend.*\.vercel\.app",
     allow_methods=["*"],
     allow_headers=["*"],
 )
