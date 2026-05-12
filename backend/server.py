@@ -685,6 +685,36 @@ class Quote(BaseModel):
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
+
+class CompanyDetails(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    company_id: str
+
+    company_name: Optional[str] = None
+    registration_number: Optional[str] = None
+    vat_number: Optional[str] = None
+
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    website: Optional[str] = None
+    address: Optional[str] = None
+
+    bank_name: Optional[str] = None
+    bank_account_name: Optional[str] = None
+    bank_account_number: Optional[str] = None
+    bank_branch_code: Optional[str] = None
+
+    quote_footer: Optional[str] = None
+    invoice_footer: Optional[str] = None
+    statement_footer: Optional[str] = None
+
+    logo_url: Optional[str] = None
+
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+
 class ApprovalRequest(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -6552,6 +6582,48 @@ async def export_quote_bom(quote_id: str, user: dict = Depends(get_current_user)
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename=bom_{quote_id}.xlsx"}
     )
+
+
+
+@api_router.get("/company-details")
+async def get_company_details(user: dict = Depends(get_current_user)):
+    company = await db.company_details.find_one(
+        {"company_id": user["company_id"]},
+        {"_id": 0}
+    )
+
+    if not company:
+        return {}
+
+    return company
+
+
+@api_router.post("/company-details")
+async def save_company_details(
+    payload: CompanyDetails,
+    user: dict = Depends(require_manager)
+):
+    if user["role"] not in ["MD_ADMIN", "CEO", "MANAGER"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    data = payload.model_dump()
+    data["company_id"] = user["company_id"]
+    data["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    existing = await db.company_details.find_one(
+        {"company_id": user["company_id"]}
+    )
+
+    if existing:
+        await db.company_details.update_one(
+            {"company_id": user["company_id"]},
+            {"$set": data}
+        )
+    else:
+        await db.company_details.insert_one(data)
+
+    return {"message": "Company details saved"}
+
 
 # Include router
 app.include_router(api_router)
