@@ -131,7 +131,11 @@ export default function QuotesPage() {
 
       navigate(`/quotes/${response.data.id}`);
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to create estimate');
+      console.log('Create estimate error:', error.response?.data || error);
+      const apiUrl = api.defaults?.baseURL || 'API URL not found';
+      toast.error(
+        `${error.response?.data?.detail || JSON.stringify(error.response?.data) || error.message || 'Failed to create estimate'} | API: ${apiUrl}`
+      );
     }
   };
 
