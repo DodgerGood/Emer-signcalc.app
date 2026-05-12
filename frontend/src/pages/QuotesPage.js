@@ -87,6 +87,16 @@ export default function QuotesPage() {
     const term = clientSearch.toLowerCase();
     if (!term) return false;
 
+    const hasUsefulDetails =
+      client.contact_person ||
+      client.email ||
+      client.phone ||
+      client.billing_address ||
+      client.site_address ||
+      client.vat_number;
+
+    if (!hasUsefulDetails) return false;
+
     return (
       client.company_name?.toLowerCase().includes(term) ||
       client.contact_person?.toLowerCase().includes(term) ||
