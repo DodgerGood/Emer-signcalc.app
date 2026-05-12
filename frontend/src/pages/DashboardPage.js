@@ -164,24 +164,19 @@ export default function DashboardPage() {
     });
   }
 
-  const showSetup =
-    stats.materials === 0 &&
-    stats.inkProfiles === 0 &&
-    stats.labourTypes === 0 &&
-    stats.installTypes === 0 &&
-    stats.recipes === 0;
+  const showSetup = setupSteps.length > 0;
 
   const StatCard = ({ icon: Icon, title, value, linkTo }) => {
     const content = (
       <Card className={`card-technical col-span-1 ${linkTo ? 'cursor-pointer hover:shadow-md transition' : ''}`}>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium text-slate-600 uppercase tracking-wide">
+        <CardHeader className="flex flex-row items-start justify-between pb-1">
+          <CardTitle className="text-xs font-medium text-slate-600 uppercase tracking-wide">
             {title}
           </CardTitle>
-          <Icon size={20} className="text-slate-400" strokeWidth={1.5} />
+          <Icon size={18} className="text-slate-400" strokeWidth={1.5} />
         </CardHeader>
-        <CardContent>
-          <div className="text-3xl font-black tracking-tight data-mono">
+        <CardContent className="pt-0">
+          <div className="text-2xl font-black tracking-tight data-mono">
             {value}
           </div>
         </CardContent>
@@ -213,28 +208,27 @@ export default function DashboardPage() {
 
         {showSetup && (
           <Card className="card-technical border-blue-200 bg-blue-50">
-            <CardHeader>
+            <CardHeader className="pb-2">
               <CardTitle className="text-base font-semibold text-blue-900">
                 Complete your costing setup
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3">
               <p className="text-sm text-blue-900">
-                The zero values below are expected until you configure your own costing data.
-                Start with the setup steps below to build your pricing model.
+                Complete the missing setup items below before relying on live costing totals.
               </p>
 
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                 {setupSteps.map((step) => (
                   <Link
                     key={step.label}
                     to={step.link}
-                    className="rounded-lg border border-blue-200 bg-white p-4 hover:border-blue-300 hover:shadow-sm transition"
+                    className="rounded-lg border border-blue-200 bg-white p-3 hover:border-blue-300 hover:shadow-sm transition"
                   >
                     <div className="text-sm font-semibold text-slate-900">
                       {step.label}
                     </div>
-                    <div className="mt-1 text-sm text-slate-600">
+                    <div className="mt-1 text-xs text-slate-600">
                       {step.description}
                     </div>
                   </Link>
