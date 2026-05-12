@@ -4434,11 +4434,6 @@ async def export_client_statement_pdf(
     elements.append(meta_table)
     elements.append(Spacer(1, 8))
 
-    elements.append(Table([[""]], colWidths=[170 * mm], rowHeights=[1]))
-    elements[-1].setStyle(TableStyle([
-        ("LINEABOVE", (0, 0), (-1, -1), 0.8, blue),
-    ]))
-
     table_data = [["Invoice #", "Date", "Total", "Credit", "Outstanding", "Status", "Paid Date"]]
     unpaid_total = 0.0
 
@@ -4471,14 +4466,15 @@ async def export_client_statement_pdf(
         colWidths=[24 * mm, 23 * mm, 25 * mm, 24 * mm, 28 * mm, 22 * mm, 24 * mm]
     )
     statement_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), navy),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("TEXTCOLOR", (0, 0), (-1, 0), navy),
         ("FONTSIZE", (0, 0), (-1, 0), 7),
         ("FONTSIZE", (0, 1), (-1, -1), 7),
         ("ALIGN", (2, 1), (4, -1), "RIGHT"),
         ("ALIGN", (5, 1), (6, -1), "CENTER"),
-        ("GRID", (0, 0), (-1, -1), 0.25, light_border),
+        ("LINEABOVE", (0, 0), (-1, 0), 0.8, blue),
+        ("LINEBELOW", (0, 0), (-1, 0), 0.8, blue),
+        ("LINEBELOW", (0, -1), (-1, -1), 0.8, blue),
         ("PADDING", (0, 0), (-1, -1), 5),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
     ]))
