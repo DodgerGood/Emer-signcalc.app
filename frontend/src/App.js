@@ -18,6 +18,7 @@ import ClientsPage from './pages/ClientsPage';
 import QuoteDetailPage from './pages/QuoteDetailPage';
 import ApprovalsPage from './pages/ApprovalsPage';
 import SettingsPage from './pages/SettingsPage';
+import CompanyDetailsPage from './pages/CompanyDetailsPage';
 import EstimationDashboard from './pages/EstimationDashboard';
 import AdminSupportPage from './pages/AdminSupportPage';
 import AdminCompaniesPage from './pages/AdminCompaniesPage';
@@ -170,6 +171,15 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <ApprovalsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/company-details"
+        element={
+          <ProtectedRoute>
+            <CompanyDetailsPage />
           </ProtectedRoute>
         }
       />

@@ -144,6 +144,21 @@ const role = user?.role;
             </Link>
           )}
 
+          {['MD_ADMIN', 'CEO', 'MANAGER'].includes(role) && (
+            <Link
+              to="/company-details"
+              data-testid="nav-company-details"
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-md transition-colors ${
+                location.pathname === '/company-details'
+                  ? 'bg-[#2563EB] text-white'
+                  : 'text-slate-300 hover:bg-slate-800'
+              }`}
+            >
+              <Building2 size={18} strokeWidth={1.5} />
+              <span className="text-sm font-medium">Company Details</span>
+            </Link>
+          )}
+
           <Link
             to="/settings"
             data-testid="nav-settings"
