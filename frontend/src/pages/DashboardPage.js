@@ -105,6 +105,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -206,6 +207,7 @@ export default function DashboardPage() {
     ];
 
     return items.filter((item) => item.canView);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stats]);
 
   const helperItems = dashboardItems.filter((item) => item.value === 0);
