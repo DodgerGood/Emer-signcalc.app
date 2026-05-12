@@ -585,16 +585,16 @@ export default function ClientsPage() {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto rounded-xl border bg-white">
+            <div className="w-full overflow-x-auto rounded-xl border bg-white">
               <Table className="w-full min-w-[1000px] text-sm">
                 <TableHeader className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                   <TableRow>
-                    <TableHead className="px-4 py-3">Company</TableHead>
-                    <TableHead className="px-4 py-3">Contact</TableHead>
-                    <TableHead className="px-4 py-3">Email</TableHead>
-                    <TableHead className="px-4 py-3">Phone</TableHead>
-                    <TableHead className="px-4 py-3">VAT No.</TableHead>
-                    <TableHead className="px-4 py-3 text-right">Actions</TableHead>
+                    <TableHead className="px-2 py-3">Company</TableHead>
+                    <TableHead className="px-2 py-3">Contact</TableHead>
+                    <TableHead className="px-2 py-3">Email</TableHead>
+                    <TableHead className="px-2 py-3">Phone</TableHead>
+                    <TableHead className="px-2 py-3">VAT No.</TableHead>
+                    <TableHead className="px-2 py-3 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
 
@@ -608,12 +608,12 @@ export default function ClientsPage() {
                   ) : (
                     paginatedClients.map((client) => (
                       <TableRow key={client.id}>
-                        <TableCell className="px-4 py-3 font-semibold">{client.company_name}</TableCell>
-                        <TableCell className="px-4 py-3">{client.contact_person || '-'}</TableCell>
-                        <TableCell className="px-4 py-3">{client.email || '-'}</TableCell>
-                        <TableCell className="px-4 py-3">{client.phone || '-'}</TableCell>
-                        <TableCell className="px-4 py-3">{client.vat_number || '-'}</TableCell>
-                        <TableCell className="px-4 py-3">
+                        <TableCell className="px-2 py-3 font-semibold">{client.company_name}</TableCell>
+                        <TableCell className="px-2 py-3">{client.contact_person || '-'}</TableCell>
+                        <TableCell className="px-2 py-3">{client.email || '-'}</TableCell>
+                        <TableCell className="px-2 py-3">{client.phone || '-'}</TableCell>
+                        <TableCell className="px-2 py-3">{client.vat_number || '-'}</TableCell>
+                        <TableCell className="px-2 py-3">
                           <div className="flex justify-end gap-3 items-start">
                             <ActionIconButton
                               icon={<FileText size={16} />}
@@ -687,7 +687,7 @@ export default function ClientsPage() {
 
 
         <Dialog open={!!statementClient} onOpenChange={(open) => !open && setStatementClient(null)}>
-          <DialogContent className="w-[98vw] max-w-[98vw] md:max-w-6xl max-h-[92vh] overflow-y-auto p-3 md:p-6">
+          <DialogContent className="w-[94vw] max-w-[94vw] md:max-w-5xl max-h-[88vh] overflow-y-auto p-3 md:p-5">
             <DialogHeader>
               <DialogTitle>
                 Client Statement - {statementClient?.company_name}
@@ -746,17 +746,17 @@ export default function ClientsPage() {
                 </div>
               ) : (
                 <div className="overflow-x-auto rounded-xl border bg-white">
-                  <Table className="w-full text-xs md:text-sm">
+                  <Table className="w-full table-fixed text-[11px] md:text-sm">
                     <TableHeader className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                       <TableRow>
-                        <TableHead className="px-4 py-3">Invoice #</TableHead>
-                        <TableHead className="px-4 py-3">Invoice Date</TableHead>
-                        <TableHead className="px-4 py-3 text-right">Total</TableHead>
-                        <TableHead className="px-4 py-3 text-right">Credit</TableHead>
-                        <TableHead className="px-4 py-3 text-right">Balance</TableHead>
-                        <TableHead className="px-4 py-3">Status</TableHead>
-                        <TableHead className="px-4 py-3">P.O.P</TableHead>
-                        <TableHead className="px-4 py-3 text-right">Actions</TableHead>
+                        <TableHead className="px-2 py-3">Invoice #</TableHead>
+                        <TableHead className="px-2 py-3">Invoice Date</TableHead>
+                        <TableHead className="px-2 py-3 text-right">Total</TableHead>
+                        <TableHead className="px-2 py-3 text-right">Credit</TableHead>
+                        <TableHead className="px-2 py-3 text-right">Balance</TableHead>
+                        <TableHead className="px-2 py-3">Status</TableHead>
+                        <TableHead className="px-2 py-3">P.O.P</TableHead>
+                        <TableHead className="px-2 py-3 text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
 
@@ -770,16 +770,16 @@ export default function ClientsPage() {
                       ) : (
                         paginatedStatementRows.map((row) => (
                           <TableRow key={row.id}>
-                            <TableCell className="px-4 py-3 font-mono font-semibold">{row.invoice_number}</TableCell>
-                            <TableCell className="px-4 py-3">
+                            <TableCell className="px-2 py-3 font-mono font-semibold">{row.invoice_number}</TableCell>
+                            <TableCell className="px-2 py-3">
                               {row.invoice_date ? new Date(row.invoice_date).toLocaleDateString() : '-'}
                             </TableCell>
-                            <TableCell className="px-4 py-3 text-right">R {(Number(row.total_amount) || 0).toFixed(2)}</TableCell>
-                            <TableCell className="px-4 py-3 text-right">R {(Number(row.credit_amount) || 0).toFixed(2)}</TableCell>
-                            <TableCell className="px-4 py-3 text-right font-bold">
+                            <TableCell className="px-2 py-3 text-right">R {(Number(row.total_amount) || 0).toFixed(2)}</TableCell>
+                            <TableCell className="px-2 py-3 text-right">R {(Number(row.credit_amount) || 0).toFixed(2)}</TableCell>
+                            <TableCell className="px-2 py-3 text-right font-bold">
                               R {row.payment_status === 'PAID' ? '0.00' : (Number(row.balance_amount) || 0).toFixed(2)}
                             </TableCell>
-                            <TableCell className="px-4 py-3">
+                            <TableCell className="px-2 py-3">
                               <span className={row.payment_status === 'PAID' ? 'rounded-full bg-green-50 px-2 py-1 text-xs font-semibold text-green-700' : 'rounded-full bg-red-50 px-2 py-1 text-xs font-semibold text-red-700'}>
                                 {row.payment_status || 'UNPAID'}
                               </span>
@@ -789,7 +789,7 @@ export default function ClientsPage() {
                                 </div>
                               )}
                             </TableCell>
-                            <TableCell className="px-4 py-3">
+                            <TableCell className="px-2 py-3">
                               <div className="flex flex-col items-center gap-1">
                                 <Button type="button" variant="outline" size="sm" onClick={() => loadPo(row)}>
                                   <Upload size={16} className="mr-2" />
@@ -801,7 +801,7 @@ export default function ClientsPage() {
                                 <div className="mt-1 text-xs text-slate-500">{row.po_filename}</div>
                               )}
                             </TableCell>
-                            <TableCell className="px-4 py-3 text-right">
+                            <TableCell className="px-2 py-3 text-right">
                               <div className="flex justify-end gap-3 items-start">
                                 <ActionIconButton
                                   icon={row.payment_status === 'PAID' ? <XCircle size={16} /> : <CheckCircle size={16} />}
