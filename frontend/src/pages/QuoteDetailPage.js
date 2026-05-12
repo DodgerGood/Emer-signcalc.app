@@ -429,7 +429,7 @@ export default function QuoteDetailPage() {
                     >
                       <div className="font-semibold">{client.company_name}</div>
                       <div className="text-xs text-slate-500">
-                        {[client.contact_person, client.email, client.phone].filter(Boolean).join(' | ')}
+                        {client.email || client.phone || client.contact_person}
                       </div>
                     </button>
                   ))}
