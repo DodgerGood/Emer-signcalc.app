@@ -4334,8 +4334,8 @@ async def export_client_statement_pdf(
     title_style = ParagraphStyle(
         "StatementTitle",
         parent=styles["Heading1"],
-        fontSize=26,
-        leading=30,
+        fontSize=28,
+        leading=32,
         textColor=navy,
         spaceAfter=6,
     )
@@ -4368,25 +4368,52 @@ async def export_client_statement_pdf(
     statement_date = datetime.now(timezone.utc).date().isoformat()
     client_name = client.get("company_name") or "Client"
 
+    logo_placeholder = Table(
+        [[Paragraph("<font color='white'><b>LOGO</b></font>", normal)]],
+        colWidths=[25 * mm],
+        rowHeights=[25 * mm]
+    )
+    logo_placeholder.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#94A3B8")),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+    ]))
+
     heading = Table(
         [[
             Paragraph(
-                f"STATEMENT<br/><font size='12' color='#2563EB'>{client_name}</font><br/><font size='6'>Statement Date: {statement_date}</font>",
+                f"STATEMENT<br/><font size='14' color='#2563EB'>{client_name}</font><br/><font size='5'>Statement Date: {statement_date}</font>",
                 title_style
             ),
-            Paragraph(
-                f"<para alignment='right'><b>{company_name}</b><br/>{company_address}<br/>Tel: {company_phone}<br/>Email: {company_email}<br/>VAT No: {company_vat}</para>",
-                normal
-            )
+            logo_placeholder
         ]],
-        colWidths=[95 * mm, 75 * mm]
+        colWidths=[120 * mm, 50 * mm]
     )
     heading.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("ALIGN", (1, 0), (1, 0), "RIGHT"),
     ]))
 
     elements.append(heading)
-    elements.append(Spacer(1, 12))
+    elements.append(Spacer(1, 18))
+
+    client_to = Paragraph(
+        f"<b>CLIENT DETAILS</b><br/>{client.get('company_name') or '-'}<br/>{client.get('billing_address') or '-'}<br/>{client.get('email') or '-'}<br/>{client.get('phone') or '-'}",
+        normal
+    )
+
+    billing_to = Paragraph(
+        f"<para alignment='right'><b>BILLING COMPANY</b><br/>{company_name}<br/>{company_address}<br/>Tel: {company_phone}<br/>Email: {company_email}<br/>VAT No: {company_vat}</para>",
+        normal
+    )
+
+    info_table = Table([[client_to, "", billing_to]], colWidths=[70 * mm, 30 * mm, 70 * mm])
+    info_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ]))
+
+    elements.append(info_table)
+    elements.append(Spacer(1, 14))
 
     period_text = "All available invoice dates"
     if date_from or date_to:
