@@ -8,68 +8,73 @@ import { Button } from '../components/ui/button';
 import { useAuth } from '../context/AuthContext';
 import api from '../lib/api';
 import { toast } from 'sonner';
-import { Upload, FileText } from 'lucide-react';
+import { Upload, FileText, Eye, EyeOff } from 'lucide-react';
+
+const allowedRoles = ['MD_ADMIN', 'CEO', 'MANAGER'];
+
+const emptyCompanyDetails = {
+  company_name: '',
+  registration_number: '',
+  vat_number: '',
+  phone: '',
+  email: '',
+  website: '',
+  address: '',
+  bank_name: '',
+  bank_account_name: '',
+  bank_account_number: '',
+  bank_branch_code: '',
+  quote_footer: '',
+  invoice_footer: '',
+  statement_footer: '',
+  logo_data_url: '',
+};
 
 export default function CompanyDetailsPage() {
   const { user } = useAuth();
   const logoInputRef = useRef(null);
 
-  const allowedRoles = ['MD_ADMIN', 'CEO', 'MANAGER'];
-
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const [verificationPassword, setVerificationPassword] = useState('');
-
-  const [formData, setFormData] = useState({
-    company_name: '',
-    registration_number: '',
-    vat_number: '',
-    phone: '',
-    email: '',
-    website: '',
-    address: '',
-    bank_name: '',
-    bank_account_name: '',
-    bank_account_number: '',
-    bank_branch_code: '',
-    quote_footer: '',
-    invoice_footer: '',
-    statement_footer: '',
-    logo_data_url: '',
-  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [formData, setFormData] = useState(emptyCompanyDetails);
 
   useEffect(() => {
-    if (!allowedRoles.includes(user?.role)) return;
+    if (!allowedRoles.includes(user?.role)) {
+      setLoading(false);
+      return;
+    }
+
     loadCompanyDetails();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user?.role]);
 
   const loadCompanyDetails = async () => {
     try {
       const response = await api.get('/company-details');
-      if (response.data && typeof response.data === 'object') {
-        setFormData((prev) => ({
-          ...prev,
-          company_name: response.data.company_name || '',
-          registration_number: response.data.registration_number || '',
-          vat_number: response.data.vat_number || '',
-          phone: response.data.phone || '',
-          email: response.data.email || '',
-          website: response.data.website || '',
-          address: response.data.address || '',
-          bank_name: response.data.bank_name || '',
-          bank_account_name: response.data.bank_account_name || '',
-          bank_account_number: response.data.bank_account_number || '',
-          bank_branch_code: response.data.bank_branch_code || '',
-          quote_footer: response.data.quote_footer || '',
-          invoice_footer: response.data.invoice_footer || '',
-          statement_footer: response.data.statement_footer || '',
-          logo_data_url: response.data.logo_data_url || '',
-        }));
-      }
-    } catch {
-      toast.error('Failed to load company details');
+      const data = response.data || {};
+
+      setFormData({
+        company_name: data.company_name || '',
+        registration_number: data.registration_number || '',
+        vat_number: data.vat_number || '',
+        phone: data.phone || '',
+        email: data.email || '',
+        website: data.website || '',
+        address: data.address || '',
+        bank_name: data.bank_name || '',
+        bank_account_name: data.bank_account_name || '',
+        bank_account_number: data.bank_account_number || '',
+        bank_branch_code: data.bank_branch_code || '',
+        quote_footer: data.quote_footer || '',
+        invoice_footer: data.invoice_footer || '',
+        statement_footer: data.statement_footer || '',
+        logo_data_url: data.logo_data_url || '',
+      });
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to load company details');
     } finally {
       setLoading(false);
     }
@@ -97,7 +102,7 @@ export default function CompanyDetailsPage() {
 
     const reader = new FileReader();
     reader.onload = () => {
-      handleChange('logo_data_url', reader.result);
+      handleChange('logo_data_url', reader.result || '');
       toast.success('Logo loaded');
     };
     reader.readAsDataURL(file);
@@ -111,14 +116,17 @@ export default function CompanyDetailsPage() {
 
     try {
       setSaving(true);
+
       await api.post('/company-details', {
         ...formData,
         verification_password: verificationPassword,
       });
+
       setVerificationPassword('');
       toast.success('Company details saved');
+      await loadCompanyDetails();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Save failed');
+      toast.error(error.response?.data?.detail || error.message || 'Save failed');
     } finally {
       setSaving(false);
     }
@@ -178,15 +186,12 @@ export default function CompanyDetailsPage() {
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div>
-            <h1 className="text-4xl font-black tracking-tight">
-              Company Details
-            </h1>
-            <p className="text-slate-600 mt-2">
-              Configure company information for quotes, invoices, statements and reports.
-            </p>
-          </div>        </div>
+        <div>
+          <h1 className="text-4xl font-black tracking-tight">Company Details</h1>
+          <p className="text-slate-600 mt-2">
+            Configure company information for quotes, invoices, statements and reports.
+          </p>
+        </div>
 
         <Card className="card-technical">
           <CardHeader>
@@ -194,7 +199,6 @@ export default function CompanyDetailsPage() {
           </CardHeader>
 
           <CardContent className="space-y-6">
-
             <div className="space-y-2">
               <Label>Company Logo</Label>
               <p className="text-xs text-slate-500">
@@ -210,21 +214,13 @@ export default function CompanyDetailsPage() {
               />
 
               <div className="flex flex-col gap-3 md:flex-row md:items-center">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => logoInputRef.current?.click()}
-                >
+                <Button type="button" variant="outline" onClick={() => logoInputRef.current?.click()}>
                   <Upload size={18} className="mr-2" />
                   Upload PNG Logo
                 </Button>
 
                 {formData.logo_data_url && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => handleChange('logo_data_url', '')}
-                  >
+                  <Button type="button" variant="outline" onClick={() => handleChange('logo_data_url', '')}>
                     Remove Logo
                   </Button>
                 )}
@@ -270,43 +266,25 @@ export default function CompanyDetailsPage() {
               <p className="text-xs text-slate-500">
                 Physical or billing address shown on quotes and invoices.
               </p>
-              <Textarea
-                value={formData.address || ''}
-                onChange={(e) => handleChange('address', e.target.value)}
-              />
+              <Textarea value={formData.address || ''} onChange={(e) => handleChange('address', e.target.value)} />
             </div>
 
             <div className="space-y-2">
               <Label>Quote Footer</Label>
-              <p className="text-xs text-slate-500">
-                Footer text shown at the bottom of all quotes.
-              </p>
-              <Textarea
-                value={formData.quote_footer || ''}
-                onChange={(e) => handleChange('quote_footer', e.target.value)}
-              />
+              <p className="text-xs text-slate-500">Footer text shown at the bottom of all quotes.</p>
+              <Textarea value={formData.quote_footer || ''} onChange={(e) => handleChange('quote_footer', e.target.value)} />
             </div>
 
             <div className="space-y-2">
               <Label>Invoice Footer</Label>
-              <p className="text-xs text-slate-500">
-                Footer text shown at the bottom of all invoices.
-              </p>
-              <Textarea
-                value={formData.invoice_footer || ''}
-                onChange={(e) => handleChange('invoice_footer', e.target.value)}
-              />
+              <p className="text-xs text-slate-500">Footer text shown at the bottom of all invoices.</p>
+              <Textarea value={formData.invoice_footer || ''} onChange={(e) => handleChange('invoice_footer', e.target.value)} />
             </div>
 
             <div className="space-y-2">
               <Label>Statement Footer</Label>
-              <p className="text-xs text-slate-500">
-                Footer text shown at the bottom of all statements.
-              </p>
-              <Textarea
-                value={formData.statement_footer || ''}
-                onChange={(e) => handleChange('statement_footer', e.target.value)}
-              />
+              <p className="text-xs text-slate-500">Footer text shown at the bottom of all statements.</p>
+              <Textarea value={formData.statement_footer || ''} onChange={(e) => handleChange('statement_footer', e.target.value)} />
             </div>
 
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-2">
@@ -314,12 +292,24 @@ export default function CompanyDetailsPage() {
               <p className="text-xs text-amber-800">
                 Enter your own login password before saving. This protects company banking, logo and document settings.
               </p>
-              <Input
-                type="password"
-                value={verificationPassword}
-                onChange={(e) => setVerificationPassword(e.target.value)}
-                placeholder="Enter your login password"
-              />
+
+              <div className="relative">
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  value={verificationPassword}
+                  onChange={(e) => setVerificationPassword(e.target.value)}
+                  placeholder="Enter your login password"
+                  className="pr-10"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             <div className="space-y-3">
