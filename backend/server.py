@@ -691,7 +691,7 @@ class CompanyDetails(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    company_id: str
+    company_id: Optional[str] = None
 
     company_name: Optional[str] = None
     registration_number: Optional[str] = None
