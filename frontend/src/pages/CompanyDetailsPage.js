@@ -122,7 +122,21 @@ export default function CompanyDetailsPage() {
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to download template PDF');
+      let detail = 'Failed to download template PDF';
+
+      if (error.response?.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text();
+          const json = JSON.parse(text);
+          detail = json.detail || detail;
+        } catch {
+          detail = 'Failed to download template PDF';
+        }
+      } else {
+        detail = error.response?.data?.detail || error.message || detail;
+      }
+
+      toast.error(detail);
     }
   };
 
