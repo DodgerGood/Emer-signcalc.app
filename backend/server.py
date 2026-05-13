@@ -6631,10 +6631,25 @@ async def save_company_details(
     if not user_data or not verify_password(payload.verification_password or "", user_data.get("password_hash", "")):
         raise HTTPException(status_code=400, detail="Login password verification failed")
 
-    data = payload.model_dump()
-    data.pop("verification_password", None)
-    data["company_id"] = user["company_id"]
-    data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    data = {
+        "company_name": payload.company_name or "",
+        "registration_number": payload.registration_number or "",
+        "vat_number": payload.vat_number or "",
+        "phone": payload.phone or "",
+        "email": payload.email or "",
+        "website": payload.website or "",
+        "address": payload.address or "",
+        "bank_name": payload.bank_name or "",
+        "bank_account_name": payload.bank_account_name or "",
+        "bank_account_number": payload.bank_account_number or "",
+        "bank_branch_code": payload.bank_branch_code or "",
+        "quote_footer": payload.quote_footer or "",
+        "invoice_footer": payload.invoice_footer or "",
+        "statement_footer": payload.statement_footer or "",
+        "logo_data_url": payload.logo_data_url or "",
+        "company_id": user["company_id"],
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
 
     existing = await db.company_details.find_one(
         {"company_id": user["company_id"]}

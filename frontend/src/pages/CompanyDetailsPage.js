@@ -78,6 +78,15 @@ export default function CompanyDetailsPage() {
 
       setPassword('');
       toast.success('Company details saved');
+
+      const reload = await api.get('/company-details');
+      const data = reload.data || {};
+      setFormData((prev) => ({
+        ...prev,
+        ...Object.fromEntries(
+          Object.keys(prev).map((key) => [key, data[key] || ''])
+        ),
+      }));
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Save failed');
     }
