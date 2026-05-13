@@ -48,8 +48,25 @@ export default function CompanyDetailsPage() {
   const loadCompanyDetails = async () => {
     try {
       const response = await api.get('/company-details');
-      if (response.data) {
-        setFormData((prev) => ({ ...prev, ...response.data }));
+      if (response.data && typeof response.data === 'object') {
+        setFormData((prev) => ({
+          ...prev,
+          company_name: response.data.company_name || '',
+          registration_number: response.data.registration_number || '',
+          vat_number: response.data.vat_number || '',
+          phone: response.data.phone || '',
+          email: response.data.email || '',
+          website: response.data.website || '',
+          address: response.data.address || '',
+          bank_name: response.data.bank_name || '',
+          bank_account_name: response.data.bank_account_name || '',
+          bank_account_number: response.data.bank_account_number || '',
+          bank_branch_code: response.data.bank_branch_code || '',
+          quote_footer: response.data.quote_footer || '',
+          invoice_footer: response.data.invoice_footer || '',
+          statement_footer: response.data.statement_footer || '',
+          logo_data_url: response.data.logo_data_url || '',
+        }));
       }
     } catch {
       toast.error('Failed to load company details');
