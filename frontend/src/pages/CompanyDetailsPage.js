@@ -155,18 +155,7 @@ export default function CompanyDetailsPage() {
             <p className="text-slate-600 mt-2">
               Configure company information for quotes, invoices, statements and reports.
             </p>
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            onClick={downloadPdfTemplate}
-            className="border-slate-300 text-slate-700 bg-slate-100 hover:bg-slate-200"
-          >
-            <FileText size={18} className="mr-2" />
-            Download PDF Template
-          </Button>
-        </div>
+          </div>        </div>
 
         <Card className="card-technical">
           <CardHeader>
@@ -302,13 +291,31 @@ export default function CompanyDetailsPage() {
               />
             </div>
 
-            <Button
-              onClick={handleSave}
-              disabled={saving}
-              className="bg-[#2563EB] hover:bg-[#1d4ed8]"
-            >
-              {saving ? 'Saving...' : 'Save Company Details'}
-            </Button>
+            <div className="space-y-3">
+              <p className="text-xs text-slate-500">
+                First save the company details, then click Download PDF Template to preview how quotes, invoices and statements will look with the saved information.
+              </p>
+
+              <div className="flex flex-col gap-3 md:flex-row md:items-center">
+                <Button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="bg-[#2563EB] hover:bg-[#1d4ed8]"
+                >
+                  {saving ? 'Saving...' : 'Save Company Details'}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={downloadPdfTemplate}
+                  className="border-slate-300 text-slate-700 bg-slate-100 hover:bg-slate-200"
+                >
+                  <FileText size={18} className="mr-2" />
+                  Download PDF Template
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
