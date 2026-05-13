@@ -185,6 +185,8 @@ export default function CompanyDetailsPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your login password"
+                autoComplete="new-password"
+                name="company-details-verification"
               />
 
               <button type="button" className="rounded border px-4" onClick={() => setShowPassword((prev) => !prev)}>
@@ -198,11 +200,11 @@ export default function CompanyDetailsPage() {
           </p>
 
           <div className="flex gap-3">
-            <button type="button" className="rounded bg-blue-600 text-white px-4 py-2" onClick={save}>
+            <button type="button" className="rounded bg-blue-600 text-white px-4 py-2" onClick={(e) => { e.preventDefault(); save(); }}>
               Save Company Details
             </button>
 
-            <button type="button" className="rounded border px-4 py-2" onClick={downloadTemplate}>
+            <button type="button" className="rounded border px-4 py-2" onClick={(e) => { e.preventDefault(); downloadTemplate(); }}>
               Download PDF Template
             </button>
           </div>
