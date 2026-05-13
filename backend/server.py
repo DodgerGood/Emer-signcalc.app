@@ -1,5 +1,6 @@
 from fastapi import HTTPException
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Response, UploadFile, File
+from fastapi.exceptions import RequestValidationError
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -25,7 +26,7 @@ import math
 import base64
 import smtplib
 from email.message import EmailMessage
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 import io
 import csv
 from typing import Optional, List
