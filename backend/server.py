@@ -6855,6 +6855,18 @@ async def export_company_details_template_pdf(user: dict = Depends(require_manag
     )
 
 
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+    print("VALIDATION ERROR:", exc.errors())
+    print("REQUEST BODY:", exc.body)
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors(), "body": exc.body},
+    )
+
+
 # Include router
 app.include_router(api_router)
 
