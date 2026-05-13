@@ -17,7 +17,7 @@ from passlib.context import CryptContext
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 from reportlab.lib.units import mm
 from io import BytesIO
 from openpyxl import Workbook
@@ -4405,16 +4405,34 @@ async def export_client_statement_pdf(
 
     elements = []
 
-    logo_placeholder = Table(
-        [[Paragraph("<font color='white'><b>LOGO</b></font>", normal)]],
-        colWidths=[28 * mm],
-        rowHeights=[28 * mm]
-    )
-    logo_placeholder.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#94A3B8")),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-    ]))
+    logo_data_url = company_details.get("logo_data_url") or ""
+
+    if logo_data_url.startswith("data:image/png;base64,"):
+        try:
+            logo_bytes = base64.b64decode(logo_data_url.split(",", 1)[1])
+            logo_placeholder = Image(BytesIO(logo_bytes), width=28 * mm, height=28 * mm)
+        except Exception:
+            logo_placeholder = Table(
+                [[Paragraph("<font color='white'><b>LOGO</b></font>", normal)]],
+                colWidths=[28 * mm],
+                rowHeights=[28 * mm]
+            )
+            logo_placeholder.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#94A3B8")),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ]))
+    else:
+        logo_placeholder = Table(
+            [[Paragraph("<font color='white'><b>LOGO</b></font>", normal)]],
+            colWidths=[28 * mm],
+            rowHeights=[28 * mm]
+        )
+        logo_placeholder.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#94A3B8")),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ]))
 
     header = Table(
         [[
@@ -6738,16 +6756,34 @@ async def export_company_details_template_pdf(user: dict = Depends(require_manag
         company_details.get("bank_branch_code") or "",
     ]).strip(" |")
 
-    logo_placeholder = Table(
-        [[Paragraph("<font color='white'><b>LOGO</b></font>", normal)]],
-        colWidths=[28 * mm],
-        rowHeights=[28 * mm]
-    )
-    logo_placeholder.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#94A3B8")),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-    ]))
+    logo_data_url = company_details.get("logo_data_url") or ""
+
+    if logo_data_url.startswith("data:image/png;base64,"):
+        try:
+            logo_bytes = base64.b64decode(logo_data_url.split(",", 1)[1])
+            logo_placeholder = Image(BytesIO(logo_bytes), width=28 * mm, height=28 * mm)
+        except Exception:
+            logo_placeholder = Table(
+                [[Paragraph("<font color='white'><b>LOGO</b></font>", normal)]],
+                colWidths=[28 * mm],
+                rowHeights=[28 * mm]
+            )
+            logo_placeholder.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#94A3B8")),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ]))
+    else:
+        logo_placeholder = Table(
+            [[Paragraph("<font color='white'><b>LOGO</b></font>", normal)]],
+            colWidths=[28 * mm],
+            rowHeights=[28 * mm]
+        )
+        logo_placeholder.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#94A3B8")),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ]))
 
     header = Table(
         [[
