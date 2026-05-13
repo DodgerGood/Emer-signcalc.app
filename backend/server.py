@@ -6628,7 +6628,7 @@ async def save_company_details(
 
     user_data = await db.users.find_one({"id": user["id"]}, {"_id": 0})
     if not user_data or not verify_password(payload.verification_password or "", user_data.get("password_hash", "")):
-        raise HTTPException(status_code=401, detail="Login password verification failed")
+        raise HTTPException(status_code=400, detail="Login password verification failed")
 
     data = payload.model_dump()
     data.pop("verification_password", None)
