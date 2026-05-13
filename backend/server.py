@@ -711,6 +711,8 @@ class CompanyDetails(BaseModel):
     statement_footer: Optional[str] = None
 
     logo_url: Optional[str] = None
+    logo_data_url: Optional[str] = None
+    verification_password: Optional[str] = None
 
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
@@ -6606,7 +6608,12 @@ async def save_company_details(
     if user["role"] not in ["MD_ADMIN", "CEO", "MANAGER"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
+    user_data = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+    if not user_data or not verify_password(payload.verification_password or "", user_data.get("password_hash", "")):
+        raise HTTPException(status_code=401, detail="Login password verification failed")
+
     data = payload.model_dump()
+    data.pop("verification_password", None)
     data["company_id"] = user["company_id"]
     data["updated_at"] = datetime.now(timezone.utc).isoformat()
 
@@ -6623,6 +6630,211 @@ async def save_company_details(
         await db.company_details.insert_one(data)
 
     return {"message": "Company details saved"}
+
+
+
+@api_router.get("/company-details/template-pdf")
+async def export_company_details_template_pdf(user: dict = Depends(require_manager)):
+    if user["role"] not in ["MD_ADMIN", "CEO", "MANAGER"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    company_details = await db.company_details.find_one(
+        {"company_id": user["company_id"]},
+        {"_id": 0}
+    )
+
+    if not company_details:
+        raise HTTPException(status_code=400, detail="Save company details before downloading the PDF template")
+
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=18 * mm,
+        leftMargin=18 * mm,
+        topMargin=16 * mm,
+        bottomMargin=16 * mm
+    )
+
+    styles = getSampleStyleSheet()
+    navy = colors.HexColor("#0F172A")
+    blue = colors.HexColor("#2563EB")
+    slate = colors.HexColor("#475569")
+    light_border = colors.HexColor("#CBD5E1")
+
+    title_style = ParagraphStyle(
+        "TemplateTitle",
+        parent=styles["Heading1"],
+        fontSize=28,
+        leading=32,
+        textColor=navy,
+        spaceAfter=4,
+    )
+
+    normal = ParagraphStyle(
+        "TemplateNormal",
+        parent=styles["Normal"],
+        fontSize=8,
+        leading=10,
+        textColor=navy,
+    )
+
+    small = ParagraphStyle(
+        "TemplateSmall",
+        parent=styles["Normal"],
+        fontSize=6,
+        leading=8,
+        textColor=slate,
+    )
+
+    elements = []
+
+    company_name = company_details.get("company_name") or "Your Company Name"
+    company_address = company_details.get("address") or "Company address"
+    company_phone = company_details.get("phone") or "Telephone"
+    company_email = company_details.get("email") or "Email"
+    company_vat = company_details.get("vat_number") or "VAT number"
+    registration_number = company_details.get("registration_number") or "Registration number"
+    website = company_details.get("website") or ""
+    banking_details = " | ".join([
+        company_details.get("bank_name") or "",
+        company_details.get("bank_account_name") or "",
+        company_details.get("bank_account_number") or "",
+        company_details.get("bank_branch_code") or "",
+    ]).strip(" |")
+
+    logo_placeholder = Table(
+        [[Paragraph("<font color='white'><b>LOGO</b></font>", normal)]],
+        colWidths=[28 * mm],
+        rowHeights=[28 * mm]
+    )
+    logo_placeholder.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#94A3B8")),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+    ]))
+
+    header = Table(
+        [[
+            Paragraph(
+                f"PDF TEMPLATE PREVIEW<br/><font size='14' color='#2563EB'>{company_name}</font><br/><font size='5'>Quote / Invoice / Statement Layout Preview</font>",
+                title_style
+            ),
+            logo_placeholder
+        ]],
+        colWidths=[120 * mm, 50 * mm]
+    )
+    header.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+    ]))
+
+    elements.append(header)
+    elements.append(Spacer(1, 18))
+
+    client_to = Paragraph(
+        "<b>CLIENT DETAILS</b><br/>Example Client<br/>Example Billing Address<br/>client@example.com<br/>012 345 6789",
+        normal
+    )
+
+    billing_to = Paragraph(
+        f"<para alignment='right'><b>BILLING COMPANY</b><br/>{company_name}<br/>{company_address}<br/>Tel: {company_phone}<br/>Email: {company_email}<br/>VAT No: {company_vat}<br/>Reg No: {registration_number}<br/>{website}</para>",
+        normal
+    )
+
+    info_table = Table([[client_to, "", billing_to]], colWidths=[70 * mm, 30 * mm, 70 * mm])
+    info_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ]))
+    elements.append(info_table)
+    elements.append(Spacer(1, 16))
+
+    table_data = [
+        ["Description", "Qty", "Unit", "Total"],
+        ["Example signage item", "1", "R 1 000.00", "R 1 000.00"],
+        ["Example installation", "1", "R 500.00", "R 500.00"],
+    ]
+
+    preview_table = Table(table_data, colWidths=[90 * mm, 20 * mm, 30 * mm, 30 * mm])
+    preview_table.setStyle(TableStyle([
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("TEXTCOLOR", (0, 0), (-1, 0), navy),
+        ("FONTSIZE", (0, 0), (-1, 0), 7),
+        ("FONTSIZE", (0, 1), (-1, -1), 7),
+        ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
+        ("LINEABOVE", (0, 0), (-1, 0), 0.8, blue),
+        ("LINEBELOW", (0, 0), (-1, 0), 0.8, blue),
+        ("LINEBELOW", (0, -1), (-1, -1), 0.8, blue),
+        ("PADDING", (0, 0), (-1, -1), 5),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+
+    elements.append(preview_table)
+    elements.append(Spacer(1, 12))
+
+    total_table = Table(
+        [[
+            "",
+            Paragraph("<b>TOTAL PREVIEW</b>", normal),
+            Paragraph("<b>R 1 500.00</b>", ParagraphStyle(
+                "TotalPreview",
+                parent=normal,
+                fontSize=13,
+                leading=15,
+                textColor=navy,
+                alignment=2,
+            ))
+        ]],
+        colWidths=[85 * mm, 45 * mm, 40 * mm]
+    )
+    total_table.setStyle(TableStyle([
+        ("LINEABOVE", (0, 0), (-1, 0), 0.8, blue),
+        ("PADDING", (0, 0), (-1, -1), 6),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+
+    elements.append(total_table)
+    elements.append(Spacer(1, 8))
+
+    footer_text = company_details.get("quote_footer") or company_details.get("invoice_footer") or company_details.get("statement_footer") or "Document footer preview."
+    elements.append(Paragraph(footer_text, small))
+
+    def draw_header_footer(canvas_obj, doc_obj):
+        content_left = 18 * mm
+        content_right = 188 * mm
+
+        canvas_obj.setStrokeColor(blue)
+        canvas_obj.setLineWidth(0.8)
+        canvas_obj.line(content_left, 32 * mm, content_right, 32 * mm)
+
+        canvas_obj.setFillColor(navy)
+        canvas_obj.setFont("Helvetica-Bold", 18)
+        canvas_obj.drawString(18 * mm, 22 * mm, "THANK YOU")
+
+        canvas_obj.setFillColor(slate)
+        canvas_obj.setFont("Helvetica-Bold", 7)
+        canvas_obj.drawString(18 * mm, 15 * mm, "TERMS & CONDITIONS")
+        canvas_obj.setFont("Helvetica", 6)
+        canvas_obj.drawString(18 * mm, 11 * mm, str(footer_text)[:95])
+
+        canvas_obj.setFont("Helvetica-Bold", 7)
+        canvas_obj.drawRightString(188 * mm, 20 * mm, "BANKING DETAILS")
+        canvas_obj.setFont("Helvetica", 6)
+        canvas_obj.drawRightString(188 * mm, 16 * mm, str(banking_details or "Banking details")[:70])
+
+    doc.build(elements, onFirstPage=draw_header_footer, onLaterPages=draw_header_footer)
+    buffer.seek(0)
+
+    safe_name = (company_name or "company").replace(" ", "_")
+
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{safe_name}-pdf-template-preview.pdf"'
+        }
+    )
 
 
 # Include router
