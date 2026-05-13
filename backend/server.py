@@ -94,7 +94,7 @@ class User(BaseModel):
     email: str
     full_name: str
     role: str
-    company_id: str
+    company_id: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     session_id: Optional[str] = None
