@@ -214,7 +214,7 @@ class User(BaseModel):
     lockout_until: Optional[str] = None  # Account lockout timestamp
 
 class AdminCompanySummary(BaseModel):
-    company_id: str
+    company_id: Optional[str] = None
     company_name: str
     status: str = "ACTIVE"
     suspension_comment: Optional[str] = None
