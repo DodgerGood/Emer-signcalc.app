@@ -6597,7 +6597,25 @@ async def get_company_details(user: dict = Depends(get_current_user)):
     if not company:
         return {}
 
-    return company
+    safe_company = {
+        "company_name": company.get("company_name") or "",
+        "registration_number": company.get("registration_number") or "",
+        "vat_number": company.get("vat_number") or "",
+        "phone": company.get("phone") or "",
+        "email": company.get("email") or "",
+        "website": company.get("website") or "",
+        "address": company.get("address") or "",
+        "bank_name": company.get("bank_name") or "",
+        "bank_account_name": company.get("bank_account_name") or "",
+        "bank_account_number": company.get("bank_account_number") or "",
+        "bank_branch_code": company.get("bank_branch_code") or "",
+        "quote_footer": company.get("quote_footer") or "",
+        "invoice_footer": company.get("invoice_footer") or "",
+        "statement_footer": company.get("statement_footer") or "",
+        "logo_data_url": company.get("logo_data_url") or "",
+    }
+
+    return safe_company
 
 
 @api_router.post("/company-details")
