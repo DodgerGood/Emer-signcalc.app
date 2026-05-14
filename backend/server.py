@@ -6171,12 +6171,27 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     vat = float(blueprint.get("vat") or 0)
     total_amount = float(blueprint.get("total_amount") or quote.get("total_amount") or 0)
 
-    company_name = company.get("name") or "Your Company Name"
-    company_address = company.get("address") or "Company address placeholder"
-    company_phone = company.get("phone") or "Telephone placeholder"
-    company_email = company.get("email") or "Email placeholder"
-    company_vat = company.get("vat_number") or "VAT number placeholder"
-    banking_details = company.get("banking_details") or "Banking details placeholder"
+    company_name = company_details.get("company_name") or company.get("name") or "Your Company Name"
+    company_address = company_details.get("address") or company.get("address") or "Company address placeholder"
+    company_phone = company_details.get("phone") or company.get("phone") or "Telephone placeholder"
+    company_email = company_details.get("email") or company.get("email") or "Email placeholder"
+    company_vat = company_details.get("vat_number") or company.get("vat_number") or "VAT number placeholder"
+
+    bank_parts = [
+        f"Bank: {company_details.get('bank_name')}" if company_details.get("bank_name") else "",
+        f"Account Name: {company_details.get('bank_account_name')}" if company_details.get("bank_account_name") else "",
+        f"Account No: {company_details.get('bank_account_number')}" if company_details.get("bank_account_number") else "",
+        f"Branch Code: {company_details.get('bank_branch_code')}" if company_details.get("bank_branch_code") else "",
+    ]
+    banking_details = " | ".join([part for part in bank_parts if part]) or company.get("banking_details") or "Banking details placeholder"
+
+    footer_text = (
+        company_details.get("invoice_footer")
+        if document_type == "INVOICE"
+        else company_details.get("quote_footer")
+    ) or "Payment terms placeholder. Quote valid for 7 days unless stated otherwise."
+
+    logo_data_url = company_details.get("logo_data_url") or ""
 
     from reportlab.pdfgen import canvas as rl_canvas
 
