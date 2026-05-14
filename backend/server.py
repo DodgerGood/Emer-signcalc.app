@@ -4348,6 +4348,7 @@ async def export_client_statement_pdf(
         filtered_invoices.append(invoice)
 
     company = await db.companies.find_one({"id": user["company_id"]}, {"_id": 0}) or {}
+    company_details = await db.company_details.find_one({"company_id": user["company_id"]}, {"_id": 0}) or {}
 
     company_name = company_details.get("company_name") or company.get("name") or "Your Company Name"
     company_address = company_details.get("address") or company.get("address") or "Company address placeholder"
@@ -6190,11 +6191,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     ]
     banking_details = " | ".join([part for part in bank_parts if part]) or company.get("banking_details") or "Banking details placeholder"
 
-    footer_text = (
-        company_details.get("invoice_footer")
-        if document_type == "INVOICE"
-        else company_details.get("quote_footer")
-    ) or "Payment terms placeholder. Quote valid for 7 days unless stated otherwise."
+    footer_text = company_details.get("statement_footer") or "Payment terms placeholder. Paid invoices are shown for record purposes."
 
     logo_data_url = company_details.get("logo_data_url") or ""
 
