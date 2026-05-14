@@ -1,4 +1,4 @@
-from fastapi import HTTPException
+from fastapi import UploadFile, File, HTTPException
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Response, UploadFile, File
 from fastapi.exceptions import RequestValidationError
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -6455,6 +6455,102 @@ async def export_bom_pdf(quote_id: str, user: dict = Depends(get_current_user)):
         }
     )
 
+
+
+@api_router.post("/approved/{quote_id}/design-proof")
+async def upload_design_proof(
+    quote_id: str,
+    proof_file: UploadFile = File(...),
+    user: dict = Depends(get_current_user)
+):
+    quote = await db.quotes.find_one(
+        {"id": quote_id, "company_id": user["company_id"]},
+        {"_id": 0}
+    )
+
+    if not quote:
+        raise HTTPException(status_code=404, detail="Approved invoice not found")
+
+    if not quote.get("invoice_number"):
+        raise HTTPException(status_code=400, detail="Design proof can only be uploaded after invoice approval")
+
+    allowed_content_types = {
+        "application/pdf",
+        "image/png",
+        "image/jpeg",
+        "image/jpg",
+    }
+
+    content_type = proof_file.content_type or ""
+    if content_type not in allowed_content_types:
+        raise HTTPException(status_code=400, detail="Design proof must be a PDF, PNG, or JPG file")
+
+    file_bytes = await proof_file.read()
+    max_size_bytes = 5 * 1024 * 1024
+
+    if len(file_bytes) > max_size_bytes:
+        raise HTTPException(status_code=400, detail="Design proof file must be 5MB or smaller")
+
+    encoded_file = base64.b64encode(file_bytes).decode("utf-8")
+    data_url = f"data:{content_type};base64,{encoded_file}"
+    uploaded_at = datetime.now(timezone.utc).isoformat()
+
+    await db.quotes.update_one(
+        {"id": quote_id, "company_id": user["company_id"]},
+        {
+            "$set": {
+                "design_proof_filename": proof_file.filename or "design-proof",
+                "design_proof_content_type": content_type,
+                "design_proof_data_url": data_url,
+                "design_proof_uploaded_at": uploaded_at,
+                "design_proof_uploaded_by": user["id"],
+                "design_proof_uploaded_by_name": user.get("full_name") or "",
+                "updated_at": uploaded_at,
+            }
+        }
+    )
+
+    return {
+        "message": "Design proof uploaded",
+        "filename": proof_file.filename or "design-proof",
+        "uploaded_at": uploaded_at,
+    }
+
+
+@api_router.get("/approved/{quote_id}/design-proof")
+async def download_design_proof(quote_id: str, user: dict = Depends(get_current_user)):
+    quote = await db.quotes.find_one(
+        {"id": quote_id, "company_id": user["company_id"]},
+        {"_id": 0}
+    )
+
+    if not quote:
+        raise HTTPException(status_code=404, detail="Approved invoice not found")
+
+    if not quote.get("invoice_number"):
+        raise HTTPException(status_code=400, detail="Design proof is only available after invoice approval")
+
+    data_url = quote.get("design_proof_data_url") or ""
+    filename = quote.get("design_proof_filename") or "design-proof"
+    content_type = quote.get("design_proof_content_type") or "application/octet-stream"
+
+    if not data_url or ";base64," not in data_url:
+        raise HTTPException(status_code=404, detail="No design proof has been uploaded")
+
+    try:
+        file_bytes = base64.b64decode(data_url.split(";base64,", 1)[1])
+    except Exception:
+        raise HTTPException(status_code=500, detail="Stored design proof could not be decoded")
+
+    safe_filename = filename.replace('"', "").replace("\n", " ").replace("\r", " ")
+
+    return Response(
+        content=file_bytes,
+        media_type=content_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{safe_filename}"'
+        }
+    )
 
 
 @api_router.post("/approved/{quote_id}/move-back-to-quote")
