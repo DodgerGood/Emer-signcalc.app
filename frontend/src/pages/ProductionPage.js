@@ -19,6 +19,7 @@ import {
 import { toast } from 'sonner';
 
 const WORKDAY_MINUTES = 8 * 60;
+const DAY_WIDTH = 112;
 const SETUP_MINUTES = 15;
 const REMOVAL_MINUTES = 15;
 
