@@ -919,7 +919,7 @@ export default function ProductionPage() {
 
           <div className="space-y-6">
             {/* JOB OVERVIEW CALENDAR */}
-            <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+            <div className="max-w-full overflow-hidden rounded-2xl border bg-white shadow-sm">
               <div className="flex flex-col gap-3 border-b bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <h2 className="flex items-center gap-2 text-lg font-black">
@@ -939,11 +939,11 @@ export default function ProductionPage() {
               ) : jobOverviewRows.length === 0 ? (
                 <div className="p-12 text-center text-slate-500">No posted production jobs found.</div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="max-w-full overflow-x-auto">
                   <div
-                    className="relative min-w-[1300px]"
+                    className="relative"
                     style={{
-                      width: `${360 + calendarDays.length * 160}px`,
+                      width: `${360 + calendarDays.length * DAY_WIDTH}px`,
                     }}
                   >
                     <div
@@ -1062,14 +1062,14 @@ export default function ProductionPage() {
                       </div>
                     ))}
 
-                    <TodayLine calendarDays={calendarDays} today={today} leftWidth={360} dayWidth={160} />
+                    <TodayLine calendarDays={calendarDays} today={today} leftWidth={360} dayWidth={DAY_WIDTH} />
                   </div>
                 </div>
               )}
             </div>
 
             {/* DEPARTMENT / MACHINE CALENDAR */}
-            <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+            <div className="max-w-full overflow-hidden rounded-2xl border bg-white shadow-sm">
               <div className="flex flex-col gap-3 border-b bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <h2 className="flex items-center gap-2 text-lg font-black">
@@ -1101,11 +1101,11 @@ export default function ProductionPage() {
               ) : resourceRows.length === 0 ? (
                 <div className="p-12 text-center text-slate-500">No scheduled resources found for this department filter.</div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="max-w-full overflow-x-auto">
                   <div
-                    className="relative min-w-[1300px]"
+                    className="relative"
                     style={{
-                      width: `${300 + calendarDays.length * 160}px`,
+                      width: `${300 + calendarDays.length * DAY_WIDTH}px`,
                     }}
                   >
                     <div
@@ -1181,7 +1181,7 @@ export default function ProductionPage() {
                       </div>
                     ))}
 
-                    <TodayLine calendarDays={calendarDays} today={today} leftWidth={300} dayWidth={160} />
+                    <TodayLine calendarDays={calendarDays} today={today} leftWidth={300} dayWidth={DAY_WIDTH} />
                   </div>
                 </div>
               )}
