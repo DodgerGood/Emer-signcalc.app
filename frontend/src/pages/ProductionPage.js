@@ -1,70 +1,112 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Layout } from '../components/Layout';
 import api from '../lib/api';
+
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+
 import {
   CalendarDays,
+  ClipboardList,
   Download,
   Factory,
+  FileCheck,
+  FileText,
+  Hammer,
+  Package,
+  PackageCheck,
+  Search,
+  Truck,
   Users,
   Wrench,
-  Truck,
-  PackageCheck,
-  ClipboardList,
-  FileCheck,
-  Search,
-  RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const WORKDAY_MINUTES = 8 * 60;
-const DAY_WIDTH = 112;
+const DAY_WIDTH = 150;
+const JOB_COLUMN_WIDTH = 380;
+const RESOURCE_COLUMN_WIDTH = 300;
 const DAYS_BACK = 7;
 const DAYS_FORWARD = 14;
+const CALENDAR_DAYS = DAYS_BACK + 1 + DAYS_FORWARD;
+
 const SETUP_MINUTES = 15;
 const REMOVAL_MINUTES = 15;
 
-const CALENDAR_DAYS = DAYS_BACK + 1 + DAYS_FORWARD;
-
-const jobColourClasses = [
-  'bg-blue-500',
-  'bg-emerald-500',
-  'bg-purple-500',
-  'bg-orange-500',
-  'bg-cyan-500',
-  'bg-rose-500',
-  'bg-indigo-500',
-  'bg-amber-500',
-  'bg-teal-500',
-  'bg-pink-500',
+const jobColours = [
+  {
+    dot: 'bg-blue-500',
+    card: 'bg-blue-500',
+    soft: 'bg-blue-50',
+    text: 'text-blue-700',
+  },
+  {
+    dot: 'bg-emerald-500',
+    card: 'bg-emerald-500',
+    soft: 'bg-emerald-50',
+    text: 'text-emerald-700',
+  },
+  {
+    dot: 'bg-purple-500',
+    card: 'bg-purple-500',
+    soft: 'bg-purple-50',
+    text: 'text-purple-700',
+  },
+  {
+    dot: 'bg-orange-500',
+    card: 'bg-orange-500',
+    soft: 'bg-orange-50',
+    text: 'text-orange-700',
+  },
+  {
+    dot: 'bg-cyan-500',
+    card: 'bg-cyan-500',
+    soft: 'bg-cyan-50',
+    text: 'text-cyan-700',
+  },
+  {
+    dot: 'bg-rose-500',
+    card: 'bg-rose-500',
+    soft: 'bg-rose-50',
+    text: 'text-rose-700',
+  },
 ];
 
 const statusClasses = {
   QUEUED: 'bg-slate-100 text-slate-700 border-slate-200',
-  IN_PROGRESS: 'bg-amber-100 text-amber-700 border-amber-200',
-  DONE: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  ACTIVE: 'bg-blue-100 text-blue-700 border-blue-200',
+  IN_PROGRESS: 'bg-blue-100 text-blue-700 border-blue-200',
+  WAITING: 'bg-amber-100 text-amber-700 border-amber-200',
+  COMPLETE: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  CLOSED: 'bg-emerald-100 text-emerald-700 border-emerald-200',
 };
 
-const departmentOptions = [
-  { value: 'ALL', label: 'All Departments' },
-  { value: 'ADMIN', label: 'Admin / Job Pack' },
-  { value: 'DESIGN', label: 'Design' },
-  { value: 'PROCUREMENT', label: 'Procurement' },
-  { value: 'STOCK', label: 'Stock' },
-  { value: 'MACHINE', label: 'Machines' },
-  { value: 'MACHINE_HIRE', label: 'Machine Hire' },
-  { value: 'LABOUR', label: 'Labour' },
-  { value: 'QC', label: 'QC' },
-  { value: 'PACKING', label: 'Packing' },
-  { value: 'DISPATCH', label: 'Dispatch' },
-  { value: 'INSTALLATION', label: 'Installation' },
-  { value: 'CLOSE', label: 'Close Job' },
+const baseWorkflow = [
+  { name: 'Job Pack', department: 'ADMIN', minutes: 30, dayOffset: 0 },
+  { name: 'Design', department: 'DESIGN', minutes: 60, dayOffset: 1 },
+  { name: 'Procurement', department: 'PROCUREMENT', minutes: 60, dayOffset: 1 },
+  { name: 'Production Brief', department: 'ADMIN', minutes: 30, dayOffset: 1 },
+  { name: 'Stock Issuing', department: 'STOCK', minutes: 30, dayOffset: 2 },
+  { name: 'QC', department: 'QC', minutes: 30, dayOffset: 3 },
+  { name: 'Packing', department: 'PACKING', minutes: 30, dayOffset: 4 },
+  { name: 'Dispatch', department: 'DISPATCH', minutes: 45, dayOffset: 5 },
+  { name: 'Delivery Note Signed', department: 'DISPATCH', minutes: 15, dayOffset: 6 },
+  { name: 'Close Job', department: 'ADMIN', minutes: 15, dayOffset: 6 },
 ];
 
-function clean(value, fallback) {
-  return String(value || '').trim() || fallback;
-}
+const departmentOptions = [
+  'ALL',
+  'ADMIN',
+  'DESIGN',
+  'PROCUREMENT',
+  'STOCK',
+  'MACHINE',
+  'LABOUR',
+  'INSTALLATION',
+  'MACHINE HIRE',
+  'QC',
+  'PACKING',
+  'DISPATCH',
+];
 
 function startOfDay(value) {
   const date = value ? new Date(value) : new Date();
@@ -82,626 +124,294 @@ function startOfDay(value) {
 function addDays(date, days) {
   const copy = new Date(date);
   copy.setDate(copy.getDate() + days);
-  copy.setHours(0, 0, 0, 0);
   return copy;
 }
 
-function getMonday(date) {
-  const copy = startOfDay(date);
-  const day = copy.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  return addDays(copy, diff);
-}
-
 function dateKey(date) {
-  return date.toISOString().slice(0, 10);
-}
-
-function formatDayLabel(date) {
-  return date.toLocaleDateString('en-ZA', {
-    weekday: 'short',
-    day: '2-digit',
-    month: 'short',
-  });
-}
-
-function formatShortDate(date) {
-  return date.toLocaleDateString('en-ZA', {
-    day: '2-digit',
-    month: 'short',
-  });
+  return startOfDay(date).toISOString().slice(0, 10);
 }
 
 function isWeekend(date) {
-  const day = date.getDay();
+  const day = startOfDay(date).getDay();
   return day === 0 || day === 6;
+}
+
+function formatDayHeader(date, today) {
+  const dayName = date.toLocaleDateString('en-ZA', { weekday: 'short' }).toUpperCase();
+  const dayNumber = date.toLocaleDateString('en-ZA', { day: '2-digit' });
+  const month = date.toLocaleDateString('en-ZA', { month: 'short' }).toUpperCase();
+  const isToday = dateKey(date) === dateKey(today);
+
+  return {
+    top: `${dayName}, ${dayNumber} ${month}`,
+    bottom: isToday ? 'TODAY' : isWeekend(date) ? 'WEEKEND' : '',
+    isToday,
+    weekend: isWeekend(date),
+  };
 }
 
 function formatHours(minutes) {
   const value = Number(minutes || 0);
 
-  if (!value) return '0h';
-  if (value < 60) return `${Math.round(value)}min`;
+  if (value < 60) {
+    return `${Math.round(value)}min`;
+  }
 
-  return `${(value / 60).toFixed(2).replace(/\.00$/, '')}h`;
+  const hours = value / 60;
+  return `${Number.isInteger(hours) ? hours.toFixed(0) : hours.toFixed(2)}h`;
+}
+
+function safeNumber(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function truncateFileName(name) {
+  if (!name) return 'No job pack';
+  return name.length > 24 ? `${name.slice(0, 21)}...` : name;
 }
 
 function getStepIcon(department) {
-  if (department === 'DESIGN') return <FileCheck size={14} />;
-  if (department === 'PROCUREMENT') return <PackageCheck size={14} />;
-  if (department === 'STOCK') return <PackageCheck size={14} />;
-  if (department === 'MACHINE' || department === 'MACHINE_HIRE') return <Factory size={14} />;
-  if (department === 'LABOUR') return <Users size={14} />;
-  if (department === 'INSTALLATION') return <Wrench size={14} />;
-  if (department === 'DISPATCH') return <Truck size={14} />;
+  const key = String(department || '').toUpperCase();
 
-  return <ClipboardList size={14} />;
+  if (key.includes('MACHINE')) return <Factory size={13} />;
+  if (key.includes('LABOUR')) return <Users size={13} />;
+  if (key.includes('INSTALL')) return <Wrench size={13} />;
+  if (key.includes('STOCK') || key.includes('PROCUREMENT')) return <Package size={13} />;
+  if (key.includes('QC')) return <FileCheck size={13} />;
+  if (key.includes('PACK')) return <PackageCheck size={13} />;
+  if (key.includes('DISPATCH') || key.includes('DELIVERY')) return <Truck size={13} />;
+  if (key.includes('DESIGN')) return <FileText size={13} />;
+
+  return <ClipboardList size={13} />;
+}
+
+function getJobDate(job, today) {
+  return startOfDay(
+    job.production_posted_at ||
+      job.production_started_at ||
+      job.invoice_created_at ||
+      job.created_at ||
+      today
+  );
+}
+
+function getJobLabel(job) {
+  return `${job.invoice_number || job.quote_number || job.estimate_number || 'Job'} - ${job.client_name || 'Client'}`;
+}
+
+function getRecipeMachineEntries(job) {
+  const blueprint = job.blueprint || {};
+  const estimateLines = Array.isArray(blueprint.estimate_lines) ? blueprint.estimate_lines : [];
+  const recipeBreakdowns = [];
+
+  estimateLines.forEach((line) => {
+    const qty = safeNumber(line.quantity, 1);
+
+    if (Array.isArray(line.recipe_breakdown)) {
+      line.recipe_breakdown.forEach((entry) => {
+        recipeBreakdowns.push({
+          ...entry,
+          quoteQuantity: qty,
+          sourceName: line.item_name || line.product_name || line.recipe_name || entry.name,
+        });
+      });
+    }
+
+    if (Array.isArray(line.breakdown)) {
+      line.breakdown.forEach((entry) => {
+        recipeBreakdowns.push({
+          ...entry,
+          quoteQuantity: qty,
+          sourceName: line.item_name || line.product_name || line.recipe_name || entry.name,
+        });
+      });
+    }
+  });
+
+  return recipeBreakdowns;
 }
 
 function makeStep({
   id,
-  group,
   name,
   department,
-  owner,
-  plannedMinutes,
-  dependsOn = [],
-  canRunParallel = false,
-  source = '',
+  resource,
+  minutes,
+  dayOffset,
+  job,
+  jobColour,
+  today,
 }) {
+  const startDate = addDays(getJobDate(job, today), dayOffset);
+
   return {
     id,
-    group,
     name,
     department,
-    owner,
-    plannedMinutes: Number(plannedMinutes || 0),
-    dependsOn,
-    canRunParallel,
-    source,
+    resource: resource || department,
+    plannedMinutes: Math.max(5, Math.round(safeNumber(minutes, 30))),
+    startDate,
+    endDate: startDate,
+    jobId: job.id,
+    jobLabel: getJobLabel(job),
+    jobColour,
   };
 }
 
-function firstNumber(...values) {
-  for (const value of values) {
-    const number = Number(value);
-    if (Number.isFinite(number) && number > 0) return number;
-  }
-
-  return 0;
-}
-
-function firstText(...values) {
-  for (const value of values) {
-    const text = String(value || '').trim();
-    if (text) return text;
-  }
-
-  return '';
-}
-
-function calculateLineSqm(line) {
-  const width = Number(line.width_mm || line.width || 0);
-  const height = Number(line.height_mm || line.height || 0);
-  const qty = Number(line.quantity || line.qty || 1);
-
-  if (!width || !height) return 0;
-
-  return (width * height * qty) / 1000000;
-}
-
-function calculateResourceMinutes(entry, line, quoteQty) {
-  const lineSqm = calculateLineSqm(line);
-  const qty = Number(quoteQty || line.quantity || line.qty || 1);
-
-  const directHours = firstNumber(
-    entry.total_hours,
-    entry.hours_total,
-    entry.calculated_hours,
-    entry.production_hours,
-    entry.install_hours,
-    entry.labour_hours,
-    entry.labor_hours,
-    entry.machine_hours,
-    entry.hours
-  );
-
-  if (directHours) return directHours * 60;
-
-  const hoursPerSqm = firstNumber(
-    entry.hours_per_sqm,
-    entry.labour_hours_per_sqm,
-    entry.labor_hours_per_sqm,
-    entry.machine_hours_per_sqm,
-    entry.install_hours_per_sqm
-  );
-
-  if (hoursPerSqm && lineSqm) return hoursPerSqm * lineSqm * 60;
-
-  const minutesPerSqm = firstNumber(
-    entry.minutes_per_sqm,
-    entry.labour_minutes_per_sqm,
-    entry.machine_minutes_per_sqm,
-    entry.install_minutes_per_sqm
-  );
-
-  if (minutesPerSqm && lineSqm) return minutesPerSqm * lineSqm;
-
-  const hoursPerUnit = firstNumber(
-    entry.hours_per_unit,
-    entry.labour_hours_per_unit,
-    entry.machine_hours_per_unit,
-    entry.install_hours_per_unit
-  );
-
-  if (hoursPerUnit) return hoursPerUnit * qty * 60;
-
-  const minutesPerUnit = firstNumber(
-    entry.minutes_per_unit,
-    entry.labour_minutes_per_unit,
-    entry.machine_minutes_per_unit,
-    entry.install_minutes_per_unit
-  );
-
-  if (minutesPerUnit) return minutesPerUnit * qty;
-
-  const ratePerHour = firstNumber(
-    entry.rate_per_hour,
-    entry.hourly_rate,
-    entry.machine_rate_per_hour,
-    entry.labour_rate_per_hour,
-    entry.labor_rate_per_hour,
-    entry.install_rate_per_hour
-  );
-
-  const totalCost = firstNumber(
-    entry.total_cost,
-    entry.cost,
-    entry.line_cost,
-    entry.calculated_cost
-  );
-
-  if (ratePerHour && totalCost) return (totalCost / ratePerHour) * 60;
-
-  return 0;
-}
-
-function normalizeResourceType(entry) {
-  const rawType = String(
-    entry.line_type ||
-    entry.type ||
-    entry.resource_type ||
-    entry.category ||
-    entry.section ||
-    ''
-  ).toUpperCase();
-
-  const nameText = String(
-    entry.name ||
-    entry.custom_name ||
-    entry.reference_name ||
-    entry.machine_name ||
-    entry.labour_type_name ||
-    entry.labor_type_name ||
-    entry.install_type_name ||
-    ''
-  ).toUpperCase();
-
-  const combined = `${rawType} ${nameText}`;
-
-  if (combined.includes('MACHINE HIRE') || combined.includes('HIRE MACHINE') || combined.includes('HIRED MACHINE')) {
-    return 'MACHINE_HIRE';
-  }
-
-  if (combined.includes('MACHINE')) return 'MACHINE';
-  if (combined.includes('LABOUR') || combined.includes('LABOR')) return 'LABOUR';
-  if (combined.includes('INSTALL')) return 'INSTALLATION';
-  if (combined.includes('DELIVERY') || combined.includes('DISPATCH')) return 'DISPATCH';
-  if (combined.includes('QC') || combined.includes('QUALITY')) return 'QC';
-  if (combined.includes('PACK')) return 'PACKING';
-
-  return '';
-}
-
-function extractBlueprintEntries(line) {
-  return (
-    line.recipe_breakdown ||
-    line.breakdown ||
-    line.line_items ||
-    line.items ||
-    line.components ||
-    []
-  );
-}
-
-function makeResourceStep({ line, entry, index, entryIndex, fallbackType }) {
-  const quoteQty = Number(line.quantity || line.qty || 1);
-  const item = clean(
-    line.item_name || line.product_name || line.recipe_name || line.name || line.description,
-    `Item ${index + 1}`
-  );
-
-  const width = line.width_mm || line.width || '-';
-  const height = line.height_mm || line.height || '-';
-  const size = `${width} x ${height} mm`;
-
-  const department = fallbackType || normalizeResourceType(entry);
-  if (!department) return null;
-
-  const resource = clean(
-    firstText(
-      entry.name,
-      entry.custom_name,
-      entry.reference_name,
-      entry.resource_name,
-      entry.machine_name,
-      entry.machine_type_name,
-      entry.labour_type_name,
-      entry.labor_type_name,
-      entry.install_type_name,
-      entry.supplier
-    ),
-    department.replace('_', ' ')
-  );
-
-  const resourceMinutes = calculateResourceMinutes(entry, line, quoteQty);
-
-  const setupMinutes = ['MACHINE', 'MACHINE_HIRE', 'INSTALLATION'].includes(department)
-    ? firstNumber(entry.setup_minutes, entry.setup_time_minutes, SETUP_MINUTES)
-    : 0;
-
-  const removalMinutes = ['MACHINE', 'MACHINE_HIRE', 'INSTALLATION'].includes(department)
-    ? firstNumber(entry.removal_minutes, entry.cleanup_minutes, entry.strike_minutes, REMOVAL_MINUTES)
-    : 0;
-
-  const plannedMinutes = Math.max(
-    15,
-    resourceMinutes + setupMinutes + removalMinutes
-  );
-
-  const group = department === 'INSTALLATION' || department === 'DISPATCH'
-    ? 'Handover'
-    : 'Production';
-
-  const qtyText = Number.isFinite(quoteQty) ? String(quoteQty).replace(/\.0$/, '') : '1';
-
-  return makeStep({
-    id: `${department.toLowerCase()}-${index}-${entryIndex}`,
-    group,
-    name: `${resource} - ${item}`,
-    department,
-    owner: resource,
-    plannedMinutes,
-    source: `${qtyText} x ${size}. Work: ${formatHours(resourceMinutes)}${setupMinutes ? `, setup: ${setupMinutes}min` : ''}${removalMinutes ? `, removal: ${removalMinutes}min` : ''}.`,
-  });
-}
-
-function extractProductionSteps(job) {
+function buildWorkflow(job, jobColour, today) {
   const steps = [];
-  const blueprint = job?.blueprint || {};
-  const estimateLines = blueprint.estimate_lines || [];
-  const quoteLines = job?.lines || [];
-  const labourItems = job?.labour_items || [];
-  const installationItems = job?.installation_items || [];
+
+  baseWorkflow.forEach((step, index) => {
+    steps.push(
+      makeStep({
+        id: `${job.id}-base-${index}`,
+        name: step.name,
+        department: step.department,
+        resource: step.department,
+        minutes: step.minutes,
+        dayOffset: step.dayOffset,
+        job,
+        jobColour,
+        today,
+      })
+    );
+  });
+
+  const blueprint = job.blueprint || {};
+  const estimateLines = Array.isArray(blueprint.estimate_lines) ? blueprint.estimate_lines : [];
 
   estimateLines.forEach((line, index) => {
-    const entries = extractBlueprintEntries(line);
+    const qty = safeNumber(line.quantity, 1);
+    const machineHours = safeNumber(line.machine_hours || line.machine_time_hours || line.production_hours, 0);
+    const labourHours = safeNumber(line.labour_hours || line.labor_hours, 0);
+    const installHours = safeNumber(line.install_hours || line.installation_hours, 0);
 
-    entries.forEach((entry, entryIndex) => {
-      const step = makeResourceStep({
-        line,
-        entry,
-        index,
-        entryIndex,
-      });
+    const productName =
+      line.item_name ||
+      line.product_name ||
+      line.recipe_name ||
+      line.name ||
+      line.description ||
+      `Product ${index + 1}`;
 
-      if (step) steps.push(step);
-    });
+    if (machineHours > 0) {
+      steps.push(
+        makeStep({
+          id: `${job.id}-machine-line-${index}`,
+          name: `Machine: ${productName}`,
+          department: 'MACHINE',
+          resource: line.machine_name || line.machine_type_name || 'Machine',
+          minutes: machineHours * 60 + SETUP_MINUTES + REMOVAL_MINUTES,
+          dayOffset: 2 + index,
+          job,
+          jobColour,
+          today,
+        })
+      );
+    }
 
-    const item = clean(
-      line.item_name || line.product_name || line.recipe_name || line.name || line.description,
-      `Item ${index + 1}`
+    if (labourHours > 0) {
+      steps.push(
+        makeStep({
+          id: `${job.id}-labour-line-${index}`,
+          name: `Labour: ${productName}`,
+          department: 'LABOUR',
+          resource: line.labour_type_name || 'Labour',
+          minutes: labourHours * 60 * qty,
+          dayOffset: 2 + index,
+          job,
+          jobColour,
+          today,
+        })
+      );
+    }
+
+    if (installHours > 0) {
+      steps.push(
+        makeStep({
+          id: `${job.id}-install-line-${index}`,
+          name: `Install: ${productName}`,
+          department: 'INSTALLATION',
+          resource: line.install_type_name || 'Installation',
+          minutes: installHours * 60,
+          dayOffset: 6 + index,
+          job,
+          jobColour,
+          today,
+        })
+      );
+    }
+  });
+
+  const recipeEntries = getRecipeMachineEntries(job);
+
+  recipeEntries.forEach((entry, index) => {
+    const rawType = String(entry.line_type || entry.type || entry.department || '').toUpperCase();
+    const rawName = entry.name || entry.custom_name || entry.sourceName || entry.description || 'Production item';
+    const qty = safeNumber(entry.quoteQuantity, 1);
+
+    let department = '';
+    if (rawType.includes('MACHINE')) department = 'MACHINE';
+    if (rawType.includes('LABOUR') || rawType.includes('LABOR')) department = 'LABOUR';
+    if (rawType.includes('INSTALL')) department = 'INSTALLATION';
+    if (rawType.includes('HIRE')) department = 'MACHINE HIRE';
+
+    if (!department) return;
+
+    const hours =
+      safeNumber(entry.hours, 0) ||
+      safeNumber(entry.time_hours, 0) ||
+      safeNumber(entry.total_hours, 0) ||
+      safeNumber(entry.quantity, 0);
+
+    const minutes =
+      hours > 0
+        ? hours * 60 * qty
+        : department === 'MACHINE'
+          ? SETUP_MINUTES + REMOVAL_MINUTES + 30
+          : 30;
+
+    steps.push(
+      makeStep({
+        id: `${job.id}-recipe-${department}-${index}`,
+        name: `${department}: ${rawName}`,
+        department,
+        resource: entry.resource_name || entry.machine_name || entry.labour_type_name || entry.install_type_name || department,
+        minutes,
+        dayOffset: department === 'INSTALLATION' ? 6 : 2 + index,
+        job,
+        jobColour,
+        today,
+      })
     );
-
-    const fulfilmentType = String(line.fulfilment_type || '').toUpperCase();
-
-    if (fulfilmentType === 'SITE_INSTALL') {
-      const installMinutes = firstNumber(
-        line.install_minutes,
-        line.fulfilment_minutes,
-        Number(line.install_hours || line.fulfilment_hours || 0) * 60
-      );
-
-      steps.push(makeStep({
-        id: `fulfilment-install-${index}`,
-        group: 'Handover',
-        name: `Installation - ${item}`,
-        department: 'INSTALLATION',
-        owner: 'Installation Team',
-        plannedMinutes: Math.max(15, installMinutes + SETUP_MINUTES + REMOVAL_MINUTES),
-        source: line.fulfilment_note || `Install ${item}`,
-      }));
-    }
-
-    if (fulfilmentType === 'DELIVERY') {
-      const deliveryMinutes = firstNumber(
-        line.delivery_minutes,
-        line.fulfilment_minutes,
-        Number(line.delivery_hours || line.fulfilment_hours || 0) * 60,
-        45
-      );
-
-      steps.push(makeStep({
-        id: `fulfilment-delivery-${index}`,
-        group: 'Handover',
-        name: `Delivery - ${item}`,
-        department: 'DISPATCH',
-        owner: 'Dispatch',
-        plannedMinutes: deliveryMinutes,
-        source: line.fulfilment_note || `Deliver ${item}`,
-      }));
-    }
   });
 
-  quoteLines.forEach((line, lineIndex) => {
-    (line.line_items || []).forEach((entry, entryIndex) => {
-      const step = makeResourceStep({
-        line,
-        entry,
-        index: `quote-${lineIndex}`,
-        entryIndex,
-      });
-
-      if (step) steps.push(step);
-    });
-  });
-
-  labourItems.forEach((item, index) => {
-    const minutes = Number(item.hours || 0) * 60;
-
-    steps.push(makeStep({
-      id: `manual-labour-${index}`,
-      group: 'Production',
-      name: clean(item.labour_type_name, 'Labour'),
-      department: 'LABOUR',
-      owner: clean(item.labour_type_name, 'Labour'),
-      plannedMinutes: Math.max(15, minutes),
-      source: item.notes || 'Manual labour item',
-    }));
-  });
-
+  const installationItems = Array.isArray(job.installation_items) ? job.installation_items : [];
   installationItems.forEach((item, index) => {
-    const minutes = Number(item.hours || 0) * 60;
-
-    steps.push(makeStep({
-      id: `manual-install-${index}`,
-      group: 'Handover',
-      name: clean(item.install_type_name, 'Installation'),
-      department: 'INSTALLATION',
-      owner: clean(item.install_type_name, 'Installation'),
-      plannedMinutes: Math.max(15, minutes + SETUP_MINUTES + REMOVAL_MINUTES),
-      source: item.notes || 'Manual installation item',
-    }));
+    steps.push(
+      makeStep({
+        id: `${job.id}-install-item-${index}`,
+        name: item.install_type_name || 'Installation',
+        department: 'INSTALLATION',
+        resource: item.install_type_name || 'Installation',
+        minutes: safeNumber(item.hours, 0) * 60 || 60,
+        dayOffset: 6 + index,
+        job,
+        jobColour,
+        today,
+      })
+    );
   });
-
-  const unique = [];
-  const seen = new Set();
-
-  steps.forEach((step) => {
-    const key = `${step.department}-${step.owner}-${step.name}-${step.source}`;
-
-    if (!seen.has(key)) {
-      seen.add(key);
-      unique.push(step);
-    }
-  });
-
-  return unique;
-}
-
-function buildWorkflow(job) {
-  const productionSteps = extractProductionSteps(job);
-  const hasInstallation = productionSteps.some((step) => step.department === 'INSTALLATION');
-
-  const steps = [
-    makeStep({
-      id: 'job-pack',
-      group: 'Pre-Production',
-      name: 'Job Pack',
-      department: 'ADMIN',
-      owner: 'Admin',
-      plannedMinutes: 30,
-      source: 'Confirm invoice, job ticket, proof, and required documents.',
-    }),
-    makeStep({
-      id: 'design',
-      group: 'Pre-Production',
-      name: 'Design',
-      department: 'DESIGN',
-      owner: 'Design',
-      plannedMinutes: 60,
-      dependsOn: ['job-pack'],
-      canRunParallel: true,
-      source: 'Prepare or confirm production artwork.',
-    }),
-    makeStep({
-      id: 'procurement',
-      group: 'Pre-Production',
-      name: 'Procurement',
-      department: 'PROCUREMENT',
-      owner: 'Procurement',
-      plannedMinutes: 60,
-      dependsOn: ['job-pack'],
-      canRunParallel: true,
-      source: 'Check bought-in items and supplier requirements.',
-    }),
-    makeStep({
-      id: 'production-brief',
-      group: 'Pre-Production',
-      name: 'Production Brief',
-      department: 'ADMIN',
-      owner: 'Production',
-      plannedMinutes: 30,
-      dependsOn: ['job-pack'],
-      canRunParallel: true,
-      source: 'Brief production team on requirements and sequence.',
-    }),
-    makeStep({
-      id: 'stock-issuing',
-      group: 'Pre-Production',
-      name: 'Stock Issuing',
-      department: 'STOCK',
-      owner: 'Stock',
-      plannedMinutes: 30,
-      dependsOn: ['procurement'],
-      source: 'Issue stock and materials to production.',
-    }),
-  ];
-
-  let previousProductionId = null;
-
-  productionSteps
-    .filter((step) => step.group === 'Production')
-    .forEach((step, index) => {
-      const id = `production-${step.id}`;
-
-      steps.push({
-        ...step,
-        id,
-        dependsOn: index === 0
-          ? ['design', 'production-brief', 'stock-issuing']
-          : [previousProductionId],
-      });
-
-      previousProductionId = id;
-    });
-
-  const productionDependency = previousProductionId
-    ? [previousProductionId]
-    : ['design', 'production-brief', 'stock-issuing'];
-
-  steps.push(
-    makeStep({
-      id: 'qc',
-      group: 'Quality & Handover',
-      name: 'QC',
-      department: 'QC',
-      owner: 'Quality Control',
-      plannedMinutes: 30,
-      dependsOn: productionDependency,
-      source: 'Quality check before packing.',
-    }),
-    makeStep({
-      id: 'packing',
-      group: 'Quality & Handover',
-      name: 'Packing',
-      department: 'PACKING',
-      owner: 'Packing',
-      plannedMinutes: 30,
-      dependsOn: ['qc'],
-      source: 'Pack and protect completed goods.',
-    }),
-    makeStep({
-      id: 'dispatch',
-      group: 'Quality & Handover',
-      name: 'Dispatch',
-      department: 'DISPATCH',
-      owner: 'Dispatch',
-      plannedMinutes: 45,
-      dependsOn: ['packing'],
-      source: 'Prepare goods for delivery, collection, or installation.',
-    })
-  );
-
-  productionSteps
-    .filter((step) => step.group === 'Handover' && step.department === 'INSTALLATION')
-    .forEach((step, index) => {
-      steps.push({
-        ...step,
-        id: `handover-install-${index}`,
-        dependsOn: ['dispatch'],
-      });
-    });
-
-  steps.push(
-    makeStep({
-      id: 'delivery-note-signed',
-      group: 'Quality & Handover',
-      name: 'Delivery Note Signed',
-      department: 'DISPATCH',
-      owner: hasInstallation ? 'Installer / Client' : 'Driver / Client',
-      plannedMinutes: 15,
-      dependsOn: hasInstallation
-        ? productionSteps
-            .filter((step) => step.group === 'Handover' && step.department === 'INSTALLATION')
-            .map((_, index) => `handover-install-${index}`)
-        : ['dispatch'],
-      source: 'Confirm handover with signed delivery note.',
-    }),
-    makeStep({
-      id: 'close-job',
-      group: 'Close Out',
-      name: 'Close Job',
-      department: 'CLOSE',
-      owner: 'Admin',
-      plannedMinutes: 15,
-      dependsOn: ['delivery-note-signed'],
-      source: 'Final checks, job close-out, and filing.',
-    })
-  );
 
   return steps;
 }
 
-function scheduleWorkflow(steps, startDate) {
-  const byId = Object.fromEntries(steps.map((step) => [step.id, step]));
-  const scheduled = {};
-  const result = [];
-
-  function scheduleStep(step) {
-    if (scheduled[step.id]) return scheduled[step.id];
-
-    let startOffset = 0;
-
-    if (step.dependsOn?.length) {
-      const dependencyEnds = step.dependsOn
-        .map((depId) => byId[depId])
-        .filter(Boolean)
-        .map((depStep) => scheduleStep(depStep).endOffset);
-
-      startOffset = dependencyEnds.length ? Math.max(...dependencyEnds) : 0;
-    }
-
-    const durationDays = Math.max(1, Math.ceil(Number(step.plannedMinutes || 1) / WORKDAY_MINUTES));
-    const endOffset = startOffset + durationDays;
-
-    const scheduledStep = {
-      ...step,
-      startOffset,
-      endOffset,
-      startDate: addDays(startDate, startOffset),
-      endDate: addDays(startDate, endOffset - 1),
-      durationDays,
-    };
-
-    scheduled[step.id] = scheduledStep;
-    result.push(scheduledStep);
-    return scheduledStep;
-  }
-
-  steps.forEach(scheduleStep);
-
-  return result.sort((a, b) => a.startOffset - b.startOffset || a.endOffset - b.endOffset);
-}
-
 function downloadBlob(response, filename) {
-  const blob = new Blob([response.data], {
-    type: response.headers?.['content-type'] || 'application/octet-stream',
-  });
-
+  const blob = new Blob([response.data]);
   const url = window.URL.createObjectURL(blob);
-  const link = document.createElement('a');
 
+  const link = document.createElement('a');
   link.href = url;
   link.setAttribute('download', filename);
   document.body.appendChild(link);
@@ -711,31 +421,21 @@ function downloadBlob(response, filename) {
   window.URL.revokeObjectURL(url);
 }
 
-function CalendarHeader({ calendarDays, today }) {
+function DateHeader({ calendarDays, today }) {
   return (
     <>
       {calendarDays.map((day) => {
-        const isToday = dateKey(day) === dateKey(today);
-        const weekend = isWeekend(day);
+        const header = formatDayHeader(day, today);
 
         return (
           <div
             key={dateKey(day)}
-            className={`relative border-r px-2 py-3 text-center ${
-              isToday
-                ? 'bg-red-50 text-red-700'
-                : weekend
-                  ? 'bg-slate-100 text-slate-400'
-                  : 'bg-white'
+            className={`h-[92px] border-r px-3 py-4 text-center ${
+              header.isToday ? 'bg-red-50 text-red-700' : header.weekend ? 'bg-slate-100 text-slate-400' : 'bg-white text-slate-500'
             }`}
           >
-            {formatDayLabel(day)}
-
-            {isToday ? (
-              <div className="mt-1 text-[10px] font-black text-red-600">TODAY</div>
-            ) : weekend ? (
-              <div className="mt-1 text-[10px] font-semibold text-slate-400">WEEKEND</div>
-            ) : null}
+            <div className="font-black">{header.top}</div>
+            {header.bottom ? <div className="mt-2 text-[11px] font-black">{header.bottom}</div> : null}
           </div>
         );
       })}
@@ -743,30 +443,47 @@ function CalendarHeader({ calendarDays, today }) {
   );
 }
 
-function TodayLine({ calendarDays, today, leftWidth, dayWidth }) {
+function TodayLine({ calendarDays, today }) {
   const todayIndex = calendarDays.findIndex((day) => dateKey(day) === dateKey(today));
 
   if (todayIndex < 0) return null;
 
   return (
     <div
-      className="pointer-events-none absolute top-0 z-10 h-full w-[3px] bg-red-600"
+      className="pointer-events-none absolute top-0 z-30 h-full w-[3px] bg-red-600"
       style={{
-        left: `${leftWidth + todayIndex * dayWidth}px`,
+        left: `${todayIndex * DAY_WIDTH}px`,
       }}
     />
+  );
+}
+
+function StepCard({ step }) {
+  return (
+    <div
+      className={`rounded-md ${step.jobColour.card} px-2 py-1 text-[10px] font-bold leading-tight text-white shadow-sm`}
+      title={`${step.jobLabel} | ${step.name} | ${formatHours(step.plannedMinutes)}`}
+    >
+      <div className="flex items-center gap-1">
+        {getStepIcon(step.department)}
+        <span className="truncate">{step.name}</span>
+      </div>
+      <div className="text-[9px] opacity-90">{formatHours(step.plannedMinutes)}</div>
+    </div>
   );
 }
 
 export default function ProductionPage() {
   const [jobs, setJobs] = useState([]);
   const [jobSearch, setJobSearch] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState('MACHINE');
+  const [departmentFilter, setDepartmentFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
-  const jobCalendarScrollRef = useRef(null);
-  const departmentCalendarScrollRef = useRef(null);
+
+  const jobScrollRef = useRef(null);
+  const resourceScrollRef = useRef(null);
 
   const today = useMemo(() => startOfDay(new Date()), []);
+
   const calendarStart = useMemo(() => addDays(today, -DAYS_BACK), [today]);
 
   const calendarDays = useMemo(() => {
@@ -789,85 +506,91 @@ export default function ProductionPage() {
     loadJobs();
   }, []);
 
+  const scheduledJobs = useMemo(() => {
+    return jobs.map((job, index) => {
+      const colour = jobColours[index % jobColours.length];
+      const steps = buildWorkflow(job, colour, today);
+      const totalMinutes = steps.reduce((sum, step) => sum + safeNumber(step.plannedMinutes), 0);
+
+      return {
+        job,
+        colour,
+        steps,
+        totalMinutes,
+      };
+    });
+  }, [jobs, today]);
+
   useEffect(() => {
     if (loading) return;
 
-    const todayScrollPosition = DAYS_BACK * DAY_WIDTH;
+    const scrollToToday = DAYS_BACK * DAY_WIDTH;
 
-    setTimeout(() => {
-      if (jobCalendarScrollRef.current) {
-        jobCalendarScrollRef.current.scrollLeft = todayScrollPosition;
+    window.setTimeout(() => {
+      if (jobScrollRef.current) {
+        jobScrollRef.current.scrollLeft = scrollToToday;
       }
 
-      if (departmentCalendarScrollRef.current) {
-        departmentCalendarScrollRef.current.scrollLeft = todayScrollPosition;
+      if (resourceScrollRef.current) {
+        resourceScrollRef.current.scrollLeft = scrollToToday;
       }
-    }, 100);
-  }, [loading, jobs.length]);
+    }, 150);
+  }, [loading, scheduledJobs.length]);
 
-  const allScheduledJobs = jobs.map((job, index) => {
-    const jobStart = startOfDay(job.production_posted_at || job.invoice_created_at || job.created_at || today);
-    const steps = buildWorkflow(job);
-    const scheduledSteps = scheduleWorkflow(steps, jobStart);
-    const totalMinutes = steps.reduce((sum, step) => sum + Number(step.plannedMinutes || 0), 0);
-    const jobColour = jobColourClasses[index % jobColourClasses.length];
+  const filteredJobs = useMemo(() => {
+    const term = jobSearch.trim().toLowerCase();
 
-    return {
-      job,
-      steps,
-      scheduledSteps,
-      totalMinutes,
-      jobColour,
-      startDate: scheduledSteps[0]?.startDate || jobStart,
-      endDate: scheduledSteps[scheduledSteps.length - 1]?.endDate || jobStart,
-    };
-  });
+    if (!term) return scheduledJobs;
 
-  const jobOverviewRows = allScheduledJobs.filter(({ job }) => {
-    const term = jobSearch.toLowerCase();
-
-    return (
-      job.client_name?.toLowerCase().includes(term) ||
-      job.invoice_number?.toLowerCase().includes(term) ||
-      job.quote_number?.toLowerCase().includes(term) ||
-      job.estimate_number?.toLowerCase().includes(term) ||
-      job.job_ticket_document_filename?.toLowerCase().includes(term) ||
-      job.design_proof_filename?.toLowerCase().includes(term)
-    );
-  });
+    return scheduledJobs.filter(({ job }) => {
+      return (
+        String(job.client_name || '').toLowerCase().includes(term) ||
+        String(job.invoice_number || '').toLowerCase().includes(term) ||
+        String(job.quote_number || '').toLowerCase().includes(term) ||
+        String(job.estimate_number || '').toLowerCase().includes(term)
+      );
+    });
+  }, [scheduledJobs, jobSearch]);
 
   const resourceRows = useMemo(() => {
-    const rows = {};
+    const rows = new Map();
 
-    allScheduledJobs.forEach(({ job, scheduledSteps, jobColour }) => {
-      scheduledSteps.forEach((step) => {
-        if (departmentFilter !== 'ALL' && step.department !== departmentFilter) return;
+    scheduledJobs.forEach(({ steps }) => {
+      steps.forEach((step) => {
+        const department = String(step.department || 'OTHER').toUpperCase();
 
-        const rowKey = `${step.department}-${step.owner}`;
+        if (departmentFilter !== 'ALL' && department !== departmentFilter) return;
 
-        if (!rows[rowKey]) {
-          rows[rowKey] = {
-            id: rowKey,
-            department: step.department,
-            owner: step.owner,
+        const resource = step.resource || department;
+        const key = `${department}-${resource}`;
+
+        if (!rows.has(key)) {
+          rows.set(key, {
+            id: key,
+            department,
+            resource,
             events: [],
-          };
+          });
         }
 
-        rows[rowKey].events.push({
-          id: `${job.id}-${step.id}`,
-          job,
-          step,
-          jobColour,
-        });
+        rows.get(key).events.push(step);
       });
     });
 
-    return Object.values(rows).sort((a, b) => {
-      if (a.department !== b.department) return a.department.localeCompare(b.department);
-      return a.owner.localeCompare(b.owner);
-    });
-  }, [allScheduledJobs, departmentFilter]);
+    return Array.from(rows.values());
+  }, [scheduledJobs, departmentFilter]);
+
+  const productionStats = useMemo(() => {
+    const totalJobs = scheduledJobs.length;
+    const totalSteps = scheduledJobs.reduce((sum, item) => sum + item.steps.length, 0);
+    const totalMinutes = scheduledJobs.reduce((sum, item) => sum + item.totalMinutes, 0);
+
+    return {
+      totalJobs,
+      totalSteps,
+      totalMinutes,
+    };
+  }, [scheduledJobs]);
 
   const downloadJobPack = async (job) => {
     try {
@@ -875,341 +598,284 @@ export default function ProductionPage() {
         responseType: 'blob',
       });
 
-      const filename = job.job_ticket_document_filename || `${job.invoice_number || 'job'}-job-ticket`;
-      downloadBlob(response, filename);
+      downloadBlob(response, job.job_ticket_document_filename || `${job.invoice_number || 'job'}-job-ticket`);
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'No job pack / job ticket uploaded yet');
+      toast.error(error.response?.data?.detail || 'No job pack uploaded yet');
     }
   };
 
-  const totalJobs = allScheduledJobs.length;
-  const totalSteps = allScheduledJobs.reduce((sum, item) => sum + item.steps.length, 0);
-  const totalMinutes = allScheduledJobs.reduce((sum, item) => sum + item.totalMinutes, 0);
-
   return (
     <Layout>
-      <div className="space-y-6 fade-in max-w-7xl">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div>
-            <h1 className="text-4xl font-black tracking-tight leading-none">Production Calendar</h1>
-            <p className="mt-2 text-slate-600">
-              Track posted production jobs by job overview and by department/resource capacity.
+      <div className="max-w-7xl space-y-6 fade-in">
+        <div>
+          <h1 className="text-4xl font-black tracking-tight">Production Tracking</h1>
+          <p className="mt-2 text-slate-600">
+            Calendar view for posted production jobs, department capacity, machinery, labour and installation work.
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-2xl border bg-white p-4 shadow-sm">
+            <div className="text-sm text-slate-500">Posted Jobs</div>
+            <div className="mt-1 text-2xl font-black text-slate-900">{productionStats.totalJobs}</div>
+          </div>
+
+          <div className="rounded-2xl border bg-white p-4 shadow-sm">
+            <div className="text-sm text-slate-500">Production Steps</div>
+            <div className="mt-1 text-2xl font-black text-slate-900">{productionStats.totalSteps}</div>
+          </div>
+
+          <div className="rounded-2xl border bg-white p-4 shadow-sm">
+            <div className="text-sm text-slate-500">Planned Time</div>
+            <div className="mt-1 text-2xl font-black text-blue-700">{formatHours(productionStats.totalMinutes)}</div>
+          </div>
+        </div>
+
+        {/* JOB OVERVIEW CALENDAR */}
+        <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+          <div className="border-b bg-slate-50 p-4">
+            <h2 className="flex items-center gap-2 text-lg font-black">
+              <CalendarDays size={18} />
+              Job Overview Calendar
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              The job column stays fixed. Only the date columns scroll left and right.
             </p>
           </div>
 
-          <Button type="button" variant="outline" onClick={loadJobs} className="gap-2">
-            <RefreshCw size={16} />
-            Refresh
-          </Button>
-        </div>
+          {loading ? (
+            <div className="p-12 text-center text-slate-500">Loading production jobs...</div>
+          ) : filteredJobs.length === 0 ? (
+            <div className="p-12 text-center text-slate-500">No posted production jobs found.</div>
+          ) : (
+            <div className="grid min-w-0" style={{ gridTemplateColumns: `${JOB_COLUMN_WIDTH}px minmax(0, 1fr)` }}>
+              <div className="border-r bg-white">
+                <div className="h-[92px] border-b px-4 py-3">
+                  <div className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Job</div>
+                  <div className="relative">
+                    <Search size={14} className="absolute left-2 top-2.5 text-slate-400" />
+                    <Input
+                      value={jobSearch}
+                      onChange={(event) => setJobSearch(event.target.value)}
+                      placeholder="Search jobs"
+                      className="h-8 pl-8 text-xs"
+                    />
+                  </div>
+                </div>
 
-        <div className="grid gap-4 xl:grid-cols-[330px_1fr]">
-          <div className="space-y-4 rounded-2xl border bg-white p-4 shadow-sm">
-            <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
-              <div className="font-black text-slate-900">Calendar Window</div>
-              <div>Starts: {formatShortDate(today)}</div>
-              <div>View: scroll left / right</div>
-              <div>Weekends are greyed out</div>
+                {filteredJobs.map(({ job, colour, steps, totalMinutes }) => (
+                  <div key={job.id} className="min-h-[148px] border-b bg-white px-4 py-4">
+                    <div className="flex gap-3">
+                      <div className={`mt-1 h-4 w-4 shrink-0 rounded-full ${colour.dot}`} />
+
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-black text-slate-900">{getJobLabel(job)}</div>
+                        <div className="mt-1 text-xs text-slate-500">
+                          {steps.length} steps • {formatHours(totalMinutes)}
+                        </div>
+
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <span className={`rounded-full border px-2 py-1 text-[11px] font-bold ${statusClasses[job.production_status || 'QUEUED'] || statusClasses.QUEUED}`}>
+                            {job.production_status || 'QUEUED'}
+                          </span>
+
+                          <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${job.job_ticket_document_filename ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                            {truncateFileName(job.job_ticket_document_filename)}
+                          </span>
+                        </div>
+
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => downloadJobPack(job)}
+                          className="mt-3 h-8 gap-2 text-xs"
+                        >
+                          <Download size={14} />
+                          Download Job Pack
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div ref={jobScrollRef} className="min-w-0 overflow-x-auto touch-pan-x">
+                <div
+                  className="relative"
+                  style={{
+                    width: `${calendarDays.length * DAY_WIDTH}px`,
+                  }}
+                >
+                  <div
+                    className="grid"
+                    style={{
+                      gridTemplateColumns: calendarDays.map(() => `${DAY_WIDTH}px`).join(' '),
+                    }}
+                  >
+                    <DateHeader calendarDays={calendarDays} today={today} />
+                  </div>
+
+                  {filteredJobs.map(({ job, colour, steps }) => (
+                    <div
+                      key={job.id}
+                      className="grid"
+                      style={{
+                        gridTemplateColumns: calendarDays.map(() => `${DAY_WIDTH}px`).join(' '),
+                      }}
+                    >
+                      {calendarDays.map((day) => {
+                        const daySteps = steps.filter((step) => dateKey(step.startDate) === dateKey(day));
+                        const header = formatDayHeader(day, today);
+
+                        return (
+                          <div
+                            key={`${job.id}-${dateKey(day)}`}
+                            className={`min-h-[148px] border-b border-r p-2 ${
+                              header.isToday ? 'bg-red-50/40' : header.weekend ? 'bg-slate-100' : 'bg-slate-50'
+                            }`}
+                          >
+                            <div className="space-y-1">
+                              {daySteps.slice(0, 4).map((step) => (
+                                <StepCard key={step.id} step={step} />
+                              ))}
+
+                              {daySteps.length > 4 ? (
+                                <div className="rounded-md bg-slate-700 px-2 py-1 text-center text-[10px] font-bold text-white">
+                                  +{daySteps.length - 4} more
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+
+                  <TodayLine calendarDays={calendarDays} today={today} />
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* DEPARTMENT / MACHINE CALENDAR */}
+        <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+          <div className="flex flex-col gap-4 border-b bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="flex items-center gap-2 text-lg font-black">
+                <Factory size={18} />
+                Department / Machine Calendar
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Rows show resources so you can see when machinery, labour, installation and dispatch are busy.
+              </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl border p-3">
-                <div className="text-xs text-slate-500">Jobs</div>
-                <div className="text-2xl font-black">{totalJobs}</div>
-              </div>
-
-              <div className="rounded-xl border p-3">
-                <div className="text-xs text-slate-500">Steps</div>
-                <div className="text-2xl font-black">{totalSteps}</div>
-              </div>
-
-              <div className="rounded-xl border p-3">
-                <div className="text-xs text-slate-500">Total Time</div>
-                <div className="text-xl font-black text-blue-600">{formatHours(totalMinutes)}</div>
-              </div>
-
-              <div className="rounded-xl border p-3">
-                <div className="text-xs text-slate-500">Visible</div>
-                <div className="text-xl font-black text-purple-600">Scroll</div>
-              </div>
-            </div>
-
-            <div className="rounded-xl border p-3 text-xs text-slate-500">
-              Search filters the Job Overview Calendar only. The Department Calendar uses its own department filter.
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-semibold text-slate-600">Department</label>
+              <select
+                value={departmentFilter}
+                onChange={(event) => setDepartmentFilter(event.target.value)}
+                className="h-10 rounded-md border bg-white px-3 text-sm"
+              >
+                {departmentOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option === 'ALL' ? 'All Departments' : option}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
-          <div className="space-y-6">
-            {/* JOB OVERVIEW CALENDAR */}
-            <div className="max-w-full overflow-hidden rounded-2xl border bg-white shadow-sm">
-              <div className="flex flex-col gap-3 border-b bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h2 className="flex items-center gap-2 text-lg font-black">
-                    <CalendarDays size={18} />
-                    Job Overview Calendar
-                  </h2>
-                  <p className="text-sm text-slate-500">
-                    One row per posted job. The job column stays fixed while the calendar dates scroll left or right.
-                  </p>
+          {loading ? (
+            <div className="p-12 text-center text-slate-500">Loading department calendar...</div>
+          ) : resourceRows.length === 0 ? (
+            <div className="p-12 text-center text-slate-500">No department items found for this filter.</div>
+          ) : (
+            <div className="grid min-w-0" style={{ gridTemplateColumns: `${RESOURCE_COLUMN_WIDTH}px minmax(0, 1fr)` }}>
+              <div className="border-r bg-white">
+                <div className="h-[92px] border-b px-4 py-3 text-xs font-black uppercase tracking-wide text-slate-500">
+                  Department / Resource
                 </div>
 
-
+                {resourceRows.map((row) => (
+                  <div key={row.id} className="min-h-[118px] border-b bg-white px-4 py-4">
+                    <div className="text-sm font-black text-slate-900">{row.resource}</div>
+                    <div className="mt-1 text-xs text-slate-500">{row.department}</div>
+                    <div className="mt-2 text-xs text-slate-500">
+                      {row.events.length} item{row.events.length === 1 ? '' : 's'}
+                    </div>
+                  </div>
+                ))}
               </div>
 
-              {loading ? (
-                <div className="p-12 text-center text-slate-500">Loading production jobs...</div>
-              ) : jobOverviewRows.length === 0 ? (
-                <div className="p-12 text-center text-slate-500">No posted production jobs found.</div>
-              ) : (
-                <div ref={jobCalendarScrollRef} className="min-w-0 max-w-full overflow-x-scroll overscroll-x-contain touch-pan-x">
+              <div ref={resourceScrollRef} className="min-w-0 overflow-x-auto touch-pan-x">
+                <div
+                  className="relative"
+                  style={{
+                    width: `${calendarDays.length * DAY_WIDTH}px`,
+                  }}
+                >
                   <div
-                    className="relative"
+                    className="grid"
                     style={{
-                      width: `${360 + calendarDays.length * DAY_WIDTH}px`,
+                      gridTemplateColumns: calendarDays.map(() => `${DAY_WIDTH}px`).join(' '),
                     }}
                   >
+                    <DateHeader calendarDays={calendarDays} today={today} />
+                  </div>
+
+                  {resourceRows.map((row) => (
                     <div
-                      className="sticky top-0 z-20 grid border-b bg-white text-xs font-black uppercase tracking-wide text-slate-500"
+                      key={row.id}
+                      className="grid"
                       style={{
-                        gridTemplateColumns: `360px ${calendarDays.map(() => `${DAY_WIDTH}px`).join(' ')}`,
+                        gridTemplateColumns: calendarDays.map(() => `${DAY_WIDTH}px`).join(' '),
                       }}
                     >
-                      <div className="sticky left-0 z-40 border-r bg-white px-4 py-3">
-                        <div className="mb-2">Job</div>
-                        <div className="relative">
-                          <Search size={14} className="absolute left-2 top-2.5 text-slate-400" />
-                          <Input
-                            value={jobSearch}
-                            onChange={(event) => setJobSearch(event.target.value)}
-                            placeholder="Search jobs"
-                            className="h-8 pl-8 text-xs normal-case tracking-normal"
-                          />
-                        </div>
-                      </div>
-                      <CalendarHeader calendarDays={calendarDays} today={today} />
-                    </div>
+                      {calendarDays.map((day) => {
+                        const dayEvents = row.events.filter((step) => dateKey(step.startDate) === dateKey(day));
+                        const header = formatDayHeader(day, today);
 
-                    {jobOverviewRows.map(({ job, scheduledSteps, totalMinutes: jobMinutes, jobColour }) => (
-                      <div
-                        key={job.id}
-                        className="grid border-b text-sm hover:bg-slate-50"
-                        style={{
-                          gridTemplateColumns: `360px ${calendarDays.map(() => `${DAY_WIDTH}px`).join(' ')}`,
-                        }}
-                      >
-                        <div className="sticky left-0 z-40 border-r bg-white px-4 py-4">
-                          <div className="flex items-start gap-3">
-                            <div className={`mt-1 h-4 w-4 rounded-full ${jobColour}`} />
+                        return (
+                          <div
+                            key={`${row.id}-${dateKey(day)}`}
+                            className={`min-h-[118px] border-b border-r p-2 ${
+                              header.isToday ? 'bg-red-50/40' : header.weekend ? 'bg-slate-100' : 'bg-slate-50'
+                            }`}
+                          >
+                            <div className="space-y-1">
+                              {dayEvents.slice(0, 3).map((step) => (
+                                <div
+                                  key={step.id}
+                                  className={`rounded-md ${step.jobColour.card} px-2 py-1 text-[10px] font-bold leading-tight text-white shadow-sm`}
+                                  title={`${step.jobLabel} | ${step.name}`}
+                                >
+                                  <div className="truncate">{step.jobLabel}</div>
+                                  <div className="truncate opacity-90">{step.name}</div>
+                                  <div className="text-[9px] opacity-90">{formatHours(step.plannedMinutes)}</div>
+                                </div>
+                              ))}
 
-                            <div className="min-w-0 flex-1">
-                              <div className="truncate font-black text-slate-900">
-                                {job.invoice_number || job.quote_number || 'Job'} - {job.client_name}
-                              </div>
-
-                              <div className="mt-1 text-xs text-slate-500">
-                                {scheduledSteps.length} steps • {formatHours(jobMinutes)}
-                              </div>
-
-                              <div className="mt-2 flex flex-wrap gap-2">
-                                <span className={`rounded-full border px-2 py-1 text-[11px] font-bold ${statusClasses[job.production_status || 'QUEUED'] || statusClasses.QUEUED}`}>
-                                  {job.production_status || 'QUEUED'}
-                                </span>
-
-                                {job.job_ticket_document_filename ? (
-                                  <span className="max-w-[160px] truncate rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
-                                    {job.job_ticket_document_filename}
-                                  </span>
-                                ) : (
-                                  <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-500">
-                                    No job pack
-                                  </span>
-                                )}
-                              </div>
-
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                onClick={() => downloadJobPack(job)}
-                                className="mt-3 h-8 gap-2 text-xs"
-                              >
-                                <Download size={14} />
-                                Download Job Pack
-                              </Button>
+                              {dayEvents.length > 3 ? (
+                                <div className="rounded-md bg-slate-700 px-2 py-1 text-center text-[10px] font-bold text-white">
+                                  +{dayEvents.length - 3} more
+                                </div>
+                              ) : null}
                             </div>
                           </div>
-                        </div>
+                        );
+                      })}
+                    </div>
+                  ))}
 
-                        {calendarDays.map((day) => {
-                          const isToday = dateKey(day) === dateKey(today);
-                          const stepsForDay = scheduledSteps.filter((step) => (
-                            dateKey(day) >= dateKey(step.startDate) && dateKey(day) <= dateKey(step.endDate)
-                          ));
-
-                          return (
-                            <div
-                              key={`${job.id}-${dateKey(day)}`}
-                              className={`relative min-h-[132px] border-r p-2 ${
-                                isToday ? 'bg-red-50/40' : isWeekend(day) ? 'bg-slate-100' : 'bg-slate-50'
-                              }`}
-                            >
-                              {isToday ? (
-                                <div className="absolute left-0 top-0 z-10 h-full w-[3px] bg-red-600" />
-                              ) : null}
-
-                              <div className="space-y-1">
-                                {stepsForDay.slice(0, 4).map((step) => (
-                                  <div
-                                    key={step.id}
-                                    className={`rounded-md ${jobColour} px-2 py-1 text-[10px] font-bold leading-tight text-white shadow-sm`}
-                                    title={`${step.name} - ${formatHours(step.plannedMinutes)}`}
-                                  >
-                                    <div className="flex items-center gap-1">
-                                      {getStepIcon(step.department)}
-                                      <span className="truncate">{step.name}</span>
-                                    </div>
-                                    <div className="text-[9px] opacity-90">{formatHours(step.plannedMinutes)}</div>
-                                  </div>
-                                ))}
-
-                                {stepsForDay.length > 4 ? (
-                                  <div className="rounded-md bg-slate-700 px-2 py-1 text-center text-[10px] font-bold text-white">
-                                    +{stepsForDay.length - 4} more
-                                  </div>
-                                ) : null}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ))}
-
-                    <TodayLine calendarDays={calendarDays} today={today} leftWidth={360} dayWidth={DAY_WIDTH} />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* DEPARTMENT / MACHINE CALENDAR */}
-            <div className="max-w-full overflow-hidden rounded-2xl border bg-white shadow-sm">
-              <div className="flex flex-col gap-3 border-b bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h2 className="flex items-center gap-2 text-lg font-black">
-                    <Factory size={18} />
-                    Department / Machine Calendar
-                  </h2>
-                  <p className="text-sm text-slate-500">
-                    Rows show departments/resources. Scroll the date columns left or right to view capacity before and after today.
-                  </p>
-                </div>
-
-                <div className="w-full md:w-72">
-                  <select
-                    value={departmentFilter}
-                    onChange={(event) => setDepartmentFilter(event.target.value)}
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    {departmentOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                  <TodayLine calendarDays={calendarDays} today={today} />
                 </div>
               </div>
-
-              {loading ? (
-                <div className="p-12 text-center text-slate-500">Loading department calendar...</div>
-              ) : resourceRows.length === 0 ? (
-                <div className="p-12 text-center text-slate-500">No scheduled resources found for this department filter.</div>
-              ) : (
-                <div ref={departmentCalendarScrollRef} className="min-w-0 max-w-full overflow-x-scroll overscroll-x-contain touch-pan-x">
-                  <div
-                    className="relative"
-                    style={{
-                      width: `${300 + calendarDays.length * DAY_WIDTH}px`,
-                    }}
-                  >
-                    <div
-                      className="sticky top-0 z-20 grid border-b bg-white text-xs font-black uppercase tracking-wide text-slate-500"
-                      style={{
-                        gridTemplateColumns: `300px ${calendarDays.map(() => `${DAY_WIDTH}px`).join(' ')}`,
-                      }}
-                    >
-                      <div className="sticky left-0 z-40 border-r bg-white px-4 py-3">Department / Resource</div>
-                      <CalendarHeader calendarDays={calendarDays} today={today} />
-                    </div>
-
-                    {resourceRows.map((row) => (
-                      <div
-                        key={row.id}
-                        className="grid border-b text-sm hover:bg-slate-50"
-                        style={{
-                          gridTemplateColumns: `300px ${calendarDays.map(() => `${DAY_WIDTH}px`).join(' ')}`,
-                        }}
-                      >
-                        <div className="sticky left-0 z-40 border-r bg-white px-4 py-4">
-                          <div className="flex items-center gap-2 font-black text-slate-900">
-                            {getStepIcon(row.department)}
-                            {row.owner}
-                          </div>
-                          <div className="mt-1 text-xs font-semibold text-slate-500">
-                            {departmentOptions.find((option) => option.value === row.department)?.label || row.department}
-                          </div>
-                          <div className="mt-1 text-xs text-slate-400">
-                            {row.events.length} scheduled task{row.events.length === 1 ? '' : 's'}
-                          </div>
-                        </div>
-
-                        {calendarDays.map((day) => {
-                          const isToday = dateKey(day) === dateKey(today);
-                          const eventsForDay = row.events.filter(({ step }) => (
-                            dateKey(day) >= dateKey(step.startDate) && dateKey(day) <= dateKey(step.endDate)
-                          ));
-
-                          return (
-                            <div
-                              key={`${row.id}-${dateKey(day)}`}
-                              className={`relative min-h-[118px] border-r p-2 ${
-                                isToday ? 'bg-red-50/40' : isWeekend(day) ? 'bg-slate-100' : 'bg-slate-50'
-                              }`}
-                            >
-                              {isToday ? (
-                                <div className="absolute left-0 top-0 z-10 h-full w-[3px] bg-red-600" />
-                              ) : null}
-
-                              <div className="space-y-1">
-                                {eventsForDay.slice(0, 4).map(({ id, job, step, jobColour }) => (
-                                  <div
-                                    key={id}
-                                    className={`rounded-md ${jobColour} px-2 py-1 text-[10px] font-bold leading-tight text-white shadow-sm`}
-                                    title={`${job.invoice_number || 'Job'} - ${job.client_name}: ${step.name}`}
-                                  >
-                                    <div className="truncate">{job.invoice_number || 'Job'}</div>
-                                    <div className="truncate text-[9px] opacity-90">{step.name}</div>
-                                    <div className="text-[9px] opacity-90">{formatHours(step.plannedMinutes)}</div>
-                                  </div>
-                                ))}
-
-                                {eventsForDay.length > 4 ? (
-                                  <div className="rounded-md bg-slate-700 px-2 py-1 text-center text-[10px] font-bold text-white">
-                                    +{eventsForDay.length - 4} more
-                                  </div>
-                                ) : null}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ))}
-
-                    <TodayLine calendarDays={calendarDays} today={today} leftWidth={300} dayWidth={DAY_WIDTH} />
-                  </div>
-                </div>
-              )}
             </div>
-          </div>
-        </div>
+          )}
+        </section>
       </div>
     </Layout>
   );
