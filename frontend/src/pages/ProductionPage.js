@@ -23,7 +23,7 @@ const DAY_WIDTH = 112;
 const SETUP_MINUTES = 15;
 const REMOVAL_MINUTES = 15;
 
-const CALENDAR_DAYS = 21;
+const CALENDAR_DAYS = DAYS_BACK + 1 + DAYS_FORWARD;
 
 const jobColourClasses = [
   'bg-blue-500',
@@ -748,7 +748,7 @@ function TodayLine({ calendarDays, today, leftWidth, dayWidth }) {
 
   return (
     <div
-      className="pointer-events-none absolute top-0 z-30 h-full w-[3px] bg-red-600"
+      className="pointer-events-none absolute top-0 z-10 h-full w-[3px] bg-red-600"
       style={{
         left: `${leftWidth + todayIndex * dayWidth}px`,
       }}
@@ -765,7 +765,7 @@ export default function ProductionPage() {
   const today = useMemo(() => startOfDay(new Date()), []);
 
   const calendarDays = useMemo(() => {
-    return Array.from({ length: CALENDAR_DAYS }, (_, index) => addDays(today, index));
+    return Array.from({ length: CALENDAR_DAYS }, (_, index) => addDays(calendarStart, index));
   }, [today]);
 
   const loadJobs = async () => {
@@ -953,7 +953,7 @@ export default function ProductionPage() {
                         gridTemplateColumns: `360px ${calendarDays.map(() => '160px').join(' ')}`,
                       }}
                     >
-                      <div className="sticky left-0 z-30 border-r bg-white px-4 py-3">
+                      <div className="sticky left-0 z-40 border-r bg-white px-4 py-3">
                         <div className="mb-2">Job</div>
                         <div className="relative">
                           <Search size={14} className="absolute left-2 top-2.5 text-slate-400" />
@@ -976,7 +976,7 @@ export default function ProductionPage() {
                           gridTemplateColumns: `360px ${calendarDays.map(() => '160px').join(' ')}`,
                         }}
                       >
-                        <div className="sticky left-0 z-20 border-r bg-white px-4 py-4">
+                        <div className="sticky left-0 z-40 border-r bg-white px-4 py-4">
                           <div className="flex items-start gap-3">
                             <div className={`mt-1 h-4 w-4 rounded-full ${jobColour}`} />
 
@@ -1115,7 +1115,7 @@ export default function ProductionPage() {
                         gridTemplateColumns: `300px ${calendarDays.map(() => '160px').join(' ')}`,
                       }}
                     >
-                      <div className="sticky left-0 z-30 border-r bg-white px-4 py-3">Department / Resource</div>
+                      <div className="sticky left-0 z-40 border-r bg-white px-4 py-3">Department / Resource</div>
                       <CalendarHeader calendarDays={calendarDays} today={today} />
                     </div>
 
@@ -1127,7 +1127,7 @@ export default function ProductionPage() {
                           gridTemplateColumns: `300px ${calendarDays.map(() => '160px').join(' ')}`,
                         }}
                       >
-                        <div className="sticky left-0 z-20 border-r bg-white px-4 py-4">
+                        <div className="sticky left-0 z-40 border-r bg-white px-4 py-4">
                           <div className="flex items-center gap-2 font-black text-slate-900">
                             {getStepIcon(row.department)}
                             {row.owner}
