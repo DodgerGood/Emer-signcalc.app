@@ -913,7 +913,7 @@ export default function ProductionPage() {
             </div>
 
             <div className="rounded-xl border p-3 text-xs text-slate-500">
-              The Job Overview search only filters the first calendar. The Department Calendar below uses its own department filter.
+              Search filters the Job Overview Calendar only. The Department Calendar uses its own department filter.
             </div>
           </div>
 
@@ -927,7 +927,7 @@ export default function ProductionPage() {
                     Job Overview Calendar
                   </h2>
                   <p className="text-sm text-slate-500">
-                    One row per posted job. Use the week controls to move left or right.
+                    One row per posted job. The job column stays fixed while the calendar dates scroll left or right.
                   </p>
                 </div>
 
@@ -1077,7 +1077,7 @@ export default function ProductionPage() {
                     Department / Machine Calendar
                   </h2>
                   <p className="text-sm text-slate-500">
-                    Rows show departments/resources so you can see when machines, labour, installation and dispatch are busy.
+                    Rows show departments/resources. Scroll the date columns left or right to view capacity before and after today.
                   </p>
                 </div>
 
