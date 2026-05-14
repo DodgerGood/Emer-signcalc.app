@@ -22,7 +22,7 @@ const WORKDAY_MINUTES = 8 * 60;
 const SETUP_MINUTES = 15;
 const REMOVAL_MINUTES = 15;
 
-const WORK_WEEK_DAYS = 5;
+const CALENDAR_DAYS = 21;
 
 const jobColourClasses = [
   'bg-blue-500',
@@ -107,6 +107,11 @@ function formatShortDate(date) {
     day: '2-digit',
     month: 'short',
   });
+}
+
+function isWeekend(date) {
+  const day = date.getDay();
+  return day === 0 || day === 6;
 }
 
 function formatHours(minutes) {
@@ -708,20 +713,25 @@ function CalendarHeader({ calendarDays, today }) {
     <>
       {calendarDays.map((day) => {
         const isToday = dateKey(day) === dateKey(today);
+        const weekend = isWeekend(day);
 
         return (
           <div
             key={dateKey(day)}
-            className={`relative border-r px-2 py-3 text-center ${isToday ? 'bg-red-50 text-red-700' : ''}`}
+            className={`relative border-r px-2 py-3 text-center ${
+              isToday
+                ? 'bg-red-50 text-red-700'
+                : weekend
+                  ? 'bg-slate-100 text-slate-400'
+                  : 'bg-white'
+            }`}
           >
-            {isToday ? (
-              <div className="absolute left-0 top-0 h-full w-[3px] bg-red-600" />
-            ) : null}
-
             {formatDayLabel(day)}
 
             {isToday ? (
               <div className="mt-1 text-[10px] font-black text-red-600">TODAY</div>
+            ) : weekend ? (
+              <div className="mt-1 text-[10px] font-semibold text-slate-400">WEEKEND</div>
             ) : null}
           </div>
         );
@@ -752,15 +762,10 @@ export default function ProductionPage() {
   const [loading, setLoading] = useState(true);
 
   const today = useMemo(() => startOfDay(new Date()), []);
-  const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
 
   const calendarDays = useMemo(() => {
-    return Array.from({ length: WORK_WEEK_DAYS }, (_, index) => addDays(weekStart, index));
-  }, [weekStart]);
-
-  const goPreviousWeek = () => setWeekStart((current) => addDays(current, -7));
-  const goThisWeek = () => setWeekStart(getMonday(new Date()));
-  const goNextWeek = () => setWeekStart((current) => addDays(current, 7));
+    return Array.from({ length: CALENDAR_DAYS }, (_, index) => addDays(today, index));
+  }, [today]);
 
   const loadJobs = async () => {
     try {
@@ -880,9 +885,9 @@ export default function ProductionPage() {
           <div className="space-y-4 rounded-2xl border bg-white p-4 shadow-sm">
             <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
               <div className="font-black text-slate-900">Calendar Window</div>
-              <div>Week: {formatShortDate(calendarDays[0])} - {formatShortDate(calendarDays[calendarDays.length - 1])}</div>
-              <div>Today: {formatShortDate(today)}</div>
-              <div>View: Monday to Friday</div>
+              <div>Starts: {formatShortDate(today)}</div>
+              <div>View: scroll left / right</div>
+              <div>Weekends are greyed out</div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -902,8 +907,8 @@ export default function ProductionPage() {
               </div>
 
               <div className="rounded-xl border p-3">
-                <div className="text-xs text-slate-500">View</div>
-                <div className="text-xl font-black text-purple-600">5 days</div>
+                <div className="text-xs text-slate-500">Visible</div>
+                <div className="text-xl font-black text-purple-600">Scroll</div>
               </div>
             </div>
 
@@ -926,27 +931,7 @@ export default function ProductionPage() {
                   </p>
                 </div>
 
-                <div className="flex flex-col gap-2 md:flex-row md:items-center">
-                  <Button type="button" variant="outline" size="sm" onClick={goPreviousWeek}>
-                    Previous Week
-                  </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={goThisWeek}>
-                    This Week
-                  </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={goNextWeek}>
-                    Next Week
-                  </Button>
-                </div>
 
-                <div className="relative w-full md:w-80">
-                  <Search size={16} className="absolute left-3 top-3 text-slate-400" />
-                  <Input
-                    value={jobSearch}
-                    onChange={(event) => setJobSearch(event.target.value)}
-                    placeholder="Search job, client, invoice, job pack"
-                    className="pl-9"
-                  />
-                </div>
               </div>
 
               {loading ? (
@@ -967,7 +952,18 @@ export default function ProductionPage() {
                         gridTemplateColumns: `360px ${calendarDays.map(() => '160px').join(' ')}`,
                       }}
                     >
-                      <div className="border-r px-4 py-3">Job</div>
+                      <div className="sticky left-0 z-30 border-r bg-white px-4 py-3">
+                        <div className="mb-2">Job</div>
+                        <div className="relative">
+                          <Search size={14} className="absolute left-2 top-2.5 text-slate-400" />
+                          <Input
+                            value={jobSearch}
+                            onChange={(event) => setJobSearch(event.target.value)}
+                            placeholder="Search jobs"
+                            className="h-8 pl-8 text-xs normal-case tracking-normal"
+                          />
+                        </div>
+                      </div>
                       <CalendarHeader calendarDays={calendarDays} today={today} />
                     </div>
 
@@ -979,7 +975,7 @@ export default function ProductionPage() {
                           gridTemplateColumns: `360px ${calendarDays.map(() => '160px').join(' ')}`,
                         }}
                       >
-                        <div className="border-r bg-white px-4 py-4">
+                        <div className="sticky left-0 z-20 border-r bg-white px-4 py-4">
                           <div className="flex items-start gap-3">
                             <div className={`mt-1 h-4 w-4 rounded-full ${jobColour}`} />
 
@@ -1031,7 +1027,9 @@ export default function ProductionPage() {
                           return (
                             <div
                               key={`${job.id}-${dateKey(day)}`}
-                              className={`relative min-h-[132px] border-r bg-slate-50 p-2 ${isToday ? 'bg-red-50/40' : ''}`}
+                              className={`relative min-h-[132px] border-r p-2 ${
+                                isToday ? 'bg-red-50/40' : isWeekend(day) ? 'bg-slate-100' : 'bg-slate-50'
+                              }`}
                             >
                               {isToday ? (
                                 <div className="absolute left-0 top-0 z-10 h-full w-[3px] bg-red-600" />
@@ -1086,18 +1084,6 @@ export default function ProductionPage() {
                   </p>
                 </div>
 
-                <div className="flex flex-col gap-2 md:flex-row md:items-center">
-                  <Button type="button" variant="outline" size="sm" onClick={goPreviousWeek}>
-                    Previous Week
-                  </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={goThisWeek}>
-                    This Week
-                  </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={goNextWeek}>
-                    Next Week
-                  </Button>
-                </div>
-
                 <div className="w-full md:w-72">
                   <select
                     value={departmentFilter}
@@ -1131,7 +1117,7 @@ export default function ProductionPage() {
                         gridTemplateColumns: `300px ${calendarDays.map(() => '160px').join(' ')}`,
                       }}
                     >
-                      <div className="border-r px-4 py-3">Department / Resource</div>
+                      <div className="sticky left-0 z-30 border-r bg-white px-4 py-3">Department / Resource</div>
                       <CalendarHeader calendarDays={calendarDays} today={today} />
                     </div>
 
@@ -1143,7 +1129,7 @@ export default function ProductionPage() {
                           gridTemplateColumns: `300px ${calendarDays.map(() => '160px').join(' ')}`,
                         }}
                       >
-                        <div className="border-r bg-white px-4 py-4">
+                        <div className="sticky left-0 z-20 border-r bg-white px-4 py-4">
                           <div className="flex items-center gap-2 font-black text-slate-900">
                             {getStepIcon(row.department)}
                             {row.owner}
@@ -1165,7 +1151,9 @@ export default function ProductionPage() {
                           return (
                             <div
                               key={`${row.id}-${dateKey(day)}`}
-                              className={`relative min-h-[118px] border-r bg-slate-50 p-2 ${isToday ? 'bg-red-50/40' : ''}`}
+                              className={`relative min-h-[118px] border-r p-2 ${
+                                isToday ? 'bg-red-50/40' : isWeekend(day) ? 'bg-slate-100' : 'bg-slate-50'
+                              }`}
                             >
                               {isToday ? (
                                 <div className="absolute left-0 top-0 z-10 h-full w-[3px] bg-red-600" />
