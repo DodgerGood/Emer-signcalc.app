@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import api from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -13,6 +14,7 @@ import { toast } from 'sonner';
 
 export default function ApprovalsPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const canMoveBackToQuote = ['MD_ADMIN', 'MANAGER', 'CEO'].includes(user?.role);
 
   const [approvedJobs, setApprovedJobs] = useState([]);
@@ -203,7 +205,7 @@ export default function ApprovalsPage() {
   };
 
   const trackProduction = async (job) => {
-    toast.info(`Production tracking for ${job.invoice_number || 'invoice'} will be connected in the next step`);
+    navigate(`/production?jobId=${job.id}`);
   };
 
   const deleteApproved = async (job) => {

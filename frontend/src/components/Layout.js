@@ -10,6 +10,7 @@ import {
   BookOpen,
   FileText,
   CheckCircle,
+  Factory,
   Warehouse,
   LogOut,
   Settings,
@@ -47,8 +48,8 @@ const role = user?.role;
         { to: '/clients', icon: Building2, label: 'Clients' },
         { to: '/estimations', icon: Calculator, label: 'Estimations' },
         { to: '/quotes', icon: FileText, label: 'Quotes' },
-        { to: '/approvals', icon: CheckCircle,
-  Warehouse, label: 'Approved' },
+        { to: '/approvals', icon: CheckCircle, label: 'Approved' },
+        { to: '/production', icon: Factory, label: 'Production Tracking' },
       ];
     } else if (role === 'MANAGER') {
       return [
@@ -58,8 +59,8 @@ const role = user?.role;
         { to: '/labour-types', icon: Users, label: 'Labour & Machine' },
         { to: '/install-types', icon: Wrench, label: 'Installation Pricelist' },
         { to: '/recipes', icon: BookOpen, label: 'Recipes' },
-        { to: '/approvals', icon: CheckCircle,
-  Warehouse, label: 'Approved' },
+        { to: '/approvals', icon: CheckCircle, label: 'Approved' },
+        { to: '/production', icon: Factory, label: 'Production Tracking' },
       ];
     } else if (role === 'PROCUREMENT') {
       return [
@@ -73,8 +74,8 @@ const role = user?.role;
         { to: '/clients', icon: Building2, label: 'Clients' },
         { to: '/estimations', icon: Calculator, label: 'Estimations' },
         { to: '/quotes', icon: FileText, label: 'Quotes' },
-        { to: '/approvals', icon: CheckCircle,
-  Warehouse, label: 'Approved' },
+        { to: '/approvals', icon: CheckCircle, label: 'Approved' },
+        { to: '/production', icon: Factory, label: 'Production Tracking' },
       ];
     } else if (role === 'CEO') {
       return [
@@ -87,8 +88,8 @@ const role = user?.role;
         { to: '/clients', icon: Building2, label: 'Clients' },
         { to: '/estimations', icon: Calculator, label: 'Estimations' },
         { to: '/quotes', icon: FileText, label: 'Quotes' },
-        { to: '/approvals', icon: CheckCircle,
-  Warehouse, label: 'Approved' },
+        { to: '/approvals', icon: CheckCircle, label: 'Approved' },
+        { to: '/production', icon: Factory, label: 'Production Tracking' },
       ];
     }
     return [];
