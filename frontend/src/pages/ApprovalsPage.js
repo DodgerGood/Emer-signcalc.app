@@ -181,12 +181,12 @@ export default function ApprovalsPage() {
               <TableHeader className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                 <TableRow>
                   <TableHead className="px-4 py-3">Client Name</TableHead>
-                  <TableHead className="px-4 py-3">Invoice</TableHead>
-                  <TableHead className="px-4 py-3">Delivery Note</TableHead>
-                  <TableHead className="px-4 py-3">BOM</TableHead>
-                  <TableHead className="px-4 py-3">Design Proof</TableHead>
-                  <TableHead className="px-4 py-3">Job Pack</TableHead>
-                  <TableHead className="px-4 py-3">Production</TableHead>
+                  <TableHead className="px-4 py-3 text-center">Invoice</TableHead>
+                  <TableHead className="px-4 py-3 text-center">Delivery Note</TableHead>
+                  <TableHead className="px-4 py-3 text-center">BOM</TableHead>
+                  <TableHead className="px-4 py-3 text-center">Design Proof</TableHead>
+                  <TableHead className="px-4 py-3 text-center">Job Pack</TableHead>
+                  <TableHead className="px-4 py-3 text-center">Production</TableHead>
                   <TableHead className="px-4 py-3 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -205,7 +205,7 @@ export default function ApprovalsPage() {
                         {job.client_name}
                       </TableCell>
 
-                      <TableCell className="px-4 py-3">
+                      <TableCell className="px-4 py-3 text-center">
                         <ActionIconButton
                           icon={<FileText size={16} />}
                           label={job.invoice_number || 'Invoice'}
@@ -216,7 +216,7 @@ export default function ApprovalsPage() {
                         />
                       </TableCell>
 
-                      <TableCell className="px-4 py-3">
+                      <TableCell className="px-4 py-3 text-center">
                         <ActionIconButton
                           icon={<FileText size={16} />}
                           label="Delivery"
@@ -227,7 +227,7 @@ export default function ApprovalsPage() {
                         />
                       </TableCell>
 
-                      <TableCell className="px-4 py-3">
+                      <TableCell className="px-4 py-3 text-center">
                         <ActionIconButton
                           icon={<FileText size={16} />}
                           label="BOM"
@@ -238,7 +238,7 @@ export default function ApprovalsPage() {
                         />
                       </TableCell>
 
-                      <TableCell className="px-4 py-3">
+                      <TableCell className="px-4 py-3 text-center">
                         <ActionIconButton
                           icon={<Upload size={16} />}
                           label="Proof"
@@ -249,7 +249,7 @@ export default function ApprovalsPage() {
                         />
                       </TableCell>
 
-                      <TableCell className="px-4 py-3">
+                      <TableCell className="px-4 py-3 text-center">
                         <ActionIconButton
                           icon={<PackageCheck size={16} />}
                           label="Job Pack"
@@ -259,7 +259,7 @@ export default function ApprovalsPage() {
                         />
                       </TableCell>
 
-                      <TableCell className="px-4 py-3">
+                      <TableCell className="px-4 py-3 text-center">
                         <ActionIconButton
                           icon={<Factory size={16} />}
                           label="Track"
