@@ -790,16 +790,20 @@ export default function ProductionPage() {
   }, []);
 
   useEffect(() => {
+    if (loading) return;
+
     const todayScrollPosition = DAYS_BACK * DAY_WIDTH;
 
-    if (jobCalendarScrollRef.current) {
-      jobCalendarScrollRef.current.scrollLeft = todayScrollPosition;
-    }
+    requestAnimationFrame(() => {
+      if (jobCalendarScrollRef.current) {
+        jobCalendarScrollRef.current.scrollLeft = todayScrollPosition;
+      }
 
-    if (departmentCalendarScrollRef.current) {
-      departmentCalendarScrollRef.current.scrollLeft = todayScrollPosition;
-    }
-  }, []);
+      if (departmentCalendarScrollRef.current) {
+        departmentCalendarScrollRef.current.scrollLeft = todayScrollPosition;
+      }
+    });
+  }, [loading]);
 
   const allScheduledJobs = jobs.map((job, index) => {
     const jobStart = startOfDay(job.production_posted_at || job.invoice_created_at || job.created_at || today);
