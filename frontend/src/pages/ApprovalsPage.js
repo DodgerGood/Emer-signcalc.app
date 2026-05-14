@@ -304,7 +304,7 @@ export default function ApprovalsPage() {
                         <ActionIconButton
                           icon={<FileText size={16} />}
                           label={job.invoice_number || 'Invoice'}
-                          tone="pdf"
+                          tone="invoice"
                           variant="outline"
                           onClick={() => downloadInvoice(job)}
                           title="Download invoice PDF"
@@ -315,7 +315,7 @@ export default function ApprovalsPage() {
                         <ActionIconButton
                           icon={<FileText size={16} />}
                           label="Delivery"
-                          tone="pdf"
+                          tone="delivery"
                           variant="outline"
                           onClick={() => downloadDeliveryNote(job)}
                           title="Download delivery note PDF"
@@ -326,7 +326,7 @@ export default function ApprovalsPage() {
                         <ActionIconButton
                           icon={<FileText size={16} />}
                           label="BOM"
-                          tone="pdf"
+                          tone="bom"
                           variant="outline"
                           onClick={() => downloadBom(job)}
                           title="Download BOM PDF"
@@ -339,7 +339,7 @@ export default function ApprovalsPage() {
                             <ActionIconButton
                               icon={<Upload size={16} />}
                               label="Upload"
-                              tone="upload"
+                              tone="proofUpload"
                               variant="outline"
                               onClick={() => uploadProof(job)}
                               title="Upload design proof"
@@ -348,7 +348,7 @@ export default function ApprovalsPage() {
                             <ActionIconButton
                               icon={<Download size={16} />}
                               label="Download"
-                              tone="pdf"
+                              tone="proofDownload"
                               variant="outline"
                               onClick={() => downloadProof(job)}
                               title="Download design proof"
@@ -374,7 +374,7 @@ export default function ApprovalsPage() {
                             <ActionIconButton
                               icon={<Upload size={16} />}
                               label="Upload"
-                              tone="upload"
+                              tone="ticketUpload"
                               variant="outline"
                               onClick={() => uploadJobTicket(job)}
                               title="Upload job ticket"
@@ -383,7 +383,7 @@ export default function ApprovalsPage() {
                             <ActionIconButton
                               icon={<Download size={16} />}
                               label="Download"
-                              tone="pdf"
+                              tone="ticketDownload"
                               variant="outline"
                               onClick={() => downloadJobTicket(job)}
                               title="Download job ticket"

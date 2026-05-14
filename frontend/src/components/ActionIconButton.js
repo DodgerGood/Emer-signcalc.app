@@ -12,6 +12,14 @@ const toneClasses = {
   credit: 'text-violet-600 hover:text-violet-700 hover:bg-violet-50',
   return: 'text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50',
   production: 'text-orange-600 hover:text-orange-700 hover:bg-orange-50',
+
+  invoice: 'text-blue-600 hover:text-blue-700 hover:bg-blue-50',
+  delivery: 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50',
+  bom: 'text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50',
+  proofUpload: 'text-purple-600 hover:text-purple-700 hover:bg-purple-50',
+  proofDownload: 'text-sky-600 hover:text-sky-700 hover:bg-sky-50',
+  ticketUpload: 'text-amber-600 hover:text-amber-700 hover:bg-amber-50',
+  ticketDownload: 'text-green-600 hover:text-green-700 hover:bg-green-50',
 };
 
 export default function ActionIconButton({
