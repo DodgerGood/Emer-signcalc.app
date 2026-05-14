@@ -8,7 +8,7 @@ import { Input } from '../components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import ActionIconButton from '../components/ActionIconButton';
 
-import { FileText, Upload, Download, Trash2, RotateCcw, PackageCheck, Factory } from 'lucide-react';
+import { FileText, Upload, Download, Trash2, RotateCcw, Factory } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ApprovalsPage() {
@@ -154,8 +154,52 @@ export default function ApprovalsPage() {
     return date.toLocaleDateString('en-ZA');
   };
 
-  const createJobPack = async (job) => {
-    toast.info(`Create Job Pack for ${job.invoice_number || 'invoice'} will be connected in the next step`);
+  const uploadJobTicket = async (job) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/pdf,image/png,image/jpeg,image/jpg';
+
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+
+      const maxSize = 5 * 1024 * 1024;
+      if (file.size > maxSize) {
+        toast.error('Job ticket must be 5MB or smaller');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('job_ticket_file', file);
+
+      try {
+        await api.post(`/approved/${job.id}/job-ticket`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+
+        toast.success('Job ticket uploaded');
+        loadApprovedJobs();
+      } catch (error) {
+        toast.error(error.response?.data?.detail || 'Failed to upload job ticket');
+      }
+    };
+
+    input.click();
+  };
+
+  const downloadJobTicket = async (job) => {
+    try {
+      const response = await api.get(`/approved/${job.id}/job-ticket`, {
+        responseType: 'blob',
+      });
+
+      const filename = job.job_ticket_document_filename || 'job-ticket';
+      downloadFile(response, filename);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'No job ticket uploaded yet');
+    }
   };
 
   const trackProduction = async (job) => {
@@ -228,7 +272,7 @@ export default function ApprovalsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border bg-white">
-            <Table className="w-full min-w-[1450px] text-sm">
+            <Table className="w-full min-w-[1550px] text-sm">
               <TableHeader className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                 <TableRow>
                   <TableHead className="px-4 py-3">Client Name</TableHead>
@@ -236,7 +280,7 @@ export default function ApprovalsPage() {
                   <TableHead className="px-4 py-3 text-center">Delivery Note</TableHead>
                   <TableHead className="px-4 py-3 text-center">BOM</TableHead>
                   <TableHead className="px-4 py-3 text-center">Design Proof</TableHead>
-                  <TableHead className="px-4 py-3 text-center">Job Pack</TableHead>
+                  <TableHead className="px-4 py-3 text-center">Job Ticket</TableHead>
                   <TableHead className="px-4 py-3 text-center">Production</TableHead>
                   <TableHead className="px-4 py-3 text-right">Actions</TableHead>
                 </TableRow>
@@ -325,13 +369,38 @@ export default function ApprovalsPage() {
                       </TableCell>
 
                       <TableCell className="px-4 py-3 text-center">
-                        <ActionIconButton
-                          icon={<PackageCheck size={16} />}
-                          label="Job Pack"
-                          tone="approve"
-                          onClick={() => createJobPack(job)}
-                          title="Create job pack"
-                        />
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="flex items-center justify-center gap-2">
+                            <ActionIconButton
+                              icon={<Upload size={16} />}
+                              label="Upload"
+                              tone="upload"
+                              variant="outline"
+                              onClick={() => uploadJobTicket(job)}
+                              title="Upload job ticket"
+                            />
+
+                            <ActionIconButton
+                              icon={<Download size={16} />}
+                              label="Download"
+                              tone="pdf"
+                              variant="outline"
+                              onClick={() => downloadJobTicket(job)}
+                              title="Download job ticket"
+                            />
+                          </div>
+
+                          {job.job_ticket_document_filename ? (
+                            <div className="max-w-[160px] text-center text-[11px] leading-tight text-slate-500">
+                              <div className="truncate" title={job.job_ticket_document_filename}>
+                                {job.job_ticket_document_filename}
+                              </div>
+                              <div>{formatProofDate(job.job_ticket_document_uploaded_at)}</div>
+                            </div>
+                          ) : (
+                            <div className="text-[11px] text-slate-400">No ticket uploaded</div>
+                          )}
+                        </div>
                       </TableCell>
 
                       <TableCell className="px-4 py-3 text-center">

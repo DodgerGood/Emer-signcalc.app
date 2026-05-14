@@ -6553,6 +6553,102 @@ async def download_design_proof(quote_id: str, user: dict = Depends(get_current_
     )
 
 
+@api_router.post("/approved/{quote_id}/job-ticket")
+async def upload_job_ticket(
+    quote_id: str,
+    job_ticket_file: UploadFile = File(...),
+    user: dict = Depends(get_current_user)
+):
+    quote = await db.quotes.find_one(
+        {"id": quote_id, "company_id": user["company_id"]},
+        {"_id": 0}
+    )
+
+    if not quote:
+        raise HTTPException(status_code=404, detail="Approved invoice not found")
+
+    if not quote.get("invoice_number"):
+        raise HTTPException(status_code=400, detail="Job ticket can only be uploaded after invoice approval")
+
+    allowed_content_types = {
+        "application/pdf",
+        "image/png",
+        "image/jpeg",
+        "image/jpg",
+    }
+
+    content_type = job_ticket_file.content_type or ""
+    if content_type not in allowed_content_types:
+        raise HTTPException(status_code=400, detail="Job ticket must be a PDF, PNG, or JPG file")
+
+    file_bytes = await job_ticket_file.read()
+    max_size_bytes = 5 * 1024 * 1024
+
+    if len(file_bytes) > max_size_bytes:
+        raise HTTPException(status_code=400, detail="Job ticket file must be 5MB or smaller")
+
+    encoded_file = base64.b64encode(file_bytes).decode("utf-8")
+    data_url = f"data:{content_type};base64,{encoded_file}"
+    uploaded_at = datetime.now(timezone.utc).isoformat()
+
+    await db.quotes.update_one(
+        {"id": quote_id, "company_id": user["company_id"]},
+        {
+            "$set": {
+                "job_ticket_document_filename": job_ticket_file.filename or "job-ticket",
+                "job_ticket_document_content_type": content_type,
+                "job_ticket_document_data_url": data_url,
+                "job_ticket_document_uploaded_at": uploaded_at,
+                "job_ticket_document_uploaded_by": user["id"],
+                "job_ticket_document_uploaded_by_name": user.get("full_name") or "",
+                "updated_at": uploaded_at,
+            }
+        }
+    )
+
+    return {
+        "message": "Job ticket uploaded",
+        "filename": job_ticket_file.filename or "job-ticket",
+        "uploaded_at": uploaded_at,
+    }
+
+
+@api_router.get("/approved/{quote_id}/job-ticket")
+async def download_job_ticket(quote_id: str, user: dict = Depends(get_current_user)):
+    quote = await db.quotes.find_one(
+        {"id": quote_id, "company_id": user["company_id"]},
+        {"_id": 0}
+    )
+
+    if not quote:
+        raise HTTPException(status_code=404, detail="Approved invoice not found")
+
+    if not quote.get("invoice_number"):
+        raise HTTPException(status_code=400, detail="Job ticket is only available after invoice approval")
+
+    data_url = quote.get("job_ticket_document_data_url") or ""
+    filename = quote.get("job_ticket_document_filename") or "job-ticket"
+    content_type = quote.get("job_ticket_document_content_type") or "application/octet-stream"
+
+    if not data_url or ";base64," not in data_url:
+        raise HTTPException(status_code=404, detail="No job ticket has been uploaded")
+
+    try:
+        file_bytes = base64.b64decode(data_url.split(";base64,", 1)[1])
+    except Exception:
+        raise HTTPException(status_code=500, detail="Stored job ticket could not be decoded")
+
+    safe_filename = filename.replace('"', "").replace("\n", " ").replace("\r", " ")
+
+    return Response(
+        content=file_bytes,
+        media_type=content_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{safe_filename}"'
+        }
+    )
+
+
 @api_router.post("/approved/{quote_id}/move-back-to-quote")
 async def move_invoice_back_to_quote(quote_id: str, user: dict = Depends(require_manager)):
     if user["role"] not in ["MD_ADMIN", "MANAGER", "CEO"]:
