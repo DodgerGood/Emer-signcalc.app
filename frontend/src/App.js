@@ -18,6 +18,7 @@ import QuotesPage from './pages/QuotesPage';
 import ClientsPage from './pages/ClientsPage';
 import QuoteDetailPage from './pages/QuoteDetailPage';
 import ApprovalsPage from './pages/ApprovalsPage';
+import ProductionPage from './pages/ProductionPage';
 import SettingsPage from './pages/SettingsPage';
 import CompanyDetailsPage from './pages/CompanyDetailsPage';
 import EstimationDashboard from './pages/EstimationDashboard';
