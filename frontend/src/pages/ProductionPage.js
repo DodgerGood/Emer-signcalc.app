@@ -763,10 +763,11 @@ export default function ProductionPage() {
   const [loading, setLoading] = useState(true);
 
   const today = useMemo(() => startOfDay(new Date()), []);
+  const calendarStart = useMemo(() => addDays(today, -DAYS_BACK), [today]);
 
   const calendarDays = useMemo(() => {
     return Array.from({ length: CALENDAR_DAYS }, (_, index) => addDays(calendarStart, index));
-  }, [today]);
+  }, [calendarStart]);
 
   const loadJobs = async () => {
     try {
