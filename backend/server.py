@@ -4363,11 +4363,7 @@ async def export_client_statement_pdf(
     ]
     banking_details = " | ".join([part for part in bank_parts if part]) or company.get("banking_details") or "Banking details placeholder"
 
-    footer_text = (
-        company_details.get("invoice_footer")
-        if document_type == "INVOICE"
-        else company_details.get("quote_footer")
-    ) or "Payment terms placeholder. Quote valid for 7 days unless stated otherwise."
+    footer_text = company_details.get("statement_footer") or "Payment terms placeholder. Paid invoices are shown for record purposes."
 
     logo_data_url = company_details.get("logo_data_url") or ""
 
@@ -4599,12 +4595,21 @@ async def export_client_statement_pdf(
         canvas_obj.setFont("Helvetica-Bold", 7)
         canvas_obj.drawString(18 * mm, 15 * mm, "TERMS & CONDITIONS")
         canvas_obj.setFont("Helvetica", 6)
-        canvas_obj.drawString(18 * mm, 11 * mm, "Payment terms placeholder. Paid invoices are shown for record purposes.")
+        canvas_obj.drawString(18 * mm, 11 * mm, str(footer_text)[:95])
 
         canvas_obj.setFont("Helvetica-Bold", 7)
-        canvas_obj.drawRightString(188 * mm, 20 * mm, "BANKING DETAILS")
+        canvas_obj.drawRightString(188 * mm, 24 * mm, "BANKING DETAILS")
         canvas_obj.setFont("Helvetica", 6)
-        canvas_obj.drawRightString(188 * mm, 16 * mm, str(banking_details)[:70])
+
+        banking_lines = str(banking_details or "Banking details").split(" | ")
+        banking_y = 20 * mm
+        for banking_line in banking_lines[:4]:
+            canvas_obj.drawRightString(188 * mm, banking_y, banking_line[:55])
+            banking_y -= 3.3 * mm
+
+        canvas_obj.setFillColor(slate)
+        canvas_obj.setFont("Helvetica", 6)
+        canvas_obj.drawCentredString(105 * mm, 5 * mm, f"Page {page_number}")
 
     doc.build(elements, onFirstPage=draw_header_footer, onLaterPages=draw_header_footer)
     buffer.seek(0)
@@ -6524,14 +6529,14 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
             canvas_obj.drawString(18 * mm, 11 * mm, str(footer_text)[:95])
 
             canvas_obj.setFont("Helvetica-Bold", 7)
-            canvas_obj.drawRightString(188 * mm, 22 * mm, "BANKING DETAILS")
+            canvas_obj.drawRightString(188 * mm, 24 * mm, "BANKING DETAILS")
             canvas_obj.setFont("Helvetica", 6)
 
             banking_lines = str(banking_details or "Banking details").split(" | ")
-            banking_y = 18 * mm
+            banking_y = 20 * mm
             for banking_line in banking_lines[:4]:
                 canvas_obj.drawRightString(188 * mm, banking_y, banking_line[:55])
-                banking_y -= 3.5 * mm
+                banking_y -= 3.3 * mm
         else:
             # Condensed footer on all non-last pages
             canvas_obj.setStrokeColor(blue)
@@ -6546,7 +6551,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         if is_last_page:
             canvas_obj.setFillColor(slate)
             canvas_obj.setFont("Helvetica", 6)
-            canvas_obj.drawRightString(188 * mm, 8 * mm, f"Page {page_number} of {page_count}")
+            canvas_obj.drawCentredString(105 * mm, 5 * mm, f"Page {page_number} of {page_count}")
 
         canvas_obj.restoreState()
 
