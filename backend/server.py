@@ -4364,7 +4364,11 @@ async def export_client_statement_pdf(
     ]
     banking_details = " | ".join([part for part in bank_parts if part]) or company.get("banking_details") or "Banking details placeholder"
 
-    footer_text = company_details.get("statement_footer") or "Payment terms placeholder. Paid invoices are shown for record purposes."
+    footer_text = (
+        company_details.get("invoice_footer")
+        if document_type == "INVOICE"
+        else company_details.get("quote_footer")
+    ) or "Payment terms placeholder. Quote valid for 7 days unless stated otherwise."
 
     logo_data_url = company_details.get("logo_data_url") or ""
 
@@ -5670,6 +5674,372 @@ async def export_invoice_pdf(quote_id: str, user: dict = Depends(get_current_use
     )
 
     return response
+
+
+@api_router.get("/approved/{quote_id}/delivery-note/pdf")
+async def export_delivery_note_pdf(quote_id: str, user: dict = Depends(get_current_user)):
+    quote = await db.quotes.find_one(
+        {"id": quote_id, "company_id": user["company_id"]},
+        {"_id": 0}
+    )
+
+    if not quote:
+        raise HTTPException(status_code=404, detail="Approved invoice not found")
+
+    if not quote.get("invoice_number"):
+        raise HTTPException(status_code=400, detail="Delivery Note is only available after invoice approval")
+
+    company = await db.companies.find_one({"id": quote["company_id"]}, {"_id": 0}) or {}
+    company_details = await db.company_details.find_one({"company_id": quote["company_id"]}, {"_id": 0}) or {}
+    blueprint = quote.get("blueprint") or {}
+    estimate_lines = blueprint.get("estimate_lines") or []
+    addons = blueprint.get("estimate_addons") or []
+
+    delivery_note_number = (quote.get("invoice_number") or "DELIVERY-NOTE").replace("Inv", "DN", 1)
+    delivery_note_date = (quote.get("invoice_created_at") or quote.get("created_at") or "")[:10] or datetime.now(timezone.utc).date().isoformat()
+
+    company_name = company_details.get("company_name") or company.get("name") or "Your Company Name"
+    company_address = company_details.get("address") or company.get("address") or "Company address placeholder"
+    company_phone = company_details.get("phone") or company.get("phone") or "Telephone placeholder"
+    company_email = company_details.get("email") or company.get("email") or "Email placeholder"
+    company_vat = company_details.get("vat_number") or company.get("vat_number") or "VAT number placeholder"
+    logo_data_url = company_details.get("logo_data_url") or ""
+    footer_text = company_details.get("invoice_footer") or company_details.get("quote_footer") or "Goods received in good order."
+
+    bank_parts = [
+        f"Bank: {company_details.get('bank_name')}" if company_details.get("bank_name") else "",
+        f"Account Name: {company_details.get('bank_account_name')}" if company_details.get("bank_account_name") else "",
+        f"Account No: {company_details.get('bank_account_number')}" if company_details.get("bank_account_number") else "",
+        f"Branch Code: {company_details.get('bank_branch_code')}" if company_details.get("bank_branch_code") else "",
+    ]
+    banking_details = " | ".join([part for part in bank_parts if part]) or company.get("banking_details") or "Banking details placeholder"
+
+    from reportlab.pdfgen import canvas as rl_canvas
+
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=20 * mm,
+        leftMargin=20 * mm,
+        topMargin=16 * mm,
+        bottomMargin=42 * mm
+    )
+
+    elements = []
+    styles = getSampleStyleSheet()
+
+    navy = colors.HexColor("#0F172A")
+    blue = colors.HexColor("#2563EB")
+    slate = colors.HexColor("#475569")
+    border = colors.HexColor("#CBD5E1")
+
+    content_left = 20 * mm
+    content_right = 190 * mm
+    content_width = content_right - content_left
+
+    title_style = ParagraphStyle(
+        "DeliveryNoteTitle",
+        parent=styles["Heading1"],
+        fontSize=34,
+        leading=34,
+        textColor=navy,
+        spaceAfter=4
+    )
+
+    normal = ParagraphStyle(
+        "DeliveryNoteNormal",
+        parent=styles["Normal"],
+        fontSize=9,
+        leading=11,
+        textColor=colors.black
+    )
+
+    small = ParagraphStyle(
+        "DeliveryNoteSmall",
+        parent=styles["Normal"],
+        fontSize=8,
+        leading=10,
+        textColor=slate
+    )
+
+    if logo_data_url.startswith("data:image/png;base64,"):
+        try:
+            logo_bytes = base64.b64decode(logo_data_url.split(",", 1)[1])
+            logo_placeholder = Image(BytesIO(logo_bytes), width=56 * mm, height=38 * mm, kind="proportional")
+        except Exception:
+            logo_placeholder = Table(
+                [[Paragraph("<b>LOGO</b>", ParagraphStyle(
+                    "DeliveryLogoText",
+                    parent=styles["Normal"],
+                    fontSize=14,
+                    alignment=1,
+                    textColor=colors.white
+                ))]],
+                colWidths=[56 * mm],
+                rowHeights=[38 * mm]
+            )
+            logo_placeholder.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#94A3B8")),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ]))
+    else:
+        logo_placeholder = Table(
+            [[Paragraph("<b>LOGO</b>", ParagraphStyle(
+                "DeliveryLogoText",
+                parent=styles["Normal"],
+                fontSize=14,
+                alignment=1,
+                textColor=colors.white
+            ))]],
+            colWidths=[56 * mm],
+            rowHeights=[38 * mm]
+        )
+        logo_placeholder.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#94A3B8")),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ]))
+
+    header = Table(
+        [[
+            Paragraph(
+                f"DELIVERY NOTE<br/><font size='14' color='#2563EB'>{delivery_note_number}</font><br/><font size='5'>Prepared by: {quote.get('invoice_created_by_name') or quote.get('created_by_name') or '-'}</font><br/><font size='6'>Delivery Note Date: {delivery_note_date}</font>",
+                title_style
+            ),
+            logo_placeholder
+        ]],
+        colWidths=[105 * mm, 65 * mm]
+    )
+    header.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+    ]))
+    elements.append(header)
+
+    client_to = Paragraph(
+        f"<b>CLIENT DETAILS</b><br/>{quote.get('client_name') or '-'}<br/>{quote.get('client_address') or '-'}<br/>{quote.get('client_email') or '-'}<br/>{quote.get('client_phone') or '-'}",
+        normal
+    )
+
+    billing_to = Paragraph(
+        f"<para alignment='right'><b>BILLING COMPANY</b><br/>{company_name}<br/>{company_address}<br/>Tel: {company_phone}<br/>Email: {company_email}<br/>VAT No: {company_vat}</para>",
+        normal
+    )
+
+    info_table = Table([[client_to, "", billing_to]], colWidths=[70 * mm, 30 * mm, 70 * mm])
+    info_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("ALIGN", (2, 0), (2, 0), "RIGHT"),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
+    ]))
+    elements.append(info_table)
+
+    if quote.get("description"):
+        elements.append(Paragraph(f"<b>PROJECT:</b> {quote.get('description')}", normal))
+        elements.append(Spacer(1, 8))
+
+    table_data = [["QTY", "DESCRIPTION"]]
+
+    for line in estimate_lines:
+        recipe_name = (
+            line.get("item_name")
+            or line.get("product_name")
+            or line.get("recipe_name")
+            or line.get("name")
+            or line.get("description")
+            or ""
+        )
+
+        if recipe_name in ["", "Product", "Quoted item"] and line.get("recipe_id"):
+            recipe_doc = await db.recipes.find_one(
+                {"id": line.get("recipe_id"), "company_id": user["company_id"]},
+                {"_id": 0}
+            )
+            if recipe_doc:
+                recipe_name = recipe_doc.get("name") or recipe_name
+
+        recipe_name = recipe_name or "Product"
+        width = line.get("width_mm") or "-"
+        height = line.get("height_mm") or "-"
+        qty = float(line.get("quantity") or 0)
+
+        fulfilment_type = line.get("fulfilment_type") or "COLLECTION"
+        fulfilment_note = line.get("fulfilment_note") or ""
+        item_note = line.get("item_note") or ""
+
+        description = f"<b>{recipe_name}</b><br/>Size: {width} x {height} mm"
+        if item_note:
+            description += f"<br/><font size='7' color='#64748B'>{item_note}</font>"
+
+        table_data.append([
+            f"{qty:g}",
+            Paragraph(description, normal),
+        ])
+
+        if fulfilment_type == "SITE_INSTALL":
+            fulfilment_description = "<font color='#475569'><i>Installation</i></font>"
+            if fulfilment_note:
+                fulfilment_description += f"<br/><font size='7' color='#64748B'>{fulfilment_note}</font>"
+
+            table_data.append([
+                "",
+                Paragraph(fulfilment_description, small),
+            ])
+
+        elif fulfilment_type == "DELIVERY":
+            fulfilment_description = "<font color='#475569'><i>Delivery</i></font>"
+            if fulfilment_note:
+                fulfilment_description += f"<br/><font size='7' color='#64748B'>{fulfilment_note}</font>"
+
+            table_data.append([
+                "",
+                Paragraph(fulfilment_description, small),
+            ])
+
+        table_data.append(["", ""])
+
+    for addon in addons:
+        table_data.append([
+            "1",
+            Paragraph(addon.get("description") or "Add-on", normal),
+        ])
+        table_data.append(["", ""])
+
+    if len(table_data) == 1:
+        table_data.append(["-", "No delivery items"])
+
+    delivery_table = Table(table_data, colWidths=[24 * mm, 146 * mm])
+    delivery_table.setStyle(TableStyle([
+        ("LINEABOVE", (0, 0), (-1, 0), 1.2, blue),
+        ("LINEBELOW", (0, 0), (-1, 0), 1.2, blue),
+        ("TEXTCOLOR", (0, 0), (-1, 0), navy),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, 0), 9),
+        ("ALIGN", (0, 0), (0, -1), "CENTER"),
+        ("ALIGN", (1, 0), (1, 0), "CENTER"),
+        ("FONTSIZE", (0, 1), (-1, -1), 8),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("TEXTCOLOR", (1, 2), (1, -1), slate),
+        ("LINEBELOW", (0, 3), (-1, 3), 0.25, border),
+        ("LINEBELOW", (0, 6), (-1, 6), 0.25, border),
+        ("LINEBELOW", (0, 9), (-1, 9), 0.25, border),
+        ("LINEBELOW", (0, 12), (-1, 12), 0.25, border),
+        ("LINEBELOW", (0, 15), (-1, 15), 0.25, border),
+        ("LINEBELOW", (0, 18), (-1, 18), 0.25, border),
+        ("LINEBELOW", (0, 21), (-1, 21), 0.25, border),
+        ("LINEBELOW", (0, 24), (-1, 24), 0.25, border),
+    ]))
+    elements.append(delivery_table)
+    elements.append(Spacer(1, 12))
+
+    signature_table = Table(
+        [
+            ["", ""],
+            ["Received By", "Signature"],
+        ],
+        colWidths=[85 * mm, 85 * mm],
+        rowHeights=[14 * mm, 8 * mm]
+    )
+    signature_table.setStyle(TableStyle([
+        ("LINEABOVE", (0, 1), (0, 1), 0.6, slate),
+        ("LINEABOVE", (1, 1), (1, 1), 0.6, slate),
+        ("FONTNAME", (0, 1), (-1, 1), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 1), (-1, 1), 7),
+        ("TEXTCOLOR", (0, 1), (-1, 1), slate),
+        ("ALIGN", (0, 1), (-1, 1), "CENTER"),
+    ]))
+    elements.append(signature_table)
+
+    def draw_header_footer(canvas_obj, doc_ref, page_count):
+        canvas_obj.saveState()
+
+        page_number = canvas_obj._pageNumber
+        is_first_page = page_number == 1
+        is_last_page = page_number == page_count
+
+        if not is_first_page:
+            canvas_obj.setFillColor(navy)
+            canvas_obj.setFont("Helvetica-Bold", 9)
+            canvas_obj.drawString(18 * mm, 285 * mm, company_name)
+            canvas_obj.setFillColor(blue)
+            canvas_obj.drawRightString(188 * mm, 285 * mm, delivery_note_number)
+
+            canvas_obj.setStrokeColor(blue)
+            canvas_obj.setLineWidth(0.6)
+            canvas_obj.line(content_left, 281 * mm, content_right, 281 * mm)
+
+        if is_last_page:
+            canvas_obj.setStrokeColor(blue)
+            canvas_obj.setLineWidth(0.8)
+            canvas_obj.line(content_left, 32 * mm, content_right, 32 * mm)
+
+            canvas_obj.setFillColor(navy)
+            canvas_obj.setFont("Helvetica-Bold", 18)
+            canvas_obj.drawString(18 * mm, 22 * mm, "THANK YOU")
+
+            canvas_obj.setFillColor(slate)
+            canvas_obj.setFont("Helvetica-Bold", 7)
+            canvas_obj.drawString(18 * mm, 15 * mm, "DELIVERY NOTE")
+            canvas_obj.setFont("Helvetica", 6)
+            canvas_obj.drawString(18 * mm, 11 * mm, str(footer_text)[:95])
+
+            canvas_obj.setFont("Helvetica-Bold", 7)
+            canvas_obj.drawRightString(188 * mm, 24 * mm, "BANKING DETAILS")
+            canvas_obj.setFont("Helvetica", 6)
+
+            banking_lines = str(banking_details or "Banking details").split(" | ")
+            banking_y = 20 * mm
+            for banking_line in banking_lines[:4]:
+                canvas_obj.drawRightString(188 * mm, banking_y, banking_line[:55])
+                banking_y -= 3.3 * mm
+        else:
+            canvas_obj.setStrokeColor(blue)
+            canvas_obj.setLineWidth(0.6)
+            canvas_obj.line(content_left, 18 * mm, content_right, 18 * mm)
+
+            canvas_obj.setFillColor(slate)
+            canvas_obj.setFont("Helvetica", 6)
+            canvas_obj.drawString(18 * mm, 12 * mm, "Continued on next page.")
+            canvas_obj.drawRightString(188 * mm, 12 * mm, f"Page {page_number} of {page_count}")
+
+        if is_last_page:
+            canvas_obj.setFillColor(slate)
+            canvas_obj.setFont("Helvetica", 6)
+            canvas_obj.drawCentredString(105 * mm, 5 * mm, f"Page {page_number} of {page_count}")
+
+        canvas_obj.restoreState()
+
+    class DeliveryNoteNumberedCanvas(rl_canvas.Canvas):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self._saved_page_states = []
+
+        def showPage(self):
+            self._saved_page_states.append(dict(self.__dict__))
+            self._startPage()
+
+        def save(self):
+            page_count = len(self._saved_page_states)
+            for state in self._saved_page_states:
+                self.__dict__.update(state)
+                draw_header_footer(self, doc, page_count)
+                super().showPage()
+            super().save()
+
+    doc.build(elements, canvasmaker=DeliveryNoteNumberedCanvas)
+    buffer.seek(0)
+
+    client_name = (quote.get("client_name") or "client").replace(" ", "_")
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{delivery_note_number}-{client_name}-{delivery_note_date}.pdf"'}
+    )
 
 
 @api_router.get("/approved/{quote_id}/bom/pdf")

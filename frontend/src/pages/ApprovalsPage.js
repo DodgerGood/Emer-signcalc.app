@@ -71,6 +71,21 @@ export default function ApprovalsPage() {
     }
   };
 
+  const downloadDeliveryNote = async (job) => {
+    try {
+      const response = await api.get(`/approved/${job.id}/delivery-note/pdf`, {
+        responseType: 'blob',
+      });
+
+      const clientName = (job.client_name || 'Client').replaceAll(' ', '_');
+      const datePart = (job.invoice_created_at || job.created_at || '').slice(0, 10);
+      const deliveryNoteNumber = (job.invoice_number || 'DN').replace('Inv', 'DN');
+      downloadFile(response, `${deliveryNoteNumber}-${clientName}-${datePart}.pdf`);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to download delivery note');
+    }
+  };
+
   const downloadBom = async (job) => {
     try {
       const response = await api.get(`/approved/${job.id}/bom/pdf`, {
@@ -162,11 +177,12 @@ export default function ApprovalsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border bg-white">
-            <Table className="w-full min-w-[1200px] text-sm">
+            <Table className="w-full min-w-[1350px] text-sm">
               <TableHeader className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                 <TableRow>
                   <TableHead className="px-4 py-3">Client Name</TableHead>
                   <TableHead className="px-4 py-3">Invoice</TableHead>
+                  <TableHead className="px-4 py-3">Delivery Note</TableHead>
                   <TableHead className="px-4 py-3">BOM</TableHead>
                   <TableHead className="px-4 py-3">Design Proof</TableHead>
                   <TableHead className="px-4 py-3">Job Pack</TableHead>
@@ -178,7 +194,7 @@ export default function ApprovalsPage() {
               <TableBody className="divide-y">
                 {filteredJobs.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-12 text-center text-slate-500">
+                    <TableCell colSpan={8} className="py-12 text-center text-slate-500">
                       No approved invoices yet.
                     </TableCell>
                   </TableRow>
@@ -197,6 +213,17 @@ export default function ApprovalsPage() {
                           variant="outline"
                           onClick={() => downloadInvoice(job)}
                           title="Download invoice PDF"
+                        />
+                      </TableCell>
+
+                      <TableCell className="px-4 py-3">
+                        <ActionIconButton
+                          icon={<FileText size={16} />}
+                          label="Delivery"
+                          tone="pdf"
+                          variant="outline"
+                          onClick={() => downloadDeliveryNote(job)}
+                          title="Download delivery note PDF"
                         />
                       </TableCell>
 
