@@ -50,6 +50,7 @@ const departmentOptions = [
   { value: 'PROCUREMENT', label: 'Procurement' },
   { value: 'STOCK', label: 'Stock' },
   { value: 'MACHINE', label: 'Machines' },
+  { value: 'MACHINE_HIRE', label: 'Machine Hire' },
   { value: 'LABOUR', label: 'Labour' },
   { value: 'QC', label: 'QC' },
   { value: 'PACKING', label: 'Packing' },
@@ -121,7 +122,7 @@ function getStepIcon(department) {
   if (department === 'DESIGN') return <FileCheck size={14} />;
   if (department === 'PROCUREMENT') return <PackageCheck size={14} />;
   if (department === 'STOCK') return <PackageCheck size={14} />;
-  if (department === 'MACHINE') return <Factory size={14} />;
+  if (department === 'MACHINE' || department === 'MACHINE_HIRE') return <Factory size={14} />;
   if (department === 'LABOUR') return <Users size={14} />;
   if (department === 'INSTALLATION') return <Wrench size={14} />;
   if (department === 'DISPATCH') return <Truck size={14} />;
@@ -153,6 +154,220 @@ function makeStep({
   };
 }
 
+function firstNumber(...values) {
+  for (const value of values) {
+    const number = Number(value);
+    if (Number.isFinite(number) && number > 0) return number;
+  }
+
+  return 0;
+}
+
+function firstText(...values) {
+  for (const value of values) {
+    const text = String(value || '').trim();
+    if (text) return text;
+  }
+
+  return '';
+}
+
+function calculateLineSqm(line) {
+  const width = Number(line.width_mm || line.width || 0);
+  const height = Number(line.height_mm || line.height || 0);
+  const qty = Number(line.quantity || line.qty || 1);
+
+  if (!width || !height) return 0;
+
+  return (width * height * qty) / 1000000;
+}
+
+function calculateResourceMinutes(entry, line, quoteQty) {
+  const lineSqm = calculateLineSqm(line);
+  const qty = Number(quoteQty || line.quantity || line.qty || 1);
+
+  const directHours = firstNumber(
+    entry.total_hours,
+    entry.hours_total,
+    entry.calculated_hours,
+    entry.production_hours,
+    entry.install_hours,
+    entry.labour_hours,
+    entry.labor_hours,
+    entry.machine_hours,
+    entry.hours
+  );
+
+  if (directHours) return directHours * 60;
+
+  const hoursPerSqm = firstNumber(
+    entry.hours_per_sqm,
+    entry.labour_hours_per_sqm,
+    entry.labor_hours_per_sqm,
+    entry.machine_hours_per_sqm,
+    entry.install_hours_per_sqm
+  );
+
+  if (hoursPerSqm && lineSqm) return hoursPerSqm * lineSqm * 60;
+
+  const minutesPerSqm = firstNumber(
+    entry.minutes_per_sqm,
+    entry.labour_minutes_per_sqm,
+    entry.machine_minutes_per_sqm,
+    entry.install_minutes_per_sqm
+  );
+
+  if (minutesPerSqm && lineSqm) return minutesPerSqm * lineSqm;
+
+  const hoursPerUnit = firstNumber(
+    entry.hours_per_unit,
+    entry.labour_hours_per_unit,
+    entry.machine_hours_per_unit,
+    entry.install_hours_per_unit
+  );
+
+  if (hoursPerUnit) return hoursPerUnit * qty * 60;
+
+  const minutesPerUnit = firstNumber(
+    entry.minutes_per_unit,
+    entry.labour_minutes_per_unit,
+    entry.machine_minutes_per_unit,
+    entry.install_minutes_per_unit
+  );
+
+  if (minutesPerUnit) return minutesPerUnit * qty;
+
+  const ratePerHour = firstNumber(
+    entry.rate_per_hour,
+    entry.hourly_rate,
+    entry.machine_rate_per_hour,
+    entry.labour_rate_per_hour,
+    entry.labor_rate_per_hour,
+    entry.install_rate_per_hour
+  );
+
+  const totalCost = firstNumber(
+    entry.total_cost,
+    entry.cost,
+    entry.line_cost,
+    entry.calculated_cost
+  );
+
+  if (ratePerHour && totalCost) return (totalCost / ratePerHour) * 60;
+
+  return 0;
+}
+
+function normalizeResourceType(entry) {
+  const rawType = String(
+    entry.line_type ||
+    entry.type ||
+    entry.resource_type ||
+    entry.category ||
+    entry.section ||
+    ''
+  ).toUpperCase();
+
+  const nameText = String(
+    entry.name ||
+    entry.custom_name ||
+    entry.reference_name ||
+    entry.machine_name ||
+    entry.labour_type_name ||
+    entry.labor_type_name ||
+    entry.install_type_name ||
+    ''
+  ).toUpperCase();
+
+  const combined = `${rawType} ${nameText}`;
+
+  if (combined.includes('MACHINE HIRE') || combined.includes('HIRE MACHINE') || combined.includes('HIRED MACHINE')) {
+    return 'MACHINE_HIRE';
+  }
+
+  if (combined.includes('MACHINE')) return 'MACHINE';
+  if (combined.includes('LABOUR') || combined.includes('LABOR')) return 'LABOUR';
+  if (combined.includes('INSTALL')) return 'INSTALLATION';
+  if (combined.includes('DELIVERY') || combined.includes('DISPATCH')) return 'DISPATCH';
+  if (combined.includes('QC') || combined.includes('QUALITY')) return 'QC';
+  if (combined.includes('PACK')) return 'PACKING';
+
+  return '';
+}
+
+function extractBlueprintEntries(line) {
+  return (
+    line.recipe_breakdown ||
+    line.breakdown ||
+    line.line_items ||
+    line.items ||
+    line.components ||
+    []
+  );
+}
+
+function makeResourceStep({ line, entry, index, entryIndex, fallbackType }) {
+  const quoteQty = Number(line.quantity || line.qty || 1);
+  const item = clean(
+    line.item_name || line.product_name || line.recipe_name || line.name || line.description,
+    `Item ${index + 1}`
+  );
+
+  const width = line.width_mm || line.width || '-';
+  const height = line.height_mm || line.height || '-';
+  const size = `${width} x ${height} mm`;
+
+  const department = fallbackType || normalizeResourceType(entry);
+  if (!department) return null;
+
+  const resource = clean(
+    firstText(
+      entry.name,
+      entry.custom_name,
+      entry.reference_name,
+      entry.resource_name,
+      entry.machine_name,
+      entry.machine_type_name,
+      entry.labour_type_name,
+      entry.labor_type_name,
+      entry.install_type_name,
+      entry.supplier
+    ),
+    department.replace('_', ' ')
+  );
+
+  const resourceMinutes = calculateResourceMinutes(entry, line, quoteQty);
+
+  const setupMinutes = ['MACHINE', 'MACHINE_HIRE', 'INSTALLATION'].includes(department)
+    ? firstNumber(entry.setup_minutes, entry.setup_time_minutes, SETUP_MINUTES)
+    : 0;
+
+  const removalMinutes = ['MACHINE', 'MACHINE_HIRE', 'INSTALLATION'].includes(department)
+    ? firstNumber(entry.removal_minutes, entry.cleanup_minutes, entry.strike_minutes, REMOVAL_MINUTES)
+    : 0;
+
+  const plannedMinutes = Math.max(
+    15,
+    resourceMinutes + setupMinutes + removalMinutes
+  );
+
+  const group = department === 'INSTALLATION' || department === 'DISPATCH'
+    ? 'Handover'
+    : 'Production';
+
+  const qtyText = Number.isFinite(quoteQty) ? String(quoteQty).replace(/\.0$/, '') : '1';
+
+  return makeStep({
+    id: `${department.toLowerCase()}-${index}-${entryIndex}`,
+    group,
+    name: `${resource} - ${item}`,
+    department,
+    owner: resource,
+    plannedMinutes,
+    source: `${qtyText} x ${size}. Work: ${formatHours(resourceMinutes)}${setupMinutes ? `, setup: ${setupMinutes}min` : ''}${removalMinutes ? `, removal: ${removalMinutes}min` : ''}.`,
+  });
+}
+
 function extractProductionSteps(job) {
   const steps = [];
   const blueprint = job?.blueprint || {};
@@ -162,72 +377,59 @@ function extractProductionSteps(job) {
   const installationItems = job?.installation_items || [];
 
   estimateLines.forEach((line, index) => {
+    const entries = extractBlueprintEntries(line);
+
+    entries.forEach((entry, entryIndex) => {
+      const step = makeResourceStep({
+        line,
+        entry,
+        index,
+        entryIndex,
+      });
+
+      if (step) steps.push(step);
+    });
+
     const item = clean(
       line.item_name || line.product_name || line.recipe_name || line.name || line.description,
       `Item ${index + 1}`
     );
 
-    const qty = Number(line.quantity || 1);
-    const size = `${line.width_mm || '-'} x ${line.height_mm || '-'} mm`;
-    const breakdown = line.recipe_breakdown || line.breakdown || [];
-
-    breakdown.forEach((entry, entryIndex) => {
-      const type = String(entry.line_type || entry.type || '').toUpperCase();
-      const resource = clean(
-        entry.name || entry.custom_name || entry.labour_type_name || entry.machine_name,
-        'Resource'
-      );
-
-      const hours = Number(entry.hours || entry.quantity || entry.qty || 0);
-      const baseMinutes = hours * 60;
-
-      if (type.includes('MACHINE')) {
-        steps.push(makeStep({
-          id: `machine-${index}-${entryIndex}`,
-          group: 'Production',
-          name: `${resource} - ${item}`,
-          department: 'MACHINE',
-          owner: resource,
-          plannedMinutes: baseMinutes + SETUP_MINUTES + REMOVAL_MINUTES,
-          source: `${qty} x ${size}. Includes ${SETUP_MINUTES}min setup and ${REMOVAL_MINUTES}min removal.`,
-        }));
-      }
-
-      if (type.includes('LABOUR') || type.includes('LABOR')) {
-        steps.push(makeStep({
-          id: `labour-${index}-${entryIndex}`,
-          group: 'Production',
-          name: `${resource} - ${item}`,
-          department: 'LABOUR',
-          owner: resource,
-          plannedMinutes: baseMinutes,
-          source: `${qty} x ${size}`,
-        }));
-      }
-    });
-
     const fulfilmentType = String(line.fulfilment_type || '').toUpperCase();
 
     if (fulfilmentType === 'SITE_INSTALL') {
+      const installMinutes = firstNumber(
+        line.install_minutes,
+        line.fulfilment_minutes,
+        Number(line.install_hours || line.fulfilment_hours || 0) * 60
+      );
+
       steps.push(makeStep({
-        id: `install-${index}`,
+        id: `fulfilment-install-${index}`,
         group: 'Handover',
         name: `Installation - ${item}`,
         department: 'INSTALLATION',
         owner: 'Installation Team',
-        plannedMinutes: Number(line.install_hours || line.fulfilment_hours || 0) * 60 + SETUP_MINUTES + REMOVAL_MINUTES,
+        plannedMinutes: Math.max(15, installMinutes + SETUP_MINUTES + REMOVAL_MINUTES),
         source: line.fulfilment_note || `Install ${item}`,
       }));
     }
 
     if (fulfilmentType === 'DELIVERY') {
+      const deliveryMinutes = firstNumber(
+        line.delivery_minutes,
+        line.fulfilment_minutes,
+        Number(line.delivery_hours || line.fulfilment_hours || 0) * 60,
+        45
+      );
+
       steps.push(makeStep({
-        id: `delivery-${index}`,
+        id: `fulfilment-delivery-${index}`,
         group: 'Handover',
         name: `Delivery - ${item}`,
         department: 'DISPATCH',
         owner: 'Dispatch',
-        plannedMinutes: Number(line.delivery_hours || 0) * 60,
+        plannedMinutes: deliveryMinutes,
         source: line.fulfilment_note || `Deliver ${item}`,
       }));
     }
@@ -235,62 +437,58 @@ function extractProductionSteps(job) {
 
   quoteLines.forEach((line, lineIndex) => {
     (line.line_items || []).forEach((entry, entryIndex) => {
-      const type = String(entry.type || entry.line_type || '').toUpperCase();
-      const item = clean(line.recipe_name, 'Quoted item');
-      const resource = clean(entry.name, 'Resource');
-      const minutes = Number(entry.hours || entry.quantity || 0) * 60;
+      const step = makeResourceStep({
+        line,
+        entry,
+        index: `quote-${lineIndex}`,
+        entryIndex,
+      });
 
-      if (type.includes('MACHINE')) {
-        steps.push(makeStep({
-          id: `quote-machine-${lineIndex}-${entryIndex}`,
-          group: 'Production',
-          name: `${resource} - ${item}`,
-          department: 'MACHINE',
-          owner: resource,
-          plannedMinutes: minutes + SETUP_MINUTES + REMOVAL_MINUTES,
-          source: `Includes ${SETUP_MINUTES}min setup and ${REMOVAL_MINUTES}min removal.`,
-        }));
-      }
-
-      if (type.includes('LABOUR') || type.includes('LABOR')) {
-        steps.push(makeStep({
-          id: `quote-labour-${lineIndex}-${entryIndex}`,
-          group: 'Production',
-          name: `${resource} - ${item}`,
-          department: 'LABOUR',
-          owner: resource,
-          plannedMinutes: minutes,
-          source: item,
-        }));
-      }
+      if (step) steps.push(step);
     });
   });
 
   labourItems.forEach((item, index) => {
+    const minutes = Number(item.hours || 0) * 60;
+
     steps.push(makeStep({
       id: `manual-labour-${index}`,
       group: 'Production',
       name: clean(item.labour_type_name, 'Labour'),
       department: 'LABOUR',
       owner: clean(item.labour_type_name, 'Labour'),
-      plannedMinutes: Number(item.hours || 0) * 60,
+      plannedMinutes: Math.max(15, minutes),
       source: item.notes || 'Manual labour item',
     }));
   });
 
   installationItems.forEach((item, index) => {
+    const minutes = Number(item.hours || 0) * 60;
+
     steps.push(makeStep({
       id: `manual-install-${index}`,
       group: 'Handover',
       name: clean(item.install_type_name, 'Installation'),
       department: 'INSTALLATION',
       owner: clean(item.install_type_name, 'Installation'),
-      plannedMinutes: Number(item.hours || 0) * 60 + SETUP_MINUTES + REMOVAL_MINUTES,
+      plannedMinutes: Math.max(15, minutes + SETUP_MINUTES + REMOVAL_MINUTES),
       source: item.notes || 'Manual installation item',
     }));
   });
 
-  return steps;
+  const unique = [];
+  const seen = new Set();
+
+  steps.forEach((step) => {
+    const key = `${step.department}-${step.owner}-${step.name}-${step.source}`;
+
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push(step);
+    }
+  });
+
+  return unique;
 }
 
 function buildWorkflow(job) {
