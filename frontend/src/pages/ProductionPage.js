@@ -22,9 +22,7 @@ const WORKDAY_MINUTES = 8 * 60;
 const SETUP_MINUTES = 15;
 const REMOVAL_MINUTES = 15;
 
-const DAYS_BACK = 7;
-const DAYS_FORWARD = 14;
-const TOTAL_DAYS = DAYS_BACK + 1 + DAYS_FORWARD;
+const WORK_WEEK_DAYS = 5;
 
 const jobColourClasses = [
   'bg-blue-500',
@@ -82,6 +80,13 @@ function addDays(date, days) {
   copy.setDate(copy.getDate() + days);
   copy.setHours(0, 0, 0, 0);
   return copy;
+}
+
+function getMonday(date) {
+  const copy = startOfDay(date);
+  const day = copy.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  return addDays(copy, diff);
 }
 
 function dateKey(date) {
@@ -549,11 +554,15 @@ export default function ProductionPage() {
   const [loading, setLoading] = useState(true);
 
   const today = useMemo(() => startOfDay(new Date()), []);
-  const calendarStart = useMemo(() => addDays(today, -DAYS_BACK), [today]);
+  const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
 
   const calendarDays = useMemo(() => {
-    return Array.from({ length: TOTAL_DAYS }, (_, index) => addDays(calendarStart, index));
-  }, [calendarStart]);
+    return Array.from({ length: WORK_WEEK_DAYS }, (_, index) => addDays(weekStart, index));
+  }, [weekStart]);
+
+  const goPreviousWeek = () => setWeekStart((current) => addDays(current, -7));
+  const goThisWeek = () => setWeekStart(getMonday(new Date()));
+  const goNextWeek = () => setWeekStart((current) => addDays(current, 7));
 
   const loadJobs = async () => {
     try {
@@ -673,9 +682,9 @@ export default function ProductionPage() {
           <div className="space-y-4 rounded-2xl border bg-white p-4 shadow-sm">
             <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
               <div className="font-black text-slate-900">Calendar Window</div>
-              <div>From: {formatShortDate(calendarDays[0])}</div>
+              <div>Week: {formatShortDate(calendarDays[0])} - {formatShortDate(calendarDays[calendarDays.length - 1])}</div>
               <div>Today: {formatShortDate(today)}</div>
-              <div>To: {formatShortDate(calendarDays[calendarDays.length - 1])}</div>
+              <div>View: Monday to Friday</div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -695,8 +704,8 @@ export default function ProductionPage() {
               </div>
 
               <div className="rounded-xl border p-3">
-                <div className="text-xs text-slate-500">Range</div>
-                <div className="text-xl font-black text-purple-600">-1w / +2w</div>
+                <div className="text-xs text-slate-500">View</div>
+                <div className="text-xl font-black text-purple-600">5 days</div>
               </div>
             </div>
 
@@ -715,8 +724,20 @@ export default function ProductionPage() {
                     Job Overview Calendar
                   </h2>
                   <p className="text-sm text-slate-500">
-                    One row per posted job. Search here to find a job and download its Job Pack.
+                    One row per posted job. Use the week controls to move left or right.
                   </p>
+                </div>
+
+                <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                  <Button type="button" variant="outline" size="sm" onClick={goPreviousWeek}>
+                    Previous Week
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={goThisWeek}>
+                    This Week
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={goNextWeek}>
+                    Next Week
+                  </Button>
                 </div>
 
                 <div className="relative w-full md:w-80">
@@ -739,13 +760,13 @@ export default function ProductionPage() {
                   <div
                     className="relative min-w-[1300px]"
                     style={{
-                      width: `${360 + calendarDays.length * 105}px`,
+                      width: `${360 + calendarDays.length * 160}px`,
                     }}
                   >
                     <div
                       className="sticky top-0 z-20 grid border-b bg-white text-xs font-black uppercase tracking-wide text-slate-500"
                       style={{
-                        gridTemplateColumns: `360px ${calendarDays.map(() => '105px').join(' ')}`,
+                        gridTemplateColumns: `360px ${calendarDays.map(() => '160px').join(' ')}`,
                       }}
                     >
                       <div className="border-r px-4 py-3">Job</div>
@@ -757,7 +778,7 @@ export default function ProductionPage() {
                         key={job.id}
                         className="grid border-b text-sm hover:bg-slate-50"
                         style={{
-                          gridTemplateColumns: `360px ${calendarDays.map(() => '105px').join(' ')}`,
+                          gridTemplateColumns: `360px ${calendarDays.map(() => '160px').join(' ')}`,
                         }}
                       >
                         <div className="border-r bg-white px-4 py-4">
@@ -845,7 +866,10 @@ export default function ProductionPage() {
                       </div>
                     ))}
 
-                    <TodayLine calendarDays={calendarDays} today={today} leftWidth={360} dayWidth={105} />
+                    <div
+                      className="pointer-events-none absolute top-0 z-30 h-full w-[3px] bg-red-600"
+                      style={{ left: '360px' }}
+                    />
                   </div>
                 </div>
               )}
@@ -862,6 +886,18 @@ export default function ProductionPage() {
                   <p className="text-sm text-slate-500">
                     Rows show departments/resources so you can see when machines, labour, installation and dispatch are busy.
                   </p>
+                </div>
+
+                <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                  <Button type="button" variant="outline" size="sm" onClick={goPreviousWeek}>
+                    Previous Week
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={goThisWeek}>
+                    This Week
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={goNextWeek}>
+                    Next Week
+                  </Button>
                 </div>
 
                 <div className="w-full md:w-72">
@@ -888,13 +924,13 @@ export default function ProductionPage() {
                   <div
                     className="relative min-w-[1300px]"
                     style={{
-                      width: `${300 + calendarDays.length * 105}px`,
+                      width: `${300 + calendarDays.length * 160}px`,
                     }}
                   >
                     <div
                       className="sticky top-0 z-20 grid border-b bg-white text-xs font-black uppercase tracking-wide text-slate-500"
                       style={{
-                        gridTemplateColumns: `300px ${calendarDays.map(() => '105px').join(' ')}`,
+                        gridTemplateColumns: `300px ${calendarDays.map(() => '160px').join(' ')}`,
                       }}
                     >
                       <div className="border-r px-4 py-3">Department / Resource</div>
@@ -906,7 +942,7 @@ export default function ProductionPage() {
                         key={row.id}
                         className="grid border-b text-sm hover:bg-slate-50"
                         style={{
-                          gridTemplateColumns: `300px ${calendarDays.map(() => '105px').join(' ')}`,
+                          gridTemplateColumns: `300px ${calendarDays.map(() => '160px').join(' ')}`,
                         }}
                       >
                         <div className="border-r bg-white px-4 py-4">
@@ -962,7 +998,10 @@ export default function ProductionPage() {
                       </div>
                     ))}
 
-                    <TodayLine calendarDays={calendarDays} today={today} leftWidth={300} dayWidth={105} />
+                    <div
+                      className="pointer-events-none absolute top-0 z-30 h-full w-[3px] bg-red-600"
+                      style={{ left: '300px' }}
+                    />
                   </div>
                 </div>
               )}
