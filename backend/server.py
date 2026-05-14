@@ -4349,12 +4349,27 @@ async def export_client_statement_pdf(
 
     company = await db.companies.find_one({"id": user["company_id"]}, {"_id": 0}) or {}
 
-    company_name = company.get("name") or "Your Company Name"
-    company_address = company.get("address") or "Company address placeholder"
-    company_phone = company.get("phone") or "Telephone placeholder"
-    company_email = company.get("email") or "Email placeholder"
-    company_vat = company.get("vat_number") or "VAT number placeholder"
-    banking_details = company.get("banking_details") or "Banking details placeholder"
+    company_name = company_details.get("company_name") or company.get("name") or "Your Company Name"
+    company_address = company_details.get("address") or company.get("address") or "Company address placeholder"
+    company_phone = company_details.get("phone") or company.get("phone") or "Telephone placeholder"
+    company_email = company_details.get("email") or company.get("email") or "Email placeholder"
+    company_vat = company_details.get("vat_number") or company.get("vat_number") or "VAT number placeholder"
+
+    bank_parts = [
+        f"Bank: {company_details.get('bank_name')}" if company_details.get("bank_name") else "",
+        f"Account Name: {company_details.get('bank_account_name')}" if company_details.get("bank_account_name") else "",
+        f"Account No: {company_details.get('bank_account_number')}" if company_details.get("bank_account_number") else "",
+        f"Branch Code: {company_details.get('bank_branch_code')}" if company_details.get("bank_branch_code") else "",
+    ]
+    banking_details = " | ".join([part for part in bank_parts if part]) or company.get("banking_details") or "Banking details placeholder"
+
+    footer_text = (
+        company_details.get("invoice_footer")
+        if document_type == "INVOICE"
+        else company_details.get("quote_footer")
+    ) or "Payment terms placeholder. Quote valid for 7 days unless stated otherwise."
+
+    logo_data_url = company_details.get("logo_data_url") or ""
 
     statement_date = datetime.now(timezone.utc).date().isoformat()
     client_name = client.get("company_name") or "Client"
@@ -4410,12 +4425,12 @@ async def export_client_statement_pdf(
     if logo_data_url.startswith("data:image/png;base64,"):
         try:
             logo_bytes = base64.b64decode(logo_data_url.split(",", 1)[1])
-            logo_placeholder = Image(BytesIO(logo_bytes), width=28 * mm, height=28 * mm)
+            logo_placeholder = Image(BytesIO(logo_bytes), width=56 * mm, height=38 * mm, kind="proportional")
         except Exception:
             logo_placeholder = Table(
                 [[Paragraph("<font color='white'><b>LOGO</b></font>", normal)]],
-                colWidths=[28 * mm],
-                rowHeights=[28 * mm]
+                colWidths=[56 * mm],
+                rowHeights=[38 * mm]
             )
             logo_placeholder.setStyle(TableStyle([
                 ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#94A3B8")),
@@ -4425,8 +4440,8 @@ async def export_client_statement_pdf(
     else:
         logo_placeholder = Table(
             [[Paragraph("<font color='white'><b>LOGO</b></font>", normal)]],
-            colWidths=[28 * mm],
-            rowHeights=[28 * mm]
+            colWidths=[56 * mm],
+            rowHeights=[38 * mm]
         )
         logo_placeholder.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#94A3B8")),
@@ -4442,7 +4457,7 @@ async def export_client_statement_pdf(
             ),
             logo_placeholder
         ]],
-        colWidths=[120 * mm, 50 * mm]
+        colWidths=[105 * mm, 65 * mm]
     )
     header.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -6136,6 +6151,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         raise HTTPException(status_code=404, detail="Quote not found")
 
     company = await db.companies.find_one({"id": quote["company_id"]}, {"_id": 0}) or {}
+    company_details = await db.company_details.find_one({"company_id": quote["company_id"]}, {"_id": 0}) or {}
     blueprint = quote.get("blueprint") or {}
 
     if document_type == "INVOICE":
@@ -6224,22 +6240,44 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     )
 
     # Header
-    logo_placeholder = Table(
-        [[Paragraph("<b>LOGO</b>", ParagraphStyle(
-            "LogoText",
-            parent=styles["Normal"],
-            fontSize=14,
-            alignment=1,
-            textColor=colors.white
-        ))]],
-        colWidths=[28 * mm],
-        rowHeights=[28 * mm]
-    )
-    logo_placeholder.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#94A3B8")),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-    ]))
+    if logo_data_url.startswith("data:image/png;base64,"):
+        try:
+            logo_bytes = base64.b64decode(logo_data_url.split(",", 1)[1])
+            logo_placeholder = Image(BytesIO(logo_bytes), width=56 * mm, height=38 * mm, kind="proportional")
+        except Exception:
+            logo_placeholder = Table(
+                [[Paragraph("<b>LOGO</b>", ParagraphStyle(
+                    "LogoText",
+                    parent=styles["Normal"],
+                    fontSize=14,
+                    alignment=1,
+                    textColor=colors.white
+                ))]],
+                colWidths=[56 * mm],
+                rowHeights=[38 * mm]
+            )
+            logo_placeholder.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#94A3B8")),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ]))
+    else:
+        logo_placeholder = Table(
+            [[Paragraph("<b>LOGO</b>", ParagraphStyle(
+                "LogoText",
+                parent=styles["Normal"],
+                fontSize=14,
+                alignment=1,
+                textColor=colors.white
+            ))]],
+            colWidths=[56 * mm],
+            rowHeights=[38 * mm]
+        )
+        logo_placeholder.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#94A3B8")),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ]))
 
     header = Table(
         [[
@@ -6249,7 +6287,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
             ),
             logo_placeholder
         ]],
-        colWidths=[120 * mm, 50 * mm]
+        colWidths=[105 * mm, 65 * mm]
     )
     header.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -6423,7 +6461,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     totals_data.append(["VAT (15%)", f"R {vat:.2f}"])
     totals_data.append(["TOTAL", f"R {total_amount:.2f}"])
 
-    totals_table = Table(totals_data, colWidths=[120 * mm, 50 * mm])
+    totals_table = Table(totals_data, colWidths=[105 * mm, 65 * mm])
     totals_table.setStyle(TableStyle([
         ("ALIGN", (1, 0), (1, -1), "RIGHT"),
         ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
@@ -6468,12 +6506,17 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
             canvas_obj.setFont("Helvetica-Bold", 7)
             canvas_obj.drawString(18 * mm, 15 * mm, "TERMS & CONDITIONS")
             canvas_obj.setFont("Helvetica", 6)
-            canvas_obj.drawString(18 * mm, 11 * mm, "Payment terms placeholder. Quote valid for 7 days unless stated otherwise.")
+            canvas_obj.drawString(18 * mm, 11 * mm, str(footer_text)[:95])
 
             canvas_obj.setFont("Helvetica-Bold", 7)
-            canvas_obj.drawRightString(188 * mm, 20 * mm, "BANKING DETAILS")
+            canvas_obj.drawRightString(188 * mm, 22 * mm, "BANKING DETAILS")
             canvas_obj.setFont("Helvetica", 6)
-            canvas_obj.drawRightString(188 * mm, 16 * mm, str(banking_details)[:70])
+
+            banking_lines = str(banking_details or "Banking details").split(" | ")
+            banking_y = 18 * mm
+            for banking_line in banking_lines[:4]:
+                canvas_obj.drawRightString(188 * mm, banking_y, banking_line[:55])
+                banking_y -= 3.5 * mm
         else:
             # Condensed footer on all non-last pages
             canvas_obj.setStrokeColor(blue)
@@ -6761,12 +6804,12 @@ async def export_company_details_template_pdf(user: dict = Depends(require_manag
     if logo_data_url.startswith("data:image/png;base64,"):
         try:
             logo_bytes = base64.b64decode(logo_data_url.split(",", 1)[1])
-            logo_placeholder = Image(BytesIO(logo_bytes), width=28 * mm, height=28 * mm)
+            logo_placeholder = Image(BytesIO(logo_bytes), width=56 * mm, height=38 * mm, kind="proportional")
         except Exception:
             logo_placeholder = Table(
                 [[Paragraph("<font color='white'><b>LOGO</b></font>", normal)]],
-                colWidths=[28 * mm],
-                rowHeights=[28 * mm]
+                colWidths=[56 * mm],
+                rowHeights=[38 * mm]
             )
             logo_placeholder.setStyle(TableStyle([
                 ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#94A3B8")),
@@ -6776,8 +6819,8 @@ async def export_company_details_template_pdf(user: dict = Depends(require_manag
     else:
         logo_placeholder = Table(
             [[Paragraph("<font color='white'><b>LOGO</b></font>", normal)]],
-            colWidths=[28 * mm],
-            rowHeights=[28 * mm]
+            colWidths=[56 * mm],
+            rowHeights=[38 * mm]
         )
         logo_placeholder.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#94A3B8")),
@@ -6793,7 +6836,7 @@ async def export_company_details_template_pdf(user: dict = Depends(require_manag
             ),
             logo_placeholder
         ]],
-        colWidths=[120 * mm, 50 * mm]
+        colWidths=[105 * mm, 65 * mm]
     )
     header.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -6889,9 +6932,14 @@ async def export_company_details_template_pdf(user: dict = Depends(require_manag
         canvas_obj.drawString(18 * mm, 11 * mm, str(footer_text)[:95])
 
         canvas_obj.setFont("Helvetica-Bold", 7)
-        canvas_obj.drawRightString(188 * mm, 20 * mm, "BANKING DETAILS")
+        canvas_obj.drawRightString(188 * mm, 22 * mm, "BANKING DETAILS")
         canvas_obj.setFont("Helvetica", 6)
-        canvas_obj.drawRightString(188 * mm, 16 * mm, str(banking_details or "Banking details")[:70])
+
+        banking_lines = str(banking_details or "Banking details").split(" | ")
+        banking_y = 18 * mm
+        for banking_line in banking_lines[:4]:
+            canvas_obj.drawRightString(188 * mm, banking_y, banking_line[:55])
+            banking_y -= 3.5 * mm
 
     doc.build(elements, onFirstPage=draw_header_footer, onLaterPages=draw_header_footer)
     buffer.seek(0)
