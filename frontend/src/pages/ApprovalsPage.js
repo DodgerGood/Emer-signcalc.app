@@ -8,7 +8,7 @@ import { Input } from '../components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import ActionIconButton from '../components/ActionIconButton';
 
-import { FileText, Upload, Trash2, RotateCcw, PackageCheck, Factory } from 'lucide-react';
+import { FileText, Upload, Download, Trash2, RotateCcw, PackageCheck, Factory } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ApprovalsPage() {
@@ -99,8 +99,59 @@ export default function ApprovalsPage() {
     }
   };
 
-  const uploadProof = () => {
-    toast.info('Proof upload will be connected in the next step');
+  const uploadProof = async (job) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/pdf,image/png,image/jpeg,image/jpg';
+
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+
+      const maxSize = 5 * 1024 * 1024;
+      if (file.size > maxSize) {
+        toast.error('Design proof must be 5MB or smaller');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('proof_file', file);
+
+      try {
+        await api.post(`/approved/${job.id}/design-proof`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+
+        toast.success('Design proof uploaded');
+        loadApprovedJobs();
+      } catch (error) {
+        toast.error(error.response?.data?.detail || 'Failed to upload design proof');
+      }
+    };
+
+    input.click();
+  };
+
+  const downloadProof = async (job) => {
+    try {
+      const response = await api.get(`/approved/${job.id}/design-proof`, {
+        responseType: 'blob',
+      });
+
+      const filename = job.design_proof_filename || 'design-proof';
+      downloadFile(response, filename);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'No design proof uploaded yet');
+    }
+  };
+
+  const formatProofDate = (value) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('en-ZA');
   };
 
   const createJobPack = async (job) => {
@@ -177,7 +228,7 @@ export default function ApprovalsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border bg-white">
-            <Table className="w-full min-w-[1350px] text-sm">
+            <Table className="w-full min-w-[1450px] text-sm">
               <TableHeader className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                 <TableRow>
                   <TableHead className="px-4 py-3">Client Name</TableHead>
@@ -239,14 +290,38 @@ export default function ApprovalsPage() {
                       </TableCell>
 
                       <TableCell className="px-4 py-3 text-center">
-                        <ActionIconButton
-                          icon={<Upload size={16} />}
-                          label="Proof"
-                          tone="upload"
-                          variant="outline"
-                          onClick={uploadProof}
-                          title="Upload proof"
-                        />
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="flex items-center justify-center gap-2">
+                            <ActionIconButton
+                              icon={<Upload size={16} />}
+                              label="Upload"
+                              tone="upload"
+                              variant="outline"
+                              onClick={() => uploadProof(job)}
+                              title="Upload design proof"
+                            />
+
+                            <ActionIconButton
+                              icon={<Download size={16} />}
+                              label="Download"
+                              tone="pdf"
+                              variant="outline"
+                              onClick={() => downloadProof(job)}
+                              title="Download design proof"
+                            />
+                          </div>
+
+                          {job.design_proof_filename ? (
+                            <div className="max-w-[160px] text-center text-[11px] leading-tight text-slate-500">
+                              <div className="truncate" title={job.design_proof_filename}>
+                                {job.design_proof_filename}
+                              </div>
+                              <div>{formatProofDate(job.design_proof_uploaded_at)}</div>
+                            </div>
+                          ) : (
+                            <div className="text-[11px] text-slate-400">No proof uploaded</div>
+                          )}
+                        </div>
                       </TableCell>
 
                       <TableCell className="px-4 py-3 text-center">
