@@ -1,13 +1,31 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Layout } from '../components/Layout';
 import api from '../lib/api';
-import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
-import { Factory, Users, Wrench, Truck, Search, RefreshCw } from 'lucide-react';
+import { Input } from '../components/ui/input';
+import { Factory, Search, RefreshCw, Clock, Users, Wrench, Truck } from 'lucide-react';
 import { toast } from 'sonner';
 
 const SETUP_MINUTES = 15;
 const REMOVAL_MINUTES = 15;
+
+const statusOptions = [
+  'Not Started',
+  'Ready',
+  'In Progress',
+  'Waiting',
+  'Stuck',
+  'Done',
+];
+
+const statusClasses = {
+  'Not Started': 'bg-slate-200 text-slate-700',
+  Ready: 'bg-sky-500 text-white',
+  'In Progress': 'bg-amber-400 text-white',
+  Waiting: 'bg-orange-400 text-white',
+  Stuck: 'bg-rose-500 text-white',
+  Done: 'bg-emerald-500 text-white',
+};
 
 function formatHours(hours) {
   const value = Number(hours || 0);
@@ -37,7 +55,6 @@ function addLine(lines, line) {
     setupMinutes: setup,
     removalMinutes: removal,
     totalMinutes: (hours * 60) + setup + removal,
-    status: 'Queued',
   });
 }
 
@@ -195,12 +212,28 @@ function buildLines(job) {
   return lines;
 }
 
-function iconFor(type) {
+function getIcon(type) {
   if (type === 'MACHINE') return <Factory size={16} className="text-orange-600" />;
   if (type === 'LABOUR') return <Users size={16} className="text-blue-600" />;
   if (type === 'INSTALLATION') return <Wrench size={16} className="text-green-600" />;
   if (type === 'DELIVERY') return <Truck size={16} className="text-emerald-600" />;
-  return <Factory size={16} className="text-slate-600" />;
+  return <Clock size={16} className="text-slate-500" />;
+}
+
+function StatusCell({ value, onChange }) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={`h-full min-h-[42px] w-full rounded-none border-0 px-2 text-center text-xs font-bold outline-none ${statusClasses[value] || statusClasses['Not Started']}`}
+    >
+      {statusOptions.map((status) => (
+        <option key={status} value={status}>
+          {status}
+        </option>
+      ))}
+    </select>
+  );
 }
 
 export default function ProductionPage() {
@@ -213,6 +246,8 @@ export default function ProductionPage() {
   const loadJobs = async () => {
     try {
       setLoading(true);
+
+      // Only jobs posted to production should be returned here once the backend /production route is active.
       const response = await api.get('/production');
       const loadedJobs = response.data || [];
       setJobs(loadedJobs);
@@ -238,6 +273,7 @@ export default function ProductionPage() {
   }, []);
 
   const selectedJob = jobs.find((job) => job.id === selectedJobId) || jobs[0] || null;
+
   const lines = useMemo(() => buildLines(selectedJob), [selectedJob]);
 
   const filteredLines = lines.filter((line) => {
@@ -250,10 +286,98 @@ export default function ProductionPage() {
     );
   });
 
+  const activeLines = filteredLines.filter((line) => (statuses[line.id] || 'Not Started') !== 'Done');
+  const completedLines = filteredLines.filter((line) => (statuses[line.id] || 'Not Started') === 'Done');
+
   const totalMinutes = lines.reduce((sum, line) => sum + line.totalMinutes, 0);
   const machineMinutes = lines.filter((line) => line.type === 'MACHINE').reduce((sum, line) => sum + line.totalMinutes, 0);
   const labourMinutes = lines.filter((line) => line.type === 'LABOUR').reduce((sum, line) => sum + line.totalMinutes, 0);
   const installMinutes = lines.filter((line) => line.type === 'INSTALLATION').reduce((sum, line) => sum + line.totalMinutes, 0);
+
+  const setStatus = (lineId, stage, value) => {
+    setStatuses((current) => ({
+      ...current,
+      [`${lineId}-${stage}`]: value,
+      ...(stage === 'production' ? { [lineId]: value } : {}),
+    }));
+  };
+
+  const getStatus = (lineId, stage, fallback = 'Not Started') => {
+    return statuses[`${lineId}-${stage}`] || fallback;
+  };
+
+  const renderRows = (rows, emptyText) => {
+    if (!rows.length) {
+      return (
+        <div className="grid grid-cols-[290px_90px_140px_140px_140px_140px_130px_130px] border-b text-sm">
+          <div className="col-span-8 px-4 py-8 text-center text-slate-500">{emptyText}</div>
+        </div>
+      );
+    }
+
+    return rows.map((line) => {
+      const productionStatus = statuses[line.id] || 'Not Started';
+
+      return (
+        <div
+          key={line.id}
+          className="grid grid-cols-[290px_90px_140px_140px_140px_140px_130px_130px] border-b text-sm"
+        >
+          <div className="border-r bg-white px-4 py-3">
+            <div className="flex items-center gap-2 font-bold text-slate-900">
+              {getIcon(line.type)}
+              {line.item}
+            </div>
+            <div className="mt-1 text-xs text-slate-500">{line.description}</div>
+          </div>
+
+          <div className="flex items-center justify-center border-r bg-white text-center text-sm font-semibold text-slate-700">
+            {line.resource}
+          </div>
+
+          <div className="border-r">
+            <StatusCell
+              value={getStatus(line.id, 'prep', line.type === 'MACHINE' || line.type === 'INSTALLATION' ? 'Ready' : 'Not Started')}
+              onChange={(value) => setStatus(line.id, 'prep', value)}
+            />
+          </div>
+
+          <div className="border-r">
+            <StatusCell
+              value={getStatus(line.id, 'setup', line.setupMinutes ? 'Ready' : 'Not Started')}
+              onChange={(value) => setStatus(line.id, 'setup', value)}
+            />
+          </div>
+
+          <div className="border-r">
+            <StatusCell
+              value={productionStatus}
+              onChange={(value) => setStatus(line.id, 'production', value)}
+            />
+          </div>
+
+          <div className="border-r">
+            <StatusCell
+              value={getStatus(line.id, 'removal', line.removalMinutes ? 'Ready' : 'Not Started')}
+              onChange={(value) => setStatus(line.id, 'removal', value)}
+            />
+          </div>
+
+          <div className="flex items-center justify-center border-r bg-slate-50 px-3 text-center text-xs font-semibold text-slate-700">
+            Work: {formatHours(line.hours)}
+            <br />
+            Setup: {line.setupMinutes}m
+            <br />
+            Removal: {line.removalMinutes}m
+          </div>
+
+          <div className="flex items-center justify-center bg-slate-50 px-3 text-center text-xs font-black text-slate-900">
+            {formatHours(line.totalMinutes / 60)}
+          </div>
+        </div>
+      );
+    });
+  };
 
   return (
     <Layout>
@@ -261,8 +385,8 @@ export default function ProductionPage() {
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <h1 className="text-4xl font-black tracking-tight leading-none">Production Tracking</h1>
-            <p className="text-slate-600 mt-2">
-              Production board for posted jobs, machines, labour, installation, install machinery and delivery.
+            <p className="mt-2 text-slate-600">
+              Track posted production jobs through preparation, setup, production, removal and completion.
             </p>
           </div>
 
@@ -272,10 +396,10 @@ export default function ProductionPage() {
           </Button>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[340px_1fr]">
-          <div className="rounded-2xl border bg-white p-4 shadow-sm space-y-4">
+        <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+          <div className="space-y-4 rounded-2xl border bg-white p-4 shadow-sm">
             <div>
-              <label className="text-sm font-semibold">Approved Job</label>
+              <label className="text-sm font-semibold">Production Job</label>
               <select
                 value={selectedJob?.id || ''}
                 onChange={(e) => setSelectedJobId(e.target.value)}
@@ -292,6 +416,7 @@ export default function ProductionPage() {
             <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
               <div className="font-black text-slate-900">{selectedJob?.client_name || 'No job selected'}</div>
               <div>Invoice: {selectedJob?.invoice_number || '-'}</div>
+              <div>Status: {selectedJob?.production_status || 'Queued'}</div>
               <div>Total: R {Number(selectedJob?.total_amount || 0).toFixed(2)}</div>
             </div>
 
@@ -323,12 +448,12 @@ export default function ProductionPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border bg-white shadow-sm overflow-hidden">
+          <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
             <div className="flex flex-col gap-3 border-b bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <h2 className="text-lg font-black">Production Board</h2>
                 <p className="text-sm text-slate-500">
-                  Machine and installation lines include automatic setup and removal time.
+                  Each machine and installation line includes automatic setup and removal time.
                 </p>
               </div>
 
@@ -349,63 +474,31 @@ export default function ProductionPage() {
               <div className="p-12 text-center text-slate-500">No jobs have been posted to production yet.</div>
             ) : (
               <div className="overflow-x-auto">
-                <div className="min-w-[1050px]">
-                  <div className="grid grid-cols-[160px_210px_1fr_80px_120px_120px_150px] border-b px-4 py-3 text-xs font-black uppercase tracking-wide text-slate-500">
-                    <div>Group</div>
-                    <div>Resource</div>
-                    <div>Description</div>
-                    <div>Qty</div>
-                    <div>Work Time</div>
-                    <div>Total Time</div>
-                    <div>Status</div>
+                <div className="min-w-[1200px]">
+                  <div className="grid grid-cols-[290px_90px_140px_140px_140px_140px_130px_130px] border-b bg-white text-xs font-black uppercase tracking-wide text-slate-500">
+                    <div className="border-r px-4 py-3">Item</div>
+                    <div className="border-r px-4 py-3 text-center">Owner</div>
+                    <div className="border-r px-4 py-3 text-center">Preparation</div>
+                    <div className="border-r px-4 py-3 text-center">Setup</div>
+                    <div className="border-r px-4 py-3 text-center">Production</div>
+                    <div className="border-r px-4 py-3 text-center">Removal</div>
+                    <div className="border-r px-4 py-3 text-center">Time</div>
+                    <div className="px-4 py-3 text-center">Total</div>
                   </div>
 
-                  {filteredLines.length === 0 ? (
-                    <div className="p-12 text-center text-slate-500">
-                      No production lines found. The approved job may not yet have machine, labour or installation data.
+                  <div className="border-l-4 border-purple-500">
+                    <div className="border-b bg-purple-50 px-4 py-2 text-sm font-black text-purple-700">
+                      Active
                     </div>
-                  ) : (
-                    filteredLines.map((line) => (
-                      <div
-                        key={line.id}
-                        className="grid grid-cols-[160px_210px_1fr_80px_120px_120px_150px] items-center border-b px-4 py-4 text-sm hover:bg-slate-50"
-                      >
-                        <div className="flex items-center gap-2 font-semibold">
-                          {iconFor(line.type)}
-                          {line.group}
-                        </div>
+                    {renderRows(activeLines, 'No active production lines.')}
+                  </div>
 
-                        <div className="font-semibold text-slate-900">{line.resource}</div>
-
-                        <div>
-                          <div className="font-semibold text-slate-900">{line.item}</div>
-                          <div className="text-xs text-slate-500">{line.description}</div>
-                          {(line.setupMinutes || line.removalMinutes) ? (
-                            <div className="mt-1 text-[11px] font-semibold text-purple-600">
-                              Setup {line.setupMinutes}min + Removal {line.removalMinutes}min
-                            </div>
-                          ) : null}
-                        </div>
-
-                        <div>{line.qty}</div>
-                        <div>{formatHours(line.hours)}</div>
-                        <div className="font-black">{formatHours(line.totalMinutes / 60)}</div>
-
-                        <div>
-                          <select
-                            value={statuses[line.id] || line.status}
-                            onChange={(e) => setStatuses({ ...statuses, [line.id]: e.target.value })}
-                            className="w-full rounded-full border border-slate-200 bg-white px-2 py-1 text-xs font-semibold"
-                          >
-                            <option>Queued</option>
-                            <option>Ready</option>
-                            <option>In Progress</option>
-                            <option>Done</option>
-                          </select>
-                        </div>
-                      </div>
-                    ))
-                  )}
+                  <div className="mt-6 border-l-4 border-emerald-500">
+                    <div className="border-b bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-700">
+                      Completed
+                    </div>
+                    {renderRows(completedLines, 'No completed production lines yet.')}
+                  </div>
                 </div>
               </div>
             )}
