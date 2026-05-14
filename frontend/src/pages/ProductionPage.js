@@ -1062,7 +1062,7 @@ export default function ProductionPage() {
                       </div>
                     ))}
 
-                    <TodayLine calendarDays={calendarDays} today={today} leftWidth={360} dayWidth={DAY_WIDTH} />
+                    <TodayLine calendarDays={calendarDays} today={today} leftWidth={360} dayWidth={160} />
                   </div>
                 </div>
               )}
@@ -1181,7 +1181,7 @@ export default function ProductionPage() {
                       </div>
                     ))}
 
-                    <TodayLine calendarDays={calendarDays} today={today} leftWidth={300} dayWidth={DAY_WIDTH} />
+                    <TodayLine calendarDays={calendarDays} today={today} leftWidth={300} dayWidth={160} />
                   </div>
                 </div>
               )}
