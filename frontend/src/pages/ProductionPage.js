@@ -20,6 +20,8 @@ import { toast } from 'sonner';
 
 const WORKDAY_MINUTES = 8 * 60;
 const DAY_WIDTH = 112;
+const DAYS_BACK = 7;
+const DAYS_FORWARD = 14;
 const SETUP_MINUTES = 15;
 const REMOVAL_MINUTES = 15;
 
@@ -761,6 +763,8 @@ export default function ProductionPage() {
   const [jobSearch, setJobSearch] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('MACHINE');
   const [loading, setLoading] = useState(true);
+  const jobCalendarScrollRef = useRef(null);
+  const departmentCalendarScrollRef = useRef(null);
 
   const today = useMemo(() => startOfDay(new Date()), []);
   const calendarStart = useMemo(() => addDays(today, -DAYS_BACK), [today]);
@@ -783,6 +787,18 @@ export default function ProductionPage() {
 
   useEffect(() => {
     loadJobs();
+  }, []);
+
+  useEffect(() => {
+    const todayScrollPosition = DAYS_BACK * DAY_WIDTH;
+
+    if (jobCalendarScrollRef.current) {
+      jobCalendarScrollRef.current.scrollLeft = todayScrollPosition;
+    }
+
+    if (departmentCalendarScrollRef.current) {
+      departmentCalendarScrollRef.current.scrollLeft = todayScrollPosition;
+    }
   }, []);
 
   const allScheduledJobs = jobs.map((job, index) => {
@@ -941,7 +957,7 @@ export default function ProductionPage() {
               ) : jobOverviewRows.length === 0 ? (
                 <div className="p-12 text-center text-slate-500">No posted production jobs found.</div>
               ) : (
-                <div className="max-w-full overflow-x-auto">
+                <div ref={jobCalendarScrollRef} className="max-w-full overflow-x-auto">
                   <div
                     className="relative"
                     style={{
@@ -951,7 +967,7 @@ export default function ProductionPage() {
                     <div
                       className="sticky top-0 z-20 grid border-b bg-white text-xs font-black uppercase tracking-wide text-slate-500"
                       style={{
-                        gridTemplateColumns: `360px ${calendarDays.map(() => '160px').join(' ')}`,
+                        gridTemplateColumns: `360px ${calendarDays.map(() => `${DAY_WIDTH}px`).join(' ')}`,
                       }}
                     >
                       <div className="sticky left-0 z-40 border-r bg-white px-4 py-3">
@@ -974,7 +990,7 @@ export default function ProductionPage() {
                         key={job.id}
                         className="grid border-b text-sm hover:bg-slate-50"
                         style={{
-                          gridTemplateColumns: `360px ${calendarDays.map(() => '160px').join(' ')}`,
+                          gridTemplateColumns: `360px ${calendarDays.map(() => `${DAY_WIDTH}px`).join(' ')}`,
                         }}
                       >
                         <div className="sticky left-0 z-40 border-r bg-white px-4 py-4">
@@ -1103,7 +1119,7 @@ export default function ProductionPage() {
               ) : resourceRows.length === 0 ? (
                 <div className="p-12 text-center text-slate-500">No scheduled resources found for this department filter.</div>
               ) : (
-                <div className="max-w-full overflow-x-auto">
+                <div ref={departmentCalendarScrollRef} className="max-w-full overflow-x-auto">
                   <div
                     className="relative"
                     style={{
@@ -1113,7 +1129,7 @@ export default function ProductionPage() {
                     <div
                       className="sticky top-0 z-20 grid border-b bg-white text-xs font-black uppercase tracking-wide text-slate-500"
                       style={{
-                        gridTemplateColumns: `300px ${calendarDays.map(() => '160px').join(' ')}`,
+                        gridTemplateColumns: `300px ${calendarDays.map(() => `${DAY_WIDTH}px`).join(' ')}`,
                       }}
                     >
                       <div className="sticky left-0 z-40 border-r bg-white px-4 py-3">Department / Resource</div>
@@ -1125,7 +1141,7 @@ export default function ProductionPage() {
                         key={row.id}
                         className="grid border-b text-sm hover:bg-slate-50"
                         style={{
-                          gridTemplateColumns: `300px ${calendarDays.map(() => '160px').join(' ')}`,
+                          gridTemplateColumns: `300px ${calendarDays.map(() => `${DAY_WIDTH}px`).join(' ')}`,
                         }}
                       >
                         <div className="sticky left-0 z-40 border-r bg-white px-4 py-4">
