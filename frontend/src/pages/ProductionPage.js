@@ -803,7 +803,7 @@ export default function ProductionPage() {
         departmentCalendarScrollRef.current.scrollLeft = todayScrollPosition;
       }
     }, 100);
-  }, [loading, jobOverviewRows.length, resourceRows.length]);
+  }, [loading, jobs.length]);
 
   const allScheduledJobs = jobs.map((job, index) => {
     const jobStart = startOfDay(job.production_posted_at || job.invoice_created_at || job.created_at || today);
