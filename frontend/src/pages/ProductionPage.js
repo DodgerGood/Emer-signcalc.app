@@ -794,7 +794,7 @@ export default function ProductionPage() {
 
     const todayScrollPosition = DAYS_BACK * DAY_WIDTH;
 
-    requestAnimationFrame(() => {
+    setTimeout(() => {
       if (jobCalendarScrollRef.current) {
         jobCalendarScrollRef.current.scrollLeft = todayScrollPosition;
       }
@@ -802,8 +802,8 @@ export default function ProductionPage() {
       if (departmentCalendarScrollRef.current) {
         departmentCalendarScrollRef.current.scrollLeft = todayScrollPosition;
       }
-    });
-  }, [loading]);
+    }, 100);
+  }, [loading, jobOverviewRows.length, resourceRows.length]);
 
   const allScheduledJobs = jobs.map((job, index) => {
     const jobStart = startOfDay(job.production_posted_at || job.invoice_created_at || job.created_at || today);
@@ -961,7 +961,7 @@ export default function ProductionPage() {
               ) : jobOverviewRows.length === 0 ? (
                 <div className="p-12 text-center text-slate-500">No posted production jobs found.</div>
               ) : (
-                <div ref={jobCalendarScrollRef} className="max-w-full overflow-x-auto">
+                <div ref={jobCalendarScrollRef} className="min-w-0 max-w-full overflow-x-scroll overscroll-x-contain touch-pan-x">
                   <div
                     className="relative"
                     style={{
@@ -1123,7 +1123,7 @@ export default function ProductionPage() {
               ) : resourceRows.length === 0 ? (
                 <div className="p-12 text-center text-slate-500">No scheduled resources found for this department filter.</div>
               ) : (
-                <div ref={departmentCalendarScrollRef} className="max-w-full overflow-x-auto">
+                <div ref={departmentCalendarScrollRef} className="min-w-0 max-w-full overflow-x-scroll overscroll-x-contain touch-pan-x">
                   <div
                     className="relative"
                     style={{
