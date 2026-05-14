@@ -178,6 +178,15 @@ const AppRoutes = () => {
       />
 
       <Route
+        path="/production"
+        element={
+          <ProtectedRoute>
+            <ProductionPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/company-details"
         element={
           <ProtectedRoute>
