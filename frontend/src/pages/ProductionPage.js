@@ -1062,10 +1062,7 @@ export default function ProductionPage() {
                       </div>
                     ))}
 
-                    <div
-                      className="pointer-events-none absolute top-0 z-30 h-full w-[3px] bg-red-600"
-                      style={{ left: '360px' }}
-                    />
+                    <TodayLine calendarDays={calendarDays} today={today} leftWidth={360} dayWidth={DAY_WIDTH} />
                   </div>
                 </div>
               )}
@@ -1184,10 +1181,7 @@ export default function ProductionPage() {
                       </div>
                     ))}
 
-                    <div
-                      className="pointer-events-none absolute top-0 z-30 h-full w-[3px] bg-red-600"
-                      style={{ left: '300px' }}
-                    />
+                    <TodayLine calendarDays={calendarDays} today={today} leftWidth={300} dayWidth={DAY_WIDTH} />
                   </div>
                 </div>
               )}
