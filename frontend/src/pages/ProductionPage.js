@@ -213,7 +213,7 @@ export default function ProductionPage() {
   const loadJobs = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/approved');
+      const response = await api.get('/production');
       const loadedJobs = response.data || [];
       setJobs(loadedJobs);
 
@@ -262,7 +262,7 @@ export default function ProductionPage() {
           <div>
             <h1 className="text-4xl font-black tracking-tight leading-none">Production Tracking</h1>
             <p className="text-slate-600 mt-2">
-              Monday-style production board for approved jobs, machines, labour, installation, install machinery and delivery.
+              Production board for posted jobs, machines, labour, installation, install machinery and delivery.
             </p>
           </div>
 
@@ -346,7 +346,7 @@ export default function ProductionPage() {
             {loading ? (
               <div className="p-12 text-center text-slate-500">Loading production jobs...</div>
             ) : !selectedJob ? (
-              <div className="p-12 text-center text-slate-500">No approved jobs found.</div>
+              <div className="p-12 text-center text-slate-500">No jobs have been posted to production yet.</div>
             ) : (
               <div className="overflow-x-auto">
                 <div className="min-w-[1050px]">

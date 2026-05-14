@@ -6688,6 +6688,55 @@ async def move_invoice_back_to_quote(quote_id: str, user: dict = Depends(require
     return {"message": "Invoice moved back to quoting stage"}
 
 
+@api_router.post("/production/{quote_id}/start")
+async def start_production_tracking(quote_id: str, user: dict = Depends(get_current_user)):
+    quote = await db.quotes.find_one(
+        {"id": quote_id, "company_id": user["company_id"]},
+        {"_id": 0}
+    )
+
+    if not quote:
+        raise HTTPException(status_code=404, detail="Approved invoice not found")
+
+    if not quote.get("invoice_number"):
+        raise HTTPException(status_code=400, detail="Only approved invoices can be posted to production")
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    update_fields = {
+        "production_posted": True,
+        "production_posted_at": quote.get("production_posted_at") or now,
+        "production_posted_by": quote.get("production_posted_by") or user["id"],
+        "production_posted_by_name": quote.get("production_posted_by_name") or user.get("full_name") or "",
+        "production_status": quote.get("production_status") or "QUEUED",
+        "updated_at": now,
+    }
+
+    await db.quotes.update_one(
+        {"id": quote_id, "company_id": user["company_id"]},
+        {"$set": update_fields}
+    )
+
+    return {
+        "message": "Job posted to production",
+        "quote_id": quote_id,
+    }
+
+
+@api_router.get("/production")
+async def get_production_jobs(user: dict = Depends(get_current_user)):
+    jobs = await db.quotes.find(
+        {
+            "company_id": user["company_id"],
+            "invoice_number": {"$ne": None},
+            "production_posted": True,
+        },
+        {"_id": 0}
+    ).sort("production_posted_at", -1).to_list(1000)
+
+    return jobs
+
+
 @api_router.delete("/approved/{quote_id}")
 async def delete_approved_invoice(quote_id: str, user: dict = Depends(require_manager)):
     quote = await db.quotes.find_one(

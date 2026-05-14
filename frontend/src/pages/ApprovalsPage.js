@@ -205,7 +205,13 @@ export default function ApprovalsPage() {
   };
 
   const trackProduction = async (job) => {
-    navigate(`/production?jobId=${job.id}`);
+    try {
+      await api.post(`/production/${job.id}/start`);
+      toast.success('Job posted to production');
+      navigate(`/production?jobId=${job.id}`);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to post job to production');
+    }
   };
 
   const deleteApproved = async (job) => {
