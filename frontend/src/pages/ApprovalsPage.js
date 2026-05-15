@@ -206,11 +206,20 @@ export default function ApprovalsPage() {
 
   const trackProduction = async (job) => {
     try {
+      if (job.production_posted) {
+        if (!window.confirm(`Remove ${job.invoice_number || 'this job'} from production tracking?`)) return;
+
+        await api.post(`/production/${job.id}/remove`);
+        toast.success('Job removed from production');
+        loadApprovedJobs();
+        return;
+      }
+
       await api.post(`/production/${job.id}/start`);
       toast.success('Job posted to production');
       navigate(`/production?jobId=${job.id}`);
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to post job to production');
+      toast.error(error.response?.data?.detail || 'Failed to update production tracking');
     }
   };
 
@@ -414,11 +423,11 @@ export default function ApprovalsPage() {
                       <TableCell className="px-4 py-3 text-center">
                         <ActionIconButton
                           icon={<Factory size={16} />}
-                          label="Track"
+                          label={job.production_posted ? "Remove from Production" : "Track"}
                           tone="production"
                           variant="outline"
                           onClick={() => trackProduction(job)}
-                          title="Track production"
+                          title={job.production_posted ? "Remove from production" : "Track production"}
                         />
                       </TableCell>
 

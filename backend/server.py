@@ -6834,6 +6834,41 @@ async def start_production_tracking(quote_id: str, user: dict = Depends(get_curr
     }
 
 
+@api_router.post("/production/{quote_id}/remove")
+async def remove_from_production_tracking(quote_id: str, user: dict = Depends(get_current_user)):
+    quote = await db.quotes.find_one(
+        {"id": quote_id, "company_id": user["company_id"]},
+        {"_id": 0}
+    )
+
+    if not quote:
+        raise HTTPException(status_code=404, detail="Approved invoice not found")
+
+    if not quote.get("invoice_number"):
+        raise HTTPException(status_code=400, detail="Only approved invoices can be removed from production")
+
+    await db.quotes.update_one(
+        {"id": quote_id, "company_id": user["company_id"]},
+        {
+            "$set": {
+                "production_posted": False,
+                "production_status": "REMOVED",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            "$unset": {
+                "production_posted_at": "",
+                "production_posted_by": "",
+                "production_posted_by_name": "",
+            }
+        }
+    )
+
+    return {
+        "message": "Job removed from production",
+        "quote_id": quote_id,
+    }
+
+
 @api_router.get("/production")
 async def get_production_jobs(user: dict = Depends(get_current_user)):
     jobs = await db.quotes.find(
