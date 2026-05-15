@@ -5045,7 +5045,9 @@ async def calculate_sign_estimate(sign: SignEstimateCreate, user: dict = Depends
             "unit_cost": round(cost_per_unit, 2),
             "cost": round(line_cost, 2),
             "markup_percent": markup_percent,
-            "selling": round(line_selling, 2)
+            "selling": round(line_selling, 2),
+            "sequence_order": recipe_line.get("sequence_order"),
+            "dependency_steps": recipe_line.get("dependency_steps"),
         })
         
         recipe_cost += line_cost
@@ -5273,6 +5275,58 @@ class EstimateDraftSave(BaseModel):
     total_amount: float = 0.0
 
 
+async def attach_recipe_workflow_to_estimate_lines(estimate_lines: list, company_id: str):
+    """
+    Attach non-costing production workflow metadata to each estimate line.
+    This does not change pricing, totals, margins, or quote calculations.
+    """
+    enriched_lines = []
+
+    for estimate_line in estimate_lines:
+        line_copy = dict(estimate_line or {})
+        recipe_id = line_copy.get("recipe_id")
+        workflow = []
+
+        if recipe_id:
+            recipe = await db.recipes.find_one(
+                {"id": recipe_id, "company_id": company_id},
+                {"_id": 0}
+            )
+
+            if recipe:
+                for recipe_line in recipe.get("lines", []):
+                    line_type = recipe_line.get("line_type")
+
+                    if line_type not in ["LABOUR", "MACHINE"]:
+                        continue
+
+                    reference_id = recipe_line.get("reference_id")
+                    resource_name = recipe_line.get("custom_name") or ""
+
+                    if reference_id:
+                        labour_machine = await db.labour_types.find_one(
+                            {"id": reference_id, "company_id": company_id},
+                            {"_id": 0}
+                        )
+
+                        if labour_machine:
+                            resource_name = labour_machine.get("name") or resource_name
+
+                    workflow.append({
+                        "sequence_order": recipe_line.get("sequence_order"),
+                        "dependency_steps": recipe_line.get("dependency_steps") or "",
+                        "line_type": line_type,
+                        "reference_id": reference_id,
+                        "name": resource_name or "Unknown item",
+                    })
+
+        workflow.sort(key=lambda item: item.get("sequence_order") or 999)
+        line_copy["recipe_workflow"] = workflow
+        enriched_lines.append(line_copy)
+
+    return enriched_lines
+
+
 @api_router.put("/quotes/{quote_id}/estimate-draft")
 async def save_estimate_draft(
     quote_id: str,
@@ -5288,7 +5342,12 @@ async def save_estimate_draft(
         raise HTTPException(status_code=404, detail="Quote not found")
 
     blueprint = quote.get("blueprint") or {}
-    blueprint["estimate_lines"] = estimate.lines
+    enriched_estimate_lines = await attach_recipe_workflow_to_estimate_lines(
+        estimate.lines,
+        user["company_id"]
+    )
+
+    blueprint["estimate_lines"] = enriched_estimate_lines
     blueprint["estimate_addons"] = estimate.addons
     blueprint["discount_percent"] = estimate.discount_percent
     blueprint["subtotal"] = estimate.subtotal
