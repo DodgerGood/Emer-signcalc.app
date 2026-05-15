@@ -127,6 +127,29 @@ function addDays(date, days) {
   return copy;
 }
 
+function addWorkdays(date, workdays) {
+  let copy = startOfDay(date);
+  let added = 0;
+
+  if (workdays <= 0) {
+    while (isWeekend(copy)) {
+      copy = addDays(copy, 1);
+    }
+
+    return copy;
+  }
+
+  while (added < workdays) {
+    copy = addDays(copy, 1);
+
+    if (!isWeekend(copy)) {
+      added += 1;
+    }
+  }
+
+  return copy;
+}
+
 function dateKey(date) {
   return startOfDay(date).toISOString().slice(0, 10);
 }
@@ -286,7 +309,7 @@ function makeStep({
   jobColour,
   today,
 }) {
-  const startDate = addDays(getJobDate(job, today), dayOffset);
+  const startDate = addWorkdays(getJobDate(job, today), dayOffset);
 
   return {
     id,
