@@ -1,7 +1,63 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Layout } from '../components/Layout';
 import api from '../lib/api';
 import { toast } from 'sonner';
+
+const FALLBACK_CURRENCY_CODES = [
+  'AED', 'AFN', 'ALL', 'AMD', 'ANG', 'AOA', 'ARS', 'AUD', 'AWG', 'AZN',
+  'BAM', 'BBD', 'BDT', 'BGN', 'BHD', 'BIF', 'BMD', 'BND', 'BOB', 'BRL',
+  'BSD', 'BTN', 'BWP', 'BYN', 'BZD', 'CAD', 'CDF', 'CHF', 'CLP', 'CNY',
+  'COP', 'CRC', 'CUP', 'CVE', 'CZK', 'DJF', 'DKK', 'DOP', 'DZD', 'EGP',
+  'ERN', 'ETB', 'EUR', 'FJD', 'FKP', 'GBP', 'GEL', 'GHS', 'GIP', 'GMD',
+  'GNF', 'GTQ', 'GYD', 'HKD', 'HNL', 'HTG', 'HUF', 'IDR', 'ILS', 'INR',
+  'IQD', 'IRR', 'ISK', 'JMD', 'JOD', 'JPY', 'KES', 'KGS', 'KHR', 'KMF',
+  'KRW', 'KWD', 'KYD', 'KZT', 'LAK', 'LBP', 'LKR', 'LRD', 'LSL', 'LYD',
+  'MAD', 'MDL', 'MGA', 'MKD', 'MMK', 'MNT', 'MOP', 'MRU', 'MUR', 'MVR',
+  'MWK', 'MXN', 'MYR', 'MZN', 'NAD', 'NGN', 'NIO', 'NOK', 'NPR', 'NZD',
+  'OMR', 'PAB', 'PEN', 'PGK', 'PHP', 'PKR', 'PLN', 'PYG', 'QAR', 'RON',
+  'RSD', 'RUB', 'RWF', 'SAR', 'SBD', 'SCR', 'SDG', 'SEK', 'SGD', 'SHP',
+  'SLE', 'SOS', 'SRD', 'SSP', 'STN', 'SYP', 'SZL', 'THB', 'TJS', 'TMT',
+  'TND', 'TOP', 'TRY', 'TTD', 'TWD', 'TZS', 'UAH', 'UGX', 'USD', 'UYU',
+  'UZS', 'VES', 'VND', 'VUV', 'WST', 'XAF', 'XCD', 'XOF', 'XPF', 'YER',
+  'ZAR', 'ZMW', 'ZWL',
+];
+
+function getSupportedCurrencyCodes() {
+  if (typeof Intl !== 'undefined' && typeof Intl.supportedValuesOf === 'function') {
+    try {
+      return Intl.supportedValuesOf('currency');
+    } catch {
+      return FALLBACK_CURRENCY_CODES;
+    }
+  }
+
+  return FALLBACK_CURRENCY_CODES;
+}
+
+function getCurrencyName(code) {
+  try {
+    const displayNames = new Intl.DisplayNames(['en'], { type: 'currency' });
+    return displayNames.of(code) || code;
+  } catch {
+    return code;
+  }
+}
+
+function getCurrencySymbol(code) {
+  try {
+    const parts = new Intl.NumberFormat('en', {
+      style: 'currency',
+      currency: code,
+      currencyDisplay: 'narrowSymbol',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).formatToParts(0);
+
+    return parts.find((part) => part.type === 'currency')?.value || code;
+  } catch {
+    return code;
+  }
+}
 
 export default function CompanyDetailsPage() {
   const logoRef = useRef(null);
@@ -164,6 +220,26 @@ export default function CompanyDetailsPage() {
   };
 
   const inputClass = "w-full rounded border px-3 py-2";
+
+  const currencyOptions = useMemo(() => {
+    return getSupportedCurrencyCodes()
+      .map((code) => {
+        const symbol = getCurrencySymbol(code);
+        const name = getCurrencyName(code);
+
+        return {
+          code,
+          symbol,
+          name,
+          label: `${symbol} — ${name} (${code})`,
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, []);
+
+  const selectedCurrencyLabel =
+    currencyOptions.find((item) => item.code === formData.currency_code)?.label ||
+    `${formData.currency_symbol || 'R'} — ${formData.currency_name || 'South African Rand'} (${formData.currency_code || 'ZAR'})`;
 
   return (
     <Layout>

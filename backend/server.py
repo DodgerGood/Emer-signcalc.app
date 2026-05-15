@@ -721,6 +721,10 @@ class CompanyDetails(BaseModel):
     invoice_footer: Optional[str] = None
     statement_footer: Optional[str] = None
 
+    currency_code: Optional[str] = "ZAR"
+    currency_symbol: Optional[str] = "R"
+    currency_name: Optional[str] = "South African Rand"
+
     logo_url: Optional[str] = None
     logo_data_url: Optional[str] = None
     verification_password: Optional[str] = None
