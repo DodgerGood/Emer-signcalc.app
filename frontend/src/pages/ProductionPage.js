@@ -22,12 +22,24 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const DAY_WIDTH = 150;
-const JOB_COLUMN_WIDTH = 380;
-const RESOURCE_COLUMN_WIDTH = 300;
+const SLOT_WIDTH = 28;
+const SLOT_MINUTES = 15;
+const JOB_COLUMN_WIDTH = 320;
+const RESOURCE_COLUMN_WIDTH = 280;
 const DAYS_BACK = 7;
 const DAYS_FORWARD = 14;
 const CALENDAR_DAYS = DAYS_BACK + 1 + DAYS_FORWARD;
+
+const defaultCompanyDetails = {
+  production_work_start: '08:00',
+  production_work_end: '17:00',
+  production_tea_1_start: '10:00',
+  production_tea_1_end: '10:15',
+  production_lunch_start: '13:00',
+  production_lunch_end: '13:30',
+  production_tea_2_start: '15:00',
+  production_tea_2_end: '15:15',
+};
 
 const SETUP_MINUTES = 15;
 const REMOVAL_MINUTES = 15;
@@ -187,6 +199,123 @@ function formatHours(minutes) {
 function safeNumber(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+function timeToMinutes(value) {
+  if (!value || !String(value).includes(':')) return null;
+
+  const [hours, minutes] = String(value).split(':').map(Number);
+
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+
+  return hours * 60 + minutes;
+}
+
+function minutesToTime(value) {
+  const safeValue = Math.max(0, Number(value) || 0);
+  const hours = Math.floor(safeValue / 60);
+  const minutes = safeValue % 60;
+
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+function rangesOverlap(startA, endA, startB, endB) {
+  return startA < endB && endA > startB;
+}
+
+function buildTimeSlots(companyDetails) {
+  const details = {
+    ...defaultCompanyDetails,
+    ...(companyDetails || {}),
+  };
+
+  const workStart = timeToMinutes(details.production_work_start) ?? 8 * 60;
+  const workEnd = timeToMinutes(details.production_work_end) ?? 17 * 60;
+
+  if (workEnd <= workStart) {
+    return [];
+  }
+
+  const breakRanges = [
+    {
+      label: 'Tea 1',
+      start: timeToMinutes(details.production_tea_1_start),
+      end: timeToMinutes(details.production_tea_1_end),
+    },
+    {
+      label: 'Lunch',
+      start: timeToMinutes(details.production_lunch_start),
+      end: timeToMinutes(details.production_lunch_end),
+    },
+    {
+      label: 'Tea 2',
+      start: timeToMinutes(details.production_tea_2_start),
+      end: timeToMinutes(details.production_tea_2_end),
+    },
+  ].filter((item) => item.start !== null && item.end !== null && item.end > item.start);
+
+  const slots = [];
+
+  for (let start = workStart; start < workEnd; start += SLOT_MINUTES) {
+    const end = Math.min(start + SLOT_MINUTES, workEnd);
+    const blockedBreak = breakRanges.find((item) => rangesOverlap(start, end, item.start, item.end));
+
+    slots.push({
+      key: `${minutesToTime(start)}-${minutesToTime(end)}`,
+      label: minutesToTime(start),
+      start,
+      end,
+      isHour: start % 60 === 0,
+      isBreak: Boolean(blockedBreak),
+      breakLabel: blockedBreak?.label || '',
+    });
+  }
+
+  return slots;
+}
+
+function getStepPlacementsForDay(steps, day, timeSlots) {
+  const daySteps = steps
+    .filter((step) => dateKey(step.startDate) === dateKey(day))
+    .sort((a, b) => String(a.id).localeCompare(String(b.id)));
+
+  const placements = [];
+  let cursor = 0;
+
+  daySteps.forEach((step) => {
+    let remainingMinutes = Math.max(SLOT_MINUTES, Math.round(safeNumber(step.plannedMinutes, SLOT_MINUTES)));
+
+    while (remainingMinutes > 0 && cursor < timeSlots.length) {
+      while (cursor < timeSlots.length && timeSlots[cursor].isBreak) {
+        cursor += 1;
+      }
+
+      if (cursor >= timeSlots.length) break;
+
+      const startIndex = cursor;
+      let span = 0;
+
+      while (
+        cursor < timeSlots.length &&
+        !timeSlots[cursor].isBreak &&
+        remainingMinutes > 0
+      ) {
+        remainingMinutes -= SLOT_MINUTES;
+        span += 1;
+        cursor += 1;
+      }
+
+      if (span > 0) {
+        placements.push({
+          step,
+          startIndex,
+          span,
+        });
+      }
+    }
+  });
+
+  return placements;
 }
 
 function truncateFileName(name) {
@@ -489,7 +618,7 @@ function downloadBlob(response, filename) {
   window.URL.revokeObjectURL(url);
 }
 
-function DateHeader({ calendarDays, today }) {
+function DateHeader({ calendarDays, today, timeSlots, dayWidth }) {
   return (
     <>
       {calendarDays.map((day) => {
@@ -498,12 +627,32 @@ function DateHeader({ calendarDays, today }) {
         return (
           <div
             key={dateKey(day)}
-            className={`h-[92px] border-r px-3 py-4 text-center ${
+            className={`h-[92px] border-r ${
               header.isToday ? 'bg-red-50 text-red-700' : header.weekend ? 'bg-slate-100 text-slate-400' : 'bg-white text-slate-500'
             }`}
+            style={{ width: `${dayWidth}px` }}
           >
-            <div className="font-black">{header.top}</div>
-            {header.bottom ? <div className="mt-2 text-[11px] font-black">{header.bottom}</div> : null}
+            <div className="border-b px-3 py-2 text-center">
+              <div className="font-black">{header.top}</div>
+              {header.bottom ? <div className="mt-1 text-[11px] font-black">{header.bottom}</div> : null}
+            </div>
+
+            <div
+              className="grid text-[9px]"
+              style={{ gridTemplateColumns: timeSlots.map(() => `${SLOT_WIDTH}px`).join(' ') }}
+            >
+              {timeSlots.map((slot) => (
+                <div
+                  key={`${dateKey(day)}-${slot.key}`}
+                  className={`h-[36px] border-r px-0.5 pt-1 text-center ${
+                    slot.isBreak ? 'bg-amber-100 text-amber-700' : 'bg-white'
+                  }`}
+                  title={slot.isBreak ? `${slot.breakLabel}: ${slot.key}` : slot.key}
+                >
+                  {slot.isHour ? slot.label : ''}
+                </div>
+              ))}
+            </div>
           </div>
         );
       })}
@@ -511,7 +660,7 @@ function DateHeader({ calendarDays, today }) {
   );
 }
 
-function TodayLine({ calendarDays, today }) {
+function TodayLine({ calendarDays, today, dayWidth }) {
   const todayIndex = calendarDays.findIndex((day) => dateKey(day) === dateKey(today));
 
   if (todayIndex < 0) return null;
@@ -520,7 +669,7 @@ function TodayLine({ calendarDays, today }) {
     <div
       className="pointer-events-none absolute top-0 z-30 h-full w-[3px] bg-red-600"
       style={{
-        left: `${todayIndex * DAY_WIDTH}px`,
+        left: `${todayIndex * dayWidth}px`,
       }}
     />
   );
@@ -543,6 +692,7 @@ function StepCard({ step }) {
 
 export default function ProductionPage() {
   const [jobs, setJobs] = useState([]);
+  const [companyDetails, setCompanyDetails] = useState(defaultCompanyDetails);
   const [jobSearch, setJobSearch] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
@@ -558,11 +708,23 @@ export default function ProductionPage() {
     return Array.from({ length: CALENDAR_DAYS }, (_, index) => addDays(calendarStart, index));
   }, [calendarStart]);
 
+  const timeSlots = useMemo(() => buildTimeSlots(companyDetails), [companyDetails]);
+  const dayWidth = useMemo(() => Math.max(SLOT_WIDTH, timeSlots.length * SLOT_WIDTH), [timeSlots]);
+
   const loadJobs = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/production');
-      setJobs(response.data || []);
+
+      const [productionResponse, companyResponse] = await Promise.all([
+        api.get('/production'),
+        api.get('/company-details'),
+      ]);
+
+      setJobs(productionResponse.data || []);
+      setCompanyDetails({
+        ...defaultCompanyDetails,
+        ...(companyResponse.data || {}),
+      });
     } catch {
       toast.error('Failed to load production jobs');
     } finally {
@@ -592,7 +754,7 @@ export default function ProductionPage() {
   useEffect(() => {
     if (loading) return;
 
-    const scrollToToday = DAYS_BACK * DAY_WIDTH;
+    const scrollToToday = DAYS_BACK * dayWidth;
 
     window.setTimeout(() => {
       if (jobScrollRef.current) {
@@ -603,7 +765,7 @@ export default function ProductionPage() {
         resourceScrollRef.current.scrollLeft = scrollToToday;
       }
     }, 150);
-  }, [loading, scheduledJobs.length]);
+  }, [loading, scheduledJobs.length, dayWidth]);
 
   const filteredJobs = useMemo(() => {
     const term = jobSearch.trim().toLowerCase();
@@ -772,16 +934,16 @@ export default function ProductionPage() {
                 <div
                   className="relative"
                   style={{
-                    width: `${calendarDays.length * DAY_WIDTH}px`,
+                    width: `${calendarDays.length * dayWidth}px`,
                   }}
                 >
                   <div
                     className="grid"
                     style={{
-                      gridTemplateColumns: calendarDays.map(() => `${DAY_WIDTH}px`).join(' '),
+                      gridTemplateColumns: calendarDays.map(() => `${dayWidth}px`).join(' '),
                     }}
                   >
-                    <DateHeader calendarDays={calendarDays} today={today} />
+                    <DateHeader calendarDays={calendarDays} today={today} timeSlots={timeSlots} dayWidth={dayWidth} />
                   </div>
 
                   {filteredJobs.map(({ job, colour, steps }) => (
@@ -789,30 +951,47 @@ export default function ProductionPage() {
                       key={job.id}
                       className="grid"
                       style={{
-                        gridTemplateColumns: calendarDays.map(() => `${DAY_WIDTH}px`).join(' '),
+                        gridTemplateColumns: calendarDays.map(() => `${dayWidth}px`).join(' '),
                       }}
                     >
                       {calendarDays.map((day) => {
-                        const daySteps = steps.filter((step) => dateKey(step.startDate) === dateKey(day));
                         const header = formatDayHeader(day, today);
+                        const placements = header.weekend ? [] : getStepPlacementsForDay(steps, day, timeSlots);
 
                         return (
                           <div
                             key={`${job.id}-${dateKey(day)}`}
-                            className={`min-h-[148px] border-b border-r p-2 ${
+                            className={`relative min-h-[148px] border-b border-r ${
                               header.isToday ? 'bg-red-50/40' : header.weekend ? 'bg-slate-100' : 'bg-slate-50'
                             }`}
                           >
-                            <div className="space-y-1">
-                              {daySteps.slice(0, 4).map((step) => (
-                                <StepCard key={step.id} step={step} />
+                            <div
+                              className="absolute inset-0 grid"
+                              style={{ gridTemplateColumns: timeSlots.map(() => `${SLOT_WIDTH}px`).join(' ') }}
+                            >
+                              {timeSlots.map((slot) => (
+                                <div
+                                  key={`${job.id}-${dateKey(day)}-${slot.key}`}
+                                  className={`border-r ${slot.isBreak ? 'bg-amber-100/70' : ''}`}
+                                  title={slot.isBreak ? `${slot.breakLabel}: ${slot.key}` : slot.key}
+                                />
                               ))}
+                            </div>
 
-                              {daySteps.length > 4 ? (
-                                <div className="rounded-md bg-slate-700 px-2 py-1 text-center text-[10px] font-bold text-white">
-                                  +{daySteps.length - 4} more
+                            <div
+                              className="relative z-10 grid gap-y-1 p-2"
+                              style={{ gridTemplateColumns: timeSlots.map(() => `${SLOT_WIDTH}px`).join(' ') }}
+                            >
+                              {placements.map((placement, placementIndex) => (
+                                <div
+                                  key={`${placement.step.id}-${placementIndex}`}
+                                  style={{
+                                    gridColumn: `${placement.startIndex + 1} / span ${placement.span}`,
+                                  }}
+                                >
+                                  <StepCard step={placement.step} />
                                 </div>
-                              ) : null}
+                              ))}
                             </div>
                           </div>
                         );
@@ -820,7 +999,7 @@ export default function ProductionPage() {
                     </div>
                   ))}
 
-                  <TodayLine calendarDays={calendarDays} today={today} />
+                  <TodayLine calendarDays={calendarDays} today={today} dayWidth={dayWidth} />
                 </div>
               </div>
             </div>
@@ -882,16 +1061,16 @@ export default function ProductionPage() {
                 <div
                   className="relative"
                   style={{
-                    width: `${calendarDays.length * DAY_WIDTH}px`,
+                    width: `${calendarDays.length * dayWidth}px`,
                   }}
                 >
                   <div
                     className="grid"
                     style={{
-                      gridTemplateColumns: calendarDays.map(() => `${DAY_WIDTH}px`).join(' '),
+                      gridTemplateColumns: calendarDays.map(() => `${dayWidth}px`).join(' '),
                     }}
                   >
-                    <DateHeader calendarDays={calendarDays} today={today} />
+                    <DateHeader calendarDays={calendarDays} today={today} timeSlots={timeSlots} dayWidth={dayWidth} />
                   </div>
 
                   {resourceRows.map((row) => (
@@ -899,38 +1078,54 @@ export default function ProductionPage() {
                       key={row.id}
                       className="grid"
                       style={{
-                        gridTemplateColumns: calendarDays.map(() => `${DAY_WIDTH}px`).join(' '),
+                        gridTemplateColumns: calendarDays.map(() => `${dayWidth}px`).join(' '),
                       }}
                     >
                       {calendarDays.map((day) => {
-                        const dayEvents = row.events.filter((step) => dateKey(step.startDate) === dateKey(day));
                         const header = formatDayHeader(day, today);
+                        const placements = header.weekend ? [] : getStepPlacementsForDay(row.events, day, timeSlots);
 
                         return (
                           <div
                             key={`${row.id}-${dateKey(day)}`}
-                            className={`min-h-[118px] border-b border-r p-2 ${
+                            className={`relative min-h-[118px] border-b border-r ${
                               header.isToday ? 'bg-red-50/40' : header.weekend ? 'bg-slate-100' : 'bg-slate-50'
                             }`}
                           >
-                            <div className="space-y-1">
-                              {dayEvents.slice(0, 3).map((step) => (
+                            <div
+                              className="absolute inset-0 grid"
+                              style={{ gridTemplateColumns: timeSlots.map(() => `${SLOT_WIDTH}px`).join(' ') }}
+                            >
+                              {timeSlots.map((slot) => (
                                 <div
-                                  key={step.id}
-                                  className={`rounded-md ${step.jobColour.card} px-2 py-1 text-[10px] font-bold leading-tight text-white shadow-sm`}
-                                  title={`${step.jobLabel} | ${step.name}`}
+                                  key={`${row.id}-${dateKey(day)}-${slot.key}`}
+                                  className={`border-r ${slot.isBreak ? 'bg-amber-100/70' : ''}`}
+                                  title={slot.isBreak ? `${slot.breakLabel}: ${slot.key}` : slot.key}
+                                />
+                              ))}
+                            </div>
+
+                            <div
+                              className="relative z-10 grid gap-y-1 p-2"
+                              style={{ gridTemplateColumns: timeSlots.map(() => `${SLOT_WIDTH}px`).join(' ') }}
+                            >
+                              {placements.map((placement, placementIndex) => (
+                                <div
+                                  key={`${placement.step.id}-${placementIndex}`}
+                                  style={{
+                                    gridColumn: `${placement.startIndex + 1} / span ${placement.span}`,
+                                  }}
                                 >
-                                  <div className="truncate">{step.jobLabel}</div>
-                                  <div className="truncate opacity-90">{step.name}</div>
-                                  <div className="text-[9px] opacity-90">{formatHours(step.plannedMinutes)}</div>
+                                  <div
+                                    className={`rounded-md ${placement.step.jobColour.card} px-2 py-1 text-[10px] font-bold leading-tight text-white shadow-sm`}
+                                    title={`${placement.step.jobLabel} | ${placement.step.name}`}
+                                  >
+                                    <div className="truncate">{placement.step.jobLabel}</div>
+                                    <div className="truncate opacity-90">{placement.step.name}</div>
+                                    <div className="text-[9px] opacity-90">{formatHours(placement.step.plannedMinutes)}</div>
+                                  </div>
                                 </div>
                               ))}
-
-                              {dayEvents.length > 3 ? (
-                                <div className="rounded-md bg-slate-700 px-2 py-1 text-center text-[10px] font-bold text-white">
-                                  +{dayEvents.length - 3} more
-                                </div>
-                              ) : null}
                             </div>
                           </div>
                         );
@@ -938,7 +1133,7 @@ export default function ProductionPage() {
                     </div>
                   ))}
 
-                  <TodayLine calendarDays={calendarDays} today={today} />
+                  <TodayLine calendarDays={calendarDays} today={today} dayWidth={dayWidth} />
                 </div>
               </div>
             </div>
