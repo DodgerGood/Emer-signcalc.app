@@ -597,7 +597,20 @@ export default function RecipesPage() {
                                 const selectedItem = labourMachineById[line.labour_id];
 
                                 return (
-                                  <div key={line.temp_id} className="grid grid-cols-1 gap-3 md:grid-cols-[1.4fr_90px_1fr_auto_auto] md:items-end">
+                                  <div key={line.temp_id} className="grid grid-cols-1 gap-3 md:grid-cols-[90px_1.4fr_1fr_auto_auto] md:items-start">
+                                    <div className="space-y-2">
+                                      <Label>Step</Label>
+                                      <Input
+                                        type="number"
+                                        min="1"
+                                        value={line.sequence_order || ''}
+                                        onChange={(event) =>
+                                          updateLabourMachineLine(group.temp_id, line.temp_id, 'sequence_order', event.target.value)
+                                        }
+                                        placeholder="1"
+                                      />
+                                    </div>
+
                                     <div className="space-y-2">
                                       <Label>Labour / Machine {lineIndex + 1}</Label>
                                       <Select
@@ -620,19 +633,6 @@ export default function RecipesPage() {
                                     </div>
 
                                     <div className="space-y-2">
-                                      <Label>Step</Label>
-                                      <Input
-                                        type="number"
-                                        min="1"
-                                        value={line.sequence_order || ''}
-                                        onChange={(event) =>
-                                          updateLabourMachineLine(group.temp_id, line.temp_id, 'sequence_order', event.target.value)
-                                        }
-                                        placeholder="1"
-                                      />
-                                    </div>
-
-                                    <div className="space-y-2">
                                       <Label>Depends On</Label>
                                       <Input
                                         value={line.dependency_steps || ''}
@@ -641,6 +641,9 @@ export default function RecipesPage() {
                                         }
                                         placeholder="e.g. Step 1"
                                       />
+                                      <p className="text-[11px] leading-4 text-slate-500">
+                                        What needs to happen first? Enter the earlier step number or step numbers that must be completed before this one.
+                                      </p>
                                     </div>
 
                                     <div className="rounded-md bg-slate-50 px-3 py-2 text-sm">
