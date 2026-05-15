@@ -662,21 +662,47 @@ function DateHeader({ calendarDays, today, timeSlots }) {
                 No standard production
               </div>
             ) : (
-              <div
-                className="grid text-[9px]"
-                style={{ gridTemplateColumns: timeSlots.map(() => `${SLOT_WIDTH}px`).join(' ') }}
-              >
-                {timeSlots.map((slot) => (
-                  <div
-                    key={`${dateKey(day)}-${slot.key}`}
-                    className={`h-[36px] border-r px-0.5 pt-1 text-center ${
-                      slot.isBreak ? 'bg-amber-100 text-amber-700' : 'bg-white'
-                    }`}
-                    title={slot.isBreak ? `${slot.breakLabel}: ${slot.key}` : slot.key}
-                  >
-                    {slot.isHour ? slot.label : ''}
-                  </div>
-                ))}
+              <div className="relative h-[36px]">
+                <div
+                  className="absolute inset-0 grid text-[9px]"
+                  style={{ gridTemplateColumns: timeSlots.map(() => `${SLOT_WIDTH}px`).join(' ') }}
+                >
+                  {timeSlots.map((slot) => (
+                    <div
+                      key={`${dateKey(day)}-${slot.key}`}
+                      className={`h-[36px] border-r ${
+                        slot.isBreak ? 'bg-amber-100 text-amber-700' : 'bg-white'
+                      }`}
+                      title={slot.isBreak ? `${slot.breakLabel}: ${slot.key}` : slot.key}
+                    />
+                  ))}
+                </div>
+
+                {timeSlots.map((slot, slotIndex) => {
+                  if (!slot.isHour) return null;
+
+                  const nextHourIndex = timeSlots.findIndex((nextSlot, nextIndex) => (
+                    nextIndex > slotIndex && nextSlot.isHour
+                  ));
+
+                  const endIndex = nextHourIndex === -1 ? timeSlots.length : nextHourIndex;
+                  const hourSpan = Math.max(1, endIndex - slotIndex);
+                  const left = slotIndex * SLOT_WIDTH;
+                  const width = hourSpan * SLOT_WIDTH;
+
+                  return (
+                    <div
+                      key={`${dateKey(day)}-${slot.key}-hour-label`}
+                      className="pointer-events-none absolute top-1 text-center text-[9px] font-semibold"
+                      style={{
+                        left: `${left}px`,
+                        width: `${width}px`,
+                      }}
+                    >
+                      {slot.label}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
