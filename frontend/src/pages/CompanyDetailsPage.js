@@ -207,6 +207,10 @@ export default function CompanyDetailsPage() {
           Object.keys(prev).map((key) => [key, data[key] || ''])
         ),
       }));
+
+      window.setTimeout(() => {
+        window.location.reload();
+      }, 600);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Save failed');
     }
