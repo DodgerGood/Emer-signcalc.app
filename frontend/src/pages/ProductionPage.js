@@ -714,6 +714,37 @@ function DateHeader({ calendarDays, today, timeSlots }) {
   );
 }
 
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function getCurrentMinuteOfDay() {
+  const now = new Date();
+  return now.getHours() * 60 + now.getMinutes();
+}
+
+function getTimeLeftInDay(timeSlots) {
+  if (!timeSlots.length) return 0;
+
+  const currentMinute = getCurrentMinuteOfDay();
+  const workStart = timeSlots[0].start;
+  const workEnd = timeSlots[timeSlots.length - 1].end;
+  const clampedMinute = clamp(currentMinute, workStart, workEnd);
+
+  const slotIndex = timeSlots.findIndex((slot) => (
+    clampedMinute >= slot.start && clampedMinute < slot.end
+  ));
+
+  if (slotIndex < 0) {
+    return timeSlots.length * SLOT_WIDTH;
+  }
+
+  const slot = timeSlots[slotIndex];
+  const progress = (clampedMinute - slot.start) / Math.max(1, slot.end - slot.start);
+
+  return (slotIndex * SLOT_WIDTH) + (progress * SLOT_WIDTH);
+}
+
 function TodayLine({ calendarDays, today, timeSlots }) {
   const left = getTodayLeft(calendarDays, today, timeSlots);
 
@@ -723,7 +754,7 @@ function TodayLine({ calendarDays, today, timeSlots }) {
     <div
       className="pointer-events-none absolute top-0 z-30 h-full w-[3px] bg-red-600"
       style={{
-        left: `${left}px`,
+        left: `${left + getTimeLeftInDay(timeSlots)}px`,
       }}
     />
   );
