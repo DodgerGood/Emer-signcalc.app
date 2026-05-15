@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -24,7 +24,13 @@ import { Button } from './ui/button';
 export const Layout = ({ children }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    return localStorage.getItem('signomics-sidebar-collapsed') === 'true';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('signomics-sidebar-collapsed', String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
 
   const role = user?.role;
 
