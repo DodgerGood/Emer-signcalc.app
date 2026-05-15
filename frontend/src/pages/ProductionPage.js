@@ -671,6 +671,8 @@ function DateHeader({ calendarDays, today, timeSlots }) {
                     <div
                       key={`${dateKey(day)}-${slot.key}`}
                       className={`h-[36px] border-r ${
+                        slot.isHour ? 'border-l-2 border-l-slate-400' : 'border-l border-l-slate-200'
+                      } ${
                         slot.isBreak ? 'bg-amber-100 text-amber-700' : 'bg-white'
                       }`}
                       title={slot.isBreak ? `${slot.breakLabel}: ${slot.key}` : slot.key}
@@ -1030,7 +1032,9 @@ export default function ProductionPage() {
                                   {timeSlots.map((slot) => (
                                     <div
                                       key={`${job.id}-${dateKey(day)}-${slot.key}`}
-                                      className={`border-r ${slot.isBreak ? 'bg-amber-100/70' : ''}`}
+                                      className={`border-r ${
+                                    slot.isHour ? 'border-l-2 border-l-slate-300' : 'border-l border-l-slate-100'
+                                  } ${slot.isBreak ? 'bg-amber-100/70' : ''}`}
                                       title={slot.isBreak ? `${slot.breakLabel}: ${slot.key}` : slot.key}
                                     />
                                   ))}
@@ -1165,7 +1169,9 @@ export default function ProductionPage() {
                                   {timeSlots.map((slot) => (
                                     <div
                                       key={`${row.id}-${dateKey(day)}-${slot.key}`}
-                                      className={`border-r ${slot.isBreak ? 'bg-amber-100/70' : ''}`}
+                                      className={`border-r ${
+                                    slot.isHour ? 'border-l-2 border-l-slate-300' : 'border-l border-l-slate-100'
+                                  } ${slot.isBreak ? 'bg-amber-100/70' : ''}`}
                                       title={slot.isBreak ? `${slot.breakLabel}: ${slot.key}` : slot.key}
                                     />
                                   ))}
