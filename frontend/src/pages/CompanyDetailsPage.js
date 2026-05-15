@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Layout } from '../components/Layout';
 import api from '../lib/api';
 import { toast } from 'sonner';
+import { saveCompanyCurrency } from '../lib/currency';
 
 const FALLBACK_CURRENCY_CODES = [
   'AED', 'AFN', 'ALL', 'AMD', 'ANG', 'AOA', 'ARS', 'AUD', 'AWG', 'AZN',
@@ -188,11 +189,18 @@ export default function CompanyDetailsPage() {
         verification_password: password,
       });
 
+      saveCompanyCurrency({
+        currency_code: formData.currency_code,
+        currency_symbol: formData.currency_symbol,
+        currency_name: formData.currency_name,
+      });
+
       setPassword('');
       toast.success('Company details saved');
 
       const reload = await api.get('/company-details');
       const data = reload.data || {};
+      saveCompanyCurrency(data);
       setFormData((prev) => ({
         ...prev,
         ...Object.fromEntries(
