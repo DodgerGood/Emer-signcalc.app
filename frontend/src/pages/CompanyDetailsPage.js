@@ -58,6 +58,44 @@ export default function CompanyDetailsPage() {
     setFormData((prev) => ({ ...prev, [field]: value || '' }));
   };
 
+  const timeToMinutes = (value) => {
+    if (!value || !String(value).includes(':')) return null;
+
+    const [hours, minutes] = String(value).split(':').map(Number);
+
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+
+    return hours * 60 + minutes;
+  };
+
+  const calculateWorkingHours = () => {
+    const workStart = timeToMinutes(formData.production_work_start);
+    const workEnd = timeToMinutes(formData.production_work_end);
+
+    if (workStart === null || workEnd === null || workEnd <= workStart) {
+      return 0;
+    }
+
+    let totalMinutes = workEnd - workStart;
+
+    [
+      ['production_tea_1_start', 'production_tea_1_end'],
+      ['production_lunch_start', 'production_lunch_end'],
+      ['production_tea_2_start', 'production_tea_2_end'],
+    ].forEach(([startKey, endKey]) => {
+      const breakStart = timeToMinutes(formData[startKey]);
+      const breakEnd = timeToMinutes(formData[endKey]);
+
+      if (breakStart !== null && breakEnd !== null && breakEnd > breakStart) {
+        totalMinutes -= breakEnd - breakStart;
+      }
+    });
+
+    return Math.max(totalMinutes, 0) / 60;
+  };
+
+  const calculatedWorkingHours = calculateWorkingHours();
+
   const uploadLogo = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -86,6 +124,7 @@ export default function CompanyDetailsPage() {
     try {
       await api.post('/company-details', {
         ...formData,
+        production_working_hours: calculatedWorkingHours,
         verification_password: password,
       });
 
@@ -212,14 +251,12 @@ export default function CompanyDetailsPage() {
 
               <div>
                 <label className="block font-medium mb-1">Working Hours</label>
-                <input
-                  type="number"
-                  step="0.25"
-                  min="0"
-                  className={inputClass}
-                  value={formData.production_working_hours || '9'}
-                  onChange={(e) => update('production_working_hours', e.target.value)}
-                />
+                <div className="w-full rounded border bg-white px-3 py-2 font-semibold text-slate-800">
+                  {calculatedWorkingHours.toFixed(2)} hours
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  Auto calculated from work start/end minus tea and lunch breaks.
+                </p>
               </div>
             </div>
 

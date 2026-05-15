@@ -7360,6 +7360,42 @@ async def export_quote_bom(quote_id: str, user: dict = Depends(get_current_user)
 
 
 
+def time_to_minutes(value: Optional[str]) -> Optional[int]:
+    if not value:
+        return None
+
+    try:
+        hours, minutes = str(value).split(":", 1)
+        return int(hours) * 60 + int(minutes)
+    except Exception:
+        return None
+
+
+def calculate_production_working_hours(data: dict) -> float:
+    work_start = time_to_minutes(data.get("production_work_start"))
+    work_end = time_to_minutes(data.get("production_work_end"))
+
+    if work_start is None or work_end is None or work_end <= work_start:
+        return 9
+
+    total_minutes = work_end - work_start
+
+    break_pairs = [
+        ("production_tea_1_start", "production_tea_1_end"),
+        ("production_lunch_start", "production_lunch_end"),
+        ("production_tea_2_start", "production_tea_2_end"),
+    ]
+
+    for start_key, end_key in break_pairs:
+        break_start = time_to_minutes(data.get(start_key))
+        break_end = time_to_minutes(data.get(end_key))
+
+        if break_start is not None and break_end is not None and break_end > break_start:
+            total_minutes -= break_end - break_start
+
+    return round(max(total_minutes, 0) / 60, 2)
+
+
 @api_router.get("/company-details")
 async def get_company_details(user: dict = Depends(get_current_user)):
     company = await db.company_details.find_one(
@@ -7387,9 +7423,19 @@ async def get_company_details(user: dict = Depends(get_current_user)):
         "statement_footer": company.get("statement_footer") or "",
         "logo_data_url": company.get("logo_data_url") or "",
 
+        "production_working_hours": calculate_production_working_hours({
+            "production_work_start": company.get("production_work_start") or "08:00",
+            "production_work_end": company.get("production_work_end") or "17:00",
+            "production_tea_1_start": company.get("production_tea_1_start") or "10:00",
+            "production_tea_1_end": company.get("production_tea_1_end") or "10:15",
+            "production_lunch_start": company.get("production_lunch_start") or "13:00",
+            "production_lunch_end": company.get("production_lunch_end") or "13:30",
+            "production_tea_2_start": company.get("production_tea_2_start") or "15:00",
+            "production_tea_2_end": company.get("production_tea_2_end") or "15:15",
+        }),
+
         "production_work_start": company.get("production_work_start") or "08:00",
         "production_work_end": company.get("production_work_end") or "17:00",
-        "production_working_hours": company.get("production_working_hours") or 9,
 
         "production_tea_1_start": company.get("production_tea_1_start") or "10:00",
         "production_tea_1_end": company.get("production_tea_1_end") or "10:15",
@@ -7435,7 +7481,6 @@ async def save_company_details(
 
         "production_work_start": payload.production_work_start or "08:00",
         "production_work_end": payload.production_work_end or "17:00",
-        "production_working_hours": payload.production_working_hours or 9,
 
         "production_tea_1_start": payload.production_tea_1_start or "10:00",
         "production_tea_1_end": payload.production_tea_1_end or "10:15",
@@ -7449,6 +7494,8 @@ async def save_company_details(
         "company_id": user["company_id"],
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
+
+    data["production_working_hours"] = calculate_production_working_hours(data)
 
     existing = await db.company_details.find_one(
         {"company_id": user["company_id"]}
