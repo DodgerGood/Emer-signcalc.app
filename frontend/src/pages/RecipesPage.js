@@ -646,17 +646,19 @@ export default function RecipesPage() {
                                       </p>
                                     </div>
 
-                                    <div className="rounded-md bg-slate-50 px-3 py-2 text-sm">
+                                    <div className="mt-8 rounded-md bg-slate-50 px-3 py-2 text-sm">
                                       {money(getLabourMachineCost(selectedItem))}
                                     </div>
 
-                                    <ActionIconButton
-                                      icon={<Trash2 size={16} />}
-                                      label="Remove"
-                                      tone="delete"
-                                      onClick={() => removeLabourMachineLine(group.temp_id, line.temp_id)}
-                                      disabled={group.labour_machine_lines.length === 1}
-                                    />
+                                    <div className="mt-6">
+                                      <ActionIconButton
+                                        icon={<Trash2 size={16} />}
+                                        label="Remove"
+                                        tone="delete"
+                                        onClick={() => removeLabourMachineLine(group.temp_id, line.temp_id)}
+                                        disabled={group.labour_machine_lines.length === 1}
+                                      />
+                                    </div>
                                   </div>
                                 );
                               })}
