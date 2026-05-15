@@ -861,6 +861,8 @@ export default function RecipesPage() {
                 </div>
 
                 <div className="space-y-2">
+                  <h3 className="font-bold">Recipe Lines</h3>
+
                   {(infoRecipe.lines || []).map((line, index) => {
                     const material = line.line_type === 'MATERIAL' ? materialById[line.reference_id] : null;
                     const labourMachine =
@@ -880,6 +882,49 @@ export default function RecipesPage() {
                       </div>
                     );
                   })}
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="font-bold">Production Workflow</h3>
+
+                  <div className="overflow-x-auto rounded-md border">
+                    <table className="w-full min-w-[600px] text-sm">
+                      <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                        <tr>
+                          <th className="px-3 py-2">Step</th>
+                          <th className="px-3 py-2">Type</th>
+                          <th className="px-3 py-2">Labour / Machine</th>
+                          <th className="px-3 py-2">Depends On</th>
+                        </tr>
+                      </thead>
+
+                      <tbody className="divide-y">
+                        {(infoRecipe.lines || [])
+                          .filter((line) => line.line_type === 'LABOUR' || line.line_type === 'MACHINE')
+                          .sort((a, b) => (Number(a.sequence_order) || 999) - (Number(b.sequence_order) || 999))
+                          .map((line, index) => {
+                            const labourMachine = labourMachineById[line.reference_id];
+
+                            return (
+                              <tr key={`${line.reference_id || index}-${index}`}>
+                                <td className="px-3 py-2 font-bold">
+                                  {line.sequence_order || index + 1}
+                                </td>
+                                <td className="px-3 py-2">
+                                  {line.line_type}
+                                </td>
+                                <td className="px-3 py-2">
+                                  {labourMachine?.name || line.custom_name || 'Unknown item'}
+                                </td>
+                                <td className="px-3 py-2 text-slate-500">
+                                  {line.dependency_steps || 'None'}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             )}
