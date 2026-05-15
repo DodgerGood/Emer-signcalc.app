@@ -243,7 +243,7 @@ export default function RecipesPage() {
     }));
   };
 
-  const updateLabourMachineLine = (groupId, lineId, labourId) => {
+  const updateLabourMachineLine = (groupId, lineId, field, value) => {
     setFormData((prev) => ({
       ...prev,
       material_groups: prev.material_groups.map((group) =>
@@ -251,7 +251,7 @@ export default function RecipesPage() {
           ? {
               ...group,
               labour_machine_lines: group.labour_machine_lines.map((line) =>
-                line.temp_id === lineId ? { ...line, labour_id: labourId } : line
+                line.temp_id === lineId ? { ...line, [field]: value } : line
               ),
             }
           : group
@@ -310,6 +310,8 @@ export default function RecipesPage() {
             override_requires_approval: false,
             custom_name: null,
             custom_unit_cost: null,
+            sequence_order: Number(line.sequence_order) || null,
+            dependency_steps: line.dependency_steps || null,
           });
         }
       });
@@ -382,6 +384,8 @@ export default function RecipesPage() {
               ? labourMachineLines.map((labourMachineLine) => ({
                   temp_id: crypto.randomUUID(),
                   labour_id: labourMachineLine.reference_id || '',
+                  sequence_order: labourMachineLine.sequence_order || 1,
+                  dependency_steps: labourMachineLine.dependency_steps || '',
                 }))
               : [newLabourMachineLine()],
         }))
@@ -593,7 +597,7 @@ export default function RecipesPage() {
                                 const selectedItem = labourMachineById[line.labour_id];
 
                                 return (
-                                  <div key={line.temp_id} className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto_auto] md:items-end">
+                                  <div key={line.temp_id} className="grid grid-cols-1 gap-3 md:grid-cols-[1.4fr_90px_1fr_auto_auto] md:items-end">
                                     <div className="space-y-2">
                                       <Label>Labour / Machine {lineIndex + 1}</Label>
                                       <Select
@@ -613,6 +617,30 @@ export default function RecipesPage() {
                                           ))}
                                         </SelectContent>
                                       </Select>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                      <Label>Step</Label>
+                                      <Input
+                                        type="number"
+                                        min="1"
+                                        value={line.sequence_order || ''}
+                                        onChange={(event) =>
+                                          updateLabourMachineLine(group.temp_id, line.temp_id, 'sequence_order', event.target.value)
+                                        }
+                                        placeholder="1"
+                                      />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                      <Label>Depends On</Label>
+                                      <Input
+                                        value={line.dependency_steps || ''}
+                                        onChange={(event) =>
+                                          updateLabourMachineLine(group.temp_id, line.temp_id, 'dependency_steps', event.target.value)
+                                        }
+                                        placeholder="e.g. Step 1"
+                                      />
                                     </div>
 
                                     <div className="rounded-md bg-slate-50 px-3 py-2 text-sm">
