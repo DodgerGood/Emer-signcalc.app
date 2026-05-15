@@ -11,6 +11,7 @@ import { Card, CardContent } from '../components/ui/card';
 import ActionIconButton from '../components/ActionIconButton';
 import { Plus, Trash2, Info, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
+import { useCompanyCurrency, formatMoney } from '../lib/currency';
 
 const MATERIAL_CATEGORIES = [
   { value: 'ALL', label: 'All Categories' },
@@ -42,9 +43,11 @@ const emptyForm = () => ({
   material_groups: [newMaterialGroup()],
 });
 
-const money = (value) => `R ${(Number(value) || 0).toFixed(2)}`;
 
 export default function RecipesPage() {
+  const currency = useCompanyCurrency();
+  const money = (value) => formatMoney(value, currency);
+
   const { isManager, isMDAdmin } = useAuth();
 
   const [recipes, setRecipes] = useState([]);

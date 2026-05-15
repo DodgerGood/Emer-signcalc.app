@@ -14,8 +14,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import ActionIconButton from '../components/ActionIconButton';
 import { Plus, Trash2, Calculator, FileText, Check, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
+import { useCompanyCurrency, formatMoney } from '../lib/currency';
 
 export default function EstimationDashboard() {
+  const currency = useCompanyCurrency();
+  const money = (value) => formatMoney(value, currency);
+
   const { id: quoteId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -573,8 +577,8 @@ export default function EstimationDashboard() {
                         ))}
                         <TableRow className="font-bold bg-slate-100">
                           <TableCell>TOTAL</TableCell>
-                          {showCosts && <TableCell className="text-right data-mono">R {signPreview.total_cost.toFixed(2)}</TableCell>}
-                          <TableCell className="text-right data-mono">R {signPreview.total_selling.toFixed(2)}</TableCell>
+                          {showCosts && <TableCell className="text-right data-mono">{money(signPreview.total_cost)}</TableCell>}
+                          <TableCell className="text-right data-mono">{money(signPreview.total_selling)}</TableCell>
                         </TableRow>
                         {showCosts && (
                           <TableRow className="text-green-700">
@@ -627,8 +631,8 @@ export default function EstimationDashboard() {
                           )}
                         </div>
                         <div className="flex justify-between text-sm">
-                          {showCosts && <span className="text-slate-500">Cost: R{sign.total_cost.toFixed(2)}</span>}
-                          <span className="font-medium">Selling: R{sign.total_selling.toFixed(2)}</span>
+                          {showCosts && <span className="text-slate-500">Cost: {money(sign.total_cost)}</span>}
+                          <span className="font-medium">Selling: {money(sign.total_selling)}</span>
                         </div>
                       </div>
                     ))}
@@ -639,11 +643,11 @@ export default function EstimationDashboard() {
                         <>
                           <div className="flex justify-between">
                             <span className="text-slate-600">Total Cost:</span>
-                            <span className="font-mono">R {blueprint.total_cost.toFixed(2)}</span>
+                            <span className="font-mono">{money(blueprint.total_cost)}</span>
                           </div>
                           <div className="flex justify-between text-green-700">
                             <span>Total Profit:</span>
-                            <span className="font-mono">R {blueprint.total_profit.toFixed(2)}</span>
+                            <span className="font-mono">{money(blueprint.total_profit)}</span>
                           </div>
                           <div className="flex justify-between text-green-700">
                             <span>Margin:</span>
@@ -653,7 +657,7 @@ export default function EstimationDashboard() {
                       )}
                       <div className="flex justify-between text-lg font-bold border-t pt-2">
                         <span>Quote Total:</span>
-                        <span className="font-mono">R {blueprint.total_selling.toFixed(2)}</span>
+                        <span className="font-mono">{money(blueprint.total_selling)}</span>
                       </div>
                     </div>
                   </>

@@ -12,6 +12,7 @@ import ActionIconButton from '../components/ActionIconButton';
 
 import { Plus, Pencil, Trash2, Info, FileText, Upload, CreditCard, CheckCircle, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { useCompanyCurrency, formatMoney } from '../lib/currency';
 
 const emptyForm = () => ({
   company_name: '',
@@ -25,6 +26,9 @@ const emptyForm = () => ({
 });
 
 export default function ClientsPage() {
+  const currency = useCompanyCurrency();
+  const money = (value) => formatMoney(value, currency);
+
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -774,10 +778,10 @@ export default function ClientsPage() {
                             <TableCell className="px-2 py-3">
                               {row.invoice_date ? new Date(row.invoice_date).toLocaleDateString() : '-'}
                             </TableCell>
-                            <TableCell className="px-2 py-3 text-right">R {(Number(row.total_amount) || 0).toFixed(2)}</TableCell>
-                            <TableCell className="px-2 py-3 text-right">R {(Number(row.credit_amount) || 0).toFixed(2)}</TableCell>
+                            <TableCell className="px-2 py-3 text-right">{money(row.total_amount)}</TableCell>
+                            <TableCell className="px-2 py-3 text-right">{money(row.credit_amount)}</TableCell>
                             <TableCell className="px-2 py-3 text-right font-bold">
-                              R {row.payment_status === 'PAID' ? '0.00' : (Number(row.balance_amount) || 0).toFixed(2)}
+                              {money(row.payment_status === 'PAID' ? 0 : row.balance_amount)}
                             </TableCell>
                             <TableCell className="px-2 py-3">
                               <span className={row.payment_status === 'PAID' ? 'rounded-full bg-green-50 px-2 py-1 text-xs font-semibold text-green-700' : 'rounded-full bg-red-50 px-2 py-1 text-xs font-semibold text-red-700'}>
@@ -863,7 +867,7 @@ export default function ClientsPage() {
               )}
 
               <div className="text-right text-lg font-black text-slate-900">
-                Unpaid Total: R {(Number(filteredStatementUnpaidTotal) || 0).toFixed(2)}
+                Unpaid Total: {money(filteredStatementUnpaidTotal)}
               </div>
             </div>
           </DialogContent>

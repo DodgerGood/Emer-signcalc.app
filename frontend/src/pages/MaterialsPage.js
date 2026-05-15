@@ -14,6 +14,7 @@ import ActionIconButton from '../components/ActionIconButton';
 
 import { Plus, Pencil, Trash2, Info } from 'lucide-react';
 import { toast } from 'sonner';
+import { useCompanyCurrency, formatMoney } from '../lib/currency';
 
 const parseLengthToMm = (value) => {
   if (value === null || value === undefined || value === '') return null;
@@ -64,6 +65,9 @@ const emptyForm = () => ({
 });
 
 export default function MaterialsPage() {
+  const currency = useCompanyCurrency();
+  const money = (value) => formatMoney(value, currency);
+
   const { user } = useAuth();
 
   const canEdit =
@@ -820,7 +824,7 @@ export default function MaterialsPage() {
 
                       const productTotalPrice =
                         material.unit_price !== null && material.unit_price !== undefined
-                          ? `R ${material.unit_price.toFixed(2)}`
+                          ? money(material.unit_price)
                           : '-';
 
                       const price = material.material_type === 'UNIT'
@@ -830,13 +834,13 @@ export default function MaterialsPage() {
                           material.quantity_per_unit !== null &&
                           material.quantity_per_unit !== undefined &&
                           material.quantity_per_unit > 0
-                            ? `R ${(material.unit_price / material.quantity_per_unit).toFixed(2)} / item`
+                            ? `${money(material.unit_price / material.quantity_per_unit)} / item`
                             : material.unit_price !== null && material.unit_price !== undefined
-                              ? `R ${material.unit_price.toFixed(2)} / pack`
+                              ? `${money(material.unit_price)} / pack`
                               : '-'
                         )
                         : material.sqm_price !== null && material.sqm_price !== undefined
-                          ? `R ${material.sqm_price.toFixed(2)}`
+                          ? money(material.sqm_price)
                           : '-';
 
                       let effectiveCost = '-';
@@ -849,7 +853,7 @@ export default function MaterialsPage() {
                         material.waste_default_percent !== undefined
                       ) {
                         const calc = material.sqm_price * (1 + material.waste_default_percent / 100);
-                        effectiveCost = `R ${calc.toFixed(2)}`;
+                        effectiveCost = money(calc);
                       }
 
                       return (

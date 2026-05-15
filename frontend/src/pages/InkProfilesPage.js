@@ -11,8 +11,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import ActionIconButton from '../components/ActionIconButton';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useCompanyCurrency, formatMoney } from '../lib/currency';
 
 export default function InkProfilesPage() {
+  const currency = useCompanyCurrency();
+  const money = (value) => formatMoney(value, currency);
+
   const { user } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -437,8 +441,8 @@ return (
                         <TableCell>{item.ink_type}</TableCell>
                         <TableCell>{item.supplier || '-'}</TableCell>
                         <TableCell className="data-mono">{item.quantity_liters}L</TableCell>
-                        <TableCell className="data-mono">R {item.price_per_unit.toFixed(2)}</TableCell>
-                        <TableCell className="data-mono">R {item.price_per_sqm_coverage.toFixed(2)}</TableCell>
+                        <TableCell className="data-mono">{money(item.price_per_unit)}</TableCell>
+                        <TableCell className="data-mono">{money(item.price_per_sqm_coverage)}</TableCell>
 
                         {canEdit && (
                           <TableCell className="text-right align-top">

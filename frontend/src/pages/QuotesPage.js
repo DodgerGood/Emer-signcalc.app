@@ -14,10 +14,13 @@ import ActionIconButton from '../components/ActionIconButton';
 
 import { Plus, Info, Pencil, Trash2, CheckCircle, FileText } from 'lucide-react';
 import { toast } from 'sonner';
+import { useCompanyCurrency, formatMoney } from '../lib/currency';
 
-const money = (value) => `R ${(Number(value) || 0).toFixed(2)}`;
 
 export default function QuotesPage() {
+  const currency = useCompanyCurrency();
+  const money = (value) => formatMoney(value, currency);
+
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();

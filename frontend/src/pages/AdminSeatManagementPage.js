@@ -1,9 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../lib/api';
 import { toast } from 'sonner';
+import { useCompanyCurrency, formatMoney } from '../lib/currency';
 import { PlatformAdminLayout } from '../components/PlatformAdminLayout';
 
 export default function AdminSeatManagementPage() {
+  const currency = useCompanyCurrency();
+  const money = (value) => formatMoney(value, currency);
+
   const [companies, setCompanies] = useState([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState('');
   const [billingRecord, setBillingRecord] = useState(null);
@@ -319,7 +323,7 @@ useEffect(() => {
                     Subtotal Excl. VAT
                   </div>
                   <div className="text-2xl font-bold text-slate-900 mt-1">
-                    R {calculatedTotals.subtotal.toFixed(2)}
+                    {money(calculatedTotals.subtotal)}
                   </div>
                 </div>
 
@@ -328,7 +332,7 @@ useEffect(() => {
                     VAT 15%
                   </div>
                   <div className="text-2xl font-bold text-slate-900 mt-1">
-                    R {calculatedTotals.vatAmount.toFixed(2)}
+                    {money(calculatedTotals.vatAmount)}
                   </div>
                 </div>
 
@@ -337,7 +341,7 @@ useEffect(() => {
                     Total Incl. VAT
                   </div>
                   <div className="text-2xl font-bold text-slate-900 mt-1">
-                    R {calculatedTotals.totalInclVat.toFixed(2)}
+                    {money(calculatedTotals.totalInclVat)}
                   </div>
                 </div>
               </div>

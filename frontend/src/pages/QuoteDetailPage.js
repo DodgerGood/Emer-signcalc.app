@@ -11,8 +11,8 @@ import ActionIconButton from '../components/ActionIconButton';
 
 import { Plus, Trash2, Calculator } from 'lucide-react';
 import { toast } from 'sonner';
+import { useCompanyCurrency, formatMoney } from '../lib/currency';
 
-const money = (value) => `R ${(Number(value) || 0).toFixed(2)}`;
 
 const newLine = () => ({
   item_name: '',
@@ -41,6 +41,9 @@ const newAddon = () => ({
 });
 
 export default function QuoteDetailPage() {
+  const currency = useCompanyCurrency();
+  const money = (value) => formatMoney(value, currency);
+
   const { id } = useParams();
   const navigate = useNavigate();
 

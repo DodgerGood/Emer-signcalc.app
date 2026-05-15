@@ -10,8 +10,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import ActionIconButton from '../components/ActionIconButton';
 import { Plus, Pencil, Trash2, Info } from 'lucide-react';
 import { toast } from 'sonner';
+import { useCompanyCurrency, formatMoney } from '../lib/currency';
 
 export default function LabourTypesPage() {
+  const currency = useCompanyCurrency();
+  const money = (value) => formatMoney(value, currency);
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -655,31 +659,31 @@ export default function LabourTypesPage() {
                       <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm space-y-1">
                         {formData.cost_type === 'LABOUR' ? (
                           <>
-                            <div>Labour team cost/hour: R {labourRate.toFixed(2)}</div>
-                            <div>Tools cost/hour: R {toolsRate.toFixed(2)}</div>
+                            <div>Labour team cost/hour: {money(labourRate)}</div>
+                            <div>Tools cost/hour: {money(toolsRate)}</div>
 
                             <div className="font-semibold text-green-700">
-                              Total labour + tools/hour: R {totalRate.toFixed(2)}
+                              Total labour + tools/hour: {money(totalRate)}
                             </div>
                           </>
                         ) : (
                           <>
                             <div>
-                              Machine cost/hour: R {machineRate.toFixed(2)}
+                              Machine cost/hour: {money(machineRate)}
                               {autoMachineRate > 0 ? ' (auto-calculated)' : ' (manual)'}
                             </div>
-                            <div>Electricity/hour: R {electricityPerHour.toFixed(2)}</div>
-                            <div>Operator/hour: R {operatorRate.toFixed(2)}</div>
+                            <div>Electricity/hour: {money(electricityPerHour)}</div>
+                            <div>Operator/hour: {money(operatorRate)}</div>
 
                             <div className="font-semibold text-green-700">
-                              Total machine cost/hour: R {totalRate.toFixed(2)}
+                              Total machine cost/hour: {money(totalRate)}
                             </div>
                           </>
                         )}
 
                         {costPerSqm !== null && (
                           <div className="font-semibold text-blue-700">
-                            Cost per m²: R {costPerSqm.toFixed(2)}
+                            Cost per m²: {money(costPerSqm)}
                           </div>
                         )}
                      </div>
@@ -832,7 +836,7 @@ export default function LabourTypesPage() {
                           <TableCell className="font-medium">{item.name}</TableCell>
                           <TableCell>{item.category || '-'}</TableCell>
                           <TableCell className="data-mono">
-                            {costPerSqm !== null ? `R ${costPerSqm.toFixed(2)}` : '-'}
+                            {costPerSqm !== null ? money(costPerSqm) : '-'}
                           </TableCell>
                           <TableCell className="data-mono">
                             {isMachine ? 'Machine' : 'Labour'}

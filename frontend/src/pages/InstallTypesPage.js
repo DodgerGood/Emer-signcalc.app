@@ -9,8 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import ActionIconButton from '../components/ActionIconButton';
 import { Plus, Pencil, Trash2, Info } from 'lucide-react';
 import { toast } from 'sonner';
+import { useCompanyCurrency, formatMoney } from '../lib/currency';
 
-const money = (value) => `R ${(Number(value) || 0).toFixed(2)}`;
 
 const emptyForm = () => ({
   name: '',
@@ -24,6 +24,9 @@ const emptyForm = () => ({
 });
 
 export default function InstallTypesPage() {
+  const currency = useCompanyCurrency();
+  const money = (value) => formatMoney(value, currency);
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import api from '../lib/api';
 import { toast } from 'sonner';
+import { useCompanyCurrency, formatMoney } from '../lib/currency';
 import { PlatformAdminLayout } from '../components/PlatformAdminLayout';
 
 const PAGE_SIZE = 15;
@@ -58,6 +59,9 @@ const calculateTotalAmountDue = (row) => {
 };
 
 export default function AdminBillingTrackingPage() {
+  const currency = useCompanyCurrency();
+  const money = (value) => formatMoney(value, currency);
+
   const [rows, setRows] = useState([]);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -485,7 +489,7 @@ export default function AdminBillingTrackingPage() {
                       </td>
 
                       <td className="px-4 py-3 font-semibold text-right">
-                        R {Number(row.total_amount_due || 0).toFixed(2)}
+                        {money(row.total_amount_due)}
                       </td>
 
                       <td className="px-4 py-3">
@@ -650,7 +654,7 @@ export default function AdminBillingTrackingPage() {
                             <td className="px-4 py-3">{item.month_name}</td>
                             <td className="px-4 py-3">{item.status}</td>
                             <td className="px-4 py-3 text-right">
-                              R {Number(item.amount || 0).toFixed(2)}
+                              {money(item.amount)}
                             </td>
                             <td className="px-4 py-3">
                               {item.updated_at
