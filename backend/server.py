@@ -570,6 +570,11 @@ class RecipeLineCreate(BaseModel):
     custom_name: Optional[str] = None
     custom_unit_cost: Optional[float] = None
 
+    # Production workflow fields.
+    # These do not affect recipe costing yet.
+    sequence_order: Optional[int] = None
+    dependency_steps: Optional[str] = None
+
 class RecipeLine(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -583,6 +588,11 @@ class RecipeLine(BaseModel):
     override_requires_approval: bool
     custom_name: Optional[str] = None
     custom_unit_cost: Optional[float] = None
+
+    # Production workflow fields.
+    # These do not affect recipe costing yet.
+    sequence_order: Optional[int] = None
+    dependency_steps: Optional[str] = None
 
 class RecipeCreate(BaseModel):
     name: str

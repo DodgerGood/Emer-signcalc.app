@@ -25,6 +25,8 @@ const MATERIAL_CATEGORIES = [
 const newLabourMachineLine = () => ({
   temp_id: crypto.randomUUID(),
   labour_id: '',
+  sequence_order: 1,
+  dependency_steps: '',
 });
 
 const newMaterialGroup = () => ({
@@ -597,7 +599,7 @@ export default function RecipesPage() {
                                       <Select
                                         value={line.labour_id || undefined}
                                         onValueChange={(value) =>
-                                          updateLabourMachineLine(group.temp_id, line.temp_id, value)
+                                          updateLabourMachineLine(group.temp_id, line.temp_id, 'labour_id', value)
                                         }
                                       >
                                         <SelectTrigger>
