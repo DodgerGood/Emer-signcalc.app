@@ -7425,6 +7425,9 @@ async def get_company_details(user: dict = Depends(get_current_user)):
         "quote_footer": company.get("quote_footer") or "",
         "invoice_footer": company.get("invoice_footer") or "",
         "statement_footer": company.get("statement_footer") or "",
+        "currency_code": company.get("currency_code") or "ZAR",
+        "currency_symbol": company.get("currency_symbol") or "R",
+        "currency_name": company.get("currency_name") or "South African Rand",
         "logo_data_url": company.get("logo_data_url") or "",
 
         "production_working_hours": calculate_production_working_hours({
@@ -7481,6 +7484,9 @@ async def save_company_details(
         "quote_footer": payload.quote_footer or "",
         "invoice_footer": payload.invoice_footer or "",
         "statement_footer": payload.statement_footer or "",
+        "currency_code": payload.currency_code or "ZAR",
+        "currency_symbol": payload.currency_symbol or "R",
+        "currency_name": payload.currency_name or "South African Rand",
         "logo_data_url": payload.logo_data_url or "",
 
         "production_work_start": payload.production_work_start or "08:00",
