@@ -23,6 +23,7 @@ import {
 import { toast } from 'sonner';
 
 const SLOT_WIDTH = 28;
+const WEEKEND_DAY_WIDTH = 120;
 const SLOT_MINUTES = 15;
 const JOB_COLUMN_WIDTH = 320;
 const RESOURCE_COLUMN_WIDTH = 280;
@@ -272,6 +273,24 @@ function buildTimeSlots(companyDetails) {
   }
 
   return slots;
+}
+
+function getDayWidth(day, timeSlots) {
+  return isWeekend(day) ? WEEKEND_DAY_WIDTH : Math.max(SLOT_WIDTH, timeSlots.length * SLOT_WIDTH);
+}
+
+function getCalendarWidth(calendarDays, timeSlots) {
+  return calendarDays.reduce((sum, day) => sum + getDayWidth(day, timeSlots), 0);
+}
+
+function getTodayLeft(calendarDays, today, timeSlots) {
+  const todayIndex = calendarDays.findIndex((day) => dateKey(day) === dateKey(today));
+
+  if (todayIndex < 0) return -1;
+
+  return calendarDays
+    .slice(0, todayIndex)
+    .reduce((sum, day) => sum + getDayWidth(day, timeSlots), 0);
 }
 
 function getStepPlacementsForDay(steps, day, timeSlots) {
@@ -618,11 +637,12 @@ function downloadBlob(response, filename) {
   window.URL.revokeObjectURL(url);
 }
 
-function DateHeader({ calendarDays, today, timeSlots, dayWidth }) {
+function DateHeader({ calendarDays, today, timeSlots }) {
   return (
     <>
       {calendarDays.map((day) => {
         const header = formatDayHeader(day, today);
+        const width = getDayWidth(day, timeSlots);
 
         return (
           <div
@@ -630,29 +650,35 @@ function DateHeader({ calendarDays, today, timeSlots, dayWidth }) {
             className={`h-[92px] border-r ${
               header.isToday ? 'bg-red-50 text-red-700' : header.weekend ? 'bg-slate-100 text-slate-400' : 'bg-white text-slate-500'
             }`}
-            style={{ width: `${dayWidth}px` }}
+            style={{ width: `${width}px` }}
           >
             <div className="border-b px-3 py-2 text-center">
               <div className="font-black">{header.top}</div>
               {header.bottom ? <div className="mt-1 text-[11px] font-black">{header.bottom}</div> : null}
             </div>
 
-            <div
-              className="grid text-[9px]"
-              style={{ gridTemplateColumns: timeSlots.map(() => `${SLOT_WIDTH}px`).join(' ') }}
-            >
-              {timeSlots.map((slot) => (
-                <div
-                  key={`${dateKey(day)}-${slot.key}`}
-                  className={`h-[36px] border-r px-0.5 pt-1 text-center ${
-                    slot.isBreak ? 'bg-amber-100 text-amber-700' : 'bg-white'
-                  }`}
-                  title={slot.isBreak ? `${slot.breakLabel}: ${slot.key}` : slot.key}
-                >
-                  {slot.isHour ? slot.label : ''}
-                </div>
-              ))}
-            </div>
+            {header.weekend ? (
+              <div className="flex h-[36px] items-center justify-center text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                No standard production
+              </div>
+            ) : (
+              <div
+                className="grid text-[9px]"
+                style={{ gridTemplateColumns: timeSlots.map(() => `${SLOT_WIDTH}px`).join(' ') }}
+              >
+                {timeSlots.map((slot) => (
+                  <div
+                    key={`${dateKey(day)}-${slot.key}`}
+                    className={`h-[36px] border-r px-0.5 pt-1 text-center ${
+                      slot.isBreak ? 'bg-amber-100 text-amber-700' : 'bg-white'
+                    }`}
+                    title={slot.isBreak ? `${slot.breakLabel}: ${slot.key}` : slot.key}
+                  >
+                    {slot.isHour ? slot.label : ''}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         );
       })}
@@ -660,16 +686,16 @@ function DateHeader({ calendarDays, today, timeSlots, dayWidth }) {
   );
 }
 
-function TodayLine({ calendarDays, today, dayWidth }) {
-  const todayIndex = calendarDays.findIndex((day) => dateKey(day) === dateKey(today));
+function TodayLine({ calendarDays, today, timeSlots }) {
+  const left = getTodayLeft(calendarDays, today, timeSlots);
 
-  if (todayIndex < 0) return null;
+  if (left < 0) return null;
 
   return (
     <div
       className="pointer-events-none absolute top-0 z-30 h-full w-[3px] bg-red-600"
       style={{
-        left: `${todayIndex * dayWidth}px`,
+        left: `${left}px`,
       }}
     />
   );
@@ -709,7 +735,7 @@ export default function ProductionPage() {
   }, [calendarStart]);
 
   const timeSlots = useMemo(() => buildTimeSlots(companyDetails), [companyDetails]);
-  const dayWidth = useMemo(() => Math.max(SLOT_WIDTH, timeSlots.length * SLOT_WIDTH), [timeSlots]);
+  const calendarWidth = useMemo(() => getCalendarWidth(calendarDays, timeSlots), [calendarDays, timeSlots]);
 
   const loadJobs = async () => {
     try {
@@ -754,7 +780,7 @@ export default function ProductionPage() {
   useEffect(() => {
     if (loading) return;
 
-    const scrollToToday = DAYS_BACK * dayWidth;
+    const scrollToToday = getTodayLeft(calendarDays, today, timeSlots);
 
     window.setTimeout(() => {
       if (jobScrollRef.current) {
@@ -765,7 +791,7 @@ export default function ProductionPage() {
         resourceScrollRef.current.scrollLeft = scrollToToday;
       }
     }, 150);
-  }, [loading, scheduledJobs.length, dayWidth]);
+  }, [loading, scheduledJobs.length, calendarDays, today, timeSlots]);
 
   const filteredJobs = useMemo(() => {
     const term = jobSearch.trim().toLowerCase();
@@ -934,16 +960,16 @@ export default function ProductionPage() {
                 <div
                   className="relative"
                   style={{
-                    width: `${calendarDays.length * dayWidth}px`,
+                    width: `${calendarWidth}px`,
                   }}
                 >
                   <div
                     className="grid"
                     style={{
-                      gridTemplateColumns: calendarDays.map(() => `${dayWidth}px`).join(' '),
+                      gridTemplateColumns: calendarDays.map((day) => `${getDayWidth(day, timeSlots)}px`).join(' '),
                     }}
                   >
-                    <DateHeader calendarDays={calendarDays} today={today} timeSlots={timeSlots} dayWidth={dayWidth} />
+                    <DateHeader calendarDays={calendarDays} today={today} timeSlots={timeSlots} />
                   </div>
 
                   {filteredJobs.map(({ job, colour, steps }) => (
@@ -951,7 +977,7 @@ export default function ProductionPage() {
                       key={job.id}
                       className="grid"
                       style={{
-                        gridTemplateColumns: calendarDays.map(() => `${dayWidth}px`).join(' '),
+                        gridTemplateColumns: calendarDays.map((day) => `${getDayWidth(day, timeSlots)}px`).join(' '),
                       }}
                     >
                       {calendarDays.map((day) => {
@@ -965,41 +991,49 @@ export default function ProductionPage() {
                               header.isToday ? 'bg-red-50/40' : header.weekend ? 'bg-slate-100' : 'bg-slate-50'
                             }`}
                           >
-                            <div
-                              className="absolute inset-0 grid"
-                              style={{ gridTemplateColumns: timeSlots.map(() => `${SLOT_WIDTH}px`).join(' ') }}
-                            >
-                              {timeSlots.map((slot) => (
+                            {header.weekend ? (
+                              <div className="flex h-full min-h-[148px] items-center justify-center px-2 text-center text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                                Weekend
+                              </div>
+                            ) : (
+                              <>
                                 <div
-                                  key={`${job.id}-${dateKey(day)}-${slot.key}`}
-                                  className={`border-r ${slot.isBreak ? 'bg-amber-100/70' : ''}`}
-                                  title={slot.isBreak ? `${slot.breakLabel}: ${slot.key}` : slot.key}
-                                />
-                              ))}
-                            </div>
-
-                            <div
-                              className="relative z-10 grid gap-y-1 p-2"
-                              style={{ gridTemplateColumns: timeSlots.map(() => `${SLOT_WIDTH}px`).join(' ') }}
-                            >
-                              {placements.map((placement, placementIndex) => (
-                                <div
-                                  key={`${placement.step.id}-${placementIndex}`}
-                                  style={{
-                                    gridColumn: `${placement.startIndex + 1} / span ${placement.span}`,
-                                  }}
+                                  className="absolute inset-0 grid"
+                                  style={{ gridTemplateColumns: timeSlots.map(() => `${SLOT_WIDTH}px`).join(' ') }}
                                 >
-                                  <StepCard step={placement.step} />
+                                  {timeSlots.map((slot) => (
+                                    <div
+                                      key={`${job.id}-${dateKey(day)}-${slot.key}`}
+                                      className={`border-r ${slot.isBreak ? 'bg-amber-100/70' : ''}`}
+                                      title={slot.isBreak ? `${slot.breakLabel}: ${slot.key}` : slot.key}
+                                    />
+                                  ))}
                                 </div>
-                              ))}
-                            </div>
+
+                                <div
+                                  className="relative z-10 grid gap-y-1 p-2"
+                                  style={{ gridTemplateColumns: timeSlots.map(() => `${SLOT_WIDTH}px`).join(' ') }}
+                                >
+                                  {placements.map((placement, placementIndex) => (
+                                    <div
+                                      key={`${placement.step.id}-${placementIndex}`}
+                                      style={{
+                                        gridColumn: `${placement.startIndex + 1} / span ${placement.span}`,
+                                      }}
+                                    >
+                                      <StepCard step={placement.step} />
+                                    </div>
+                                  ))}
+                                </div>
+                              </>
+                            )}
                           </div>
                         );
                       })}
                     </div>
                   ))}
 
-                  <TodayLine calendarDays={calendarDays} today={today} dayWidth={dayWidth} />
+                  <TodayLine calendarDays={calendarDays} today={today} timeSlots={timeSlots} />
                 </div>
               </div>
             </div>
@@ -1061,16 +1095,16 @@ export default function ProductionPage() {
                 <div
                   className="relative"
                   style={{
-                    width: `${calendarDays.length * dayWidth}px`,
+                    width: `${calendarWidth}px`,
                   }}
                 >
                   <div
                     className="grid"
                     style={{
-                      gridTemplateColumns: calendarDays.map(() => `${dayWidth}px`).join(' '),
+                      gridTemplateColumns: calendarDays.map((day) => `${getDayWidth(day, timeSlots)}px`).join(' '),
                     }}
                   >
-                    <DateHeader calendarDays={calendarDays} today={today} timeSlots={timeSlots} dayWidth={dayWidth} />
+                    <DateHeader calendarDays={calendarDays} today={today} timeSlots={timeSlots} />
                   </div>
 
                   {resourceRows.map((row) => (
@@ -1078,7 +1112,7 @@ export default function ProductionPage() {
                       key={row.id}
                       className="grid"
                       style={{
-                        gridTemplateColumns: calendarDays.map(() => `${dayWidth}px`).join(' '),
+                        gridTemplateColumns: calendarDays.map((day) => `${getDayWidth(day, timeSlots)}px`).join(' '),
                       }}
                     >
                       {calendarDays.map((day) => {
@@ -1092,48 +1126,56 @@ export default function ProductionPage() {
                               header.isToday ? 'bg-red-50/40' : header.weekend ? 'bg-slate-100' : 'bg-slate-50'
                             }`}
                           >
-                            <div
-                              className="absolute inset-0 grid"
-                              style={{ gridTemplateColumns: timeSlots.map(() => `${SLOT_WIDTH}px`).join(' ') }}
-                            >
-                              {timeSlots.map((slot) => (
+                            {header.weekend ? (
+                              <div className="flex h-full min-h-[118px] items-center justify-center px-2 text-center text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                                Weekend
+                              </div>
+                            ) : (
+                              <>
                                 <div
-                                  key={`${row.id}-${dateKey(day)}-${slot.key}`}
-                                  className={`border-r ${slot.isBreak ? 'bg-amber-100/70' : ''}`}
-                                  title={slot.isBreak ? `${slot.breakLabel}: ${slot.key}` : slot.key}
-                                />
-                              ))}
-                            </div>
-
-                            <div
-                              className="relative z-10 grid gap-y-1 p-2"
-                              style={{ gridTemplateColumns: timeSlots.map(() => `${SLOT_WIDTH}px`).join(' ') }}
-                            >
-                              {placements.map((placement, placementIndex) => (
-                                <div
-                                  key={`${placement.step.id}-${placementIndex}`}
-                                  style={{
-                                    gridColumn: `${placement.startIndex + 1} / span ${placement.span}`,
-                                  }}
+                                  className="absolute inset-0 grid"
+                                  style={{ gridTemplateColumns: timeSlots.map(() => `${SLOT_WIDTH}px`).join(' ') }}
                                 >
-                                  <div
-                                    className={`rounded-md ${placement.step.jobColour.card} px-2 py-1 text-[10px] font-bold leading-tight text-white shadow-sm`}
-                                    title={`${placement.step.jobLabel} | ${placement.step.name}`}
-                                  >
-                                    <div className="truncate">{placement.step.jobLabel}</div>
-                                    <div className="truncate opacity-90">{placement.step.name}</div>
-                                    <div className="text-[9px] opacity-90">{formatHours(placement.step.plannedMinutes)}</div>
-                                  </div>
+                                  {timeSlots.map((slot) => (
+                                    <div
+                                      key={`${row.id}-${dateKey(day)}-${slot.key}`}
+                                      className={`border-r ${slot.isBreak ? 'bg-amber-100/70' : ''}`}
+                                      title={slot.isBreak ? `${slot.breakLabel}: ${slot.key}` : slot.key}
+                                    />
+                                  ))}
                                 </div>
-                              ))}
-                            </div>
+
+                                <div
+                                  className="relative z-10 grid gap-y-1 p-2"
+                                  style={{ gridTemplateColumns: timeSlots.map(() => `${SLOT_WIDTH}px`).join(' ') }}
+                                >
+                                  {placements.map((placement, placementIndex) => (
+                                    <div
+                                      key={`${placement.step.id}-${placementIndex}`}
+                                      style={{
+                                        gridColumn: `${placement.startIndex + 1} / span ${placement.span}`,
+                                      }}
+                                    >
+                                      <div
+                                        className={`rounded-md ${placement.step.jobColour.card} px-2 py-1 text-[10px] font-bold leading-tight text-white shadow-sm`}
+                                        title={`${placement.step.jobLabel} | ${placement.step.name}`}
+                                      >
+                                        <div className="truncate">{placement.step.jobLabel}</div>
+                                        <div className="truncate opacity-90">{placement.step.name}</div>
+                                        <div className="text-[9px] opacity-90">{formatHours(placement.step.plannedMinutes)}</div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </>
+                            )}
                           </div>
                         );
                       })}
                     </div>
                   ))}
 
-                  <TodayLine calendarDays={calendarDays} today={today} dayWidth={dayWidth} />
+                  <TodayLine calendarDays={calendarDays} today={today} timeSlots={timeSlots} />
                 </div>
               </div>
             </div>
