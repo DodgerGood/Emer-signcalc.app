@@ -77,6 +77,9 @@ export default function CompanyDetailsPage() {
     quote_footer: '',
     invoice_footer: '',
     statement_footer: '',
+    currency_code: 'ZAR',
+    currency_symbol: 'R',
+    currency_name: 'South African Rand',
     logo_data_url: '',
 
     production_work_start: '08:00',
@@ -407,6 +410,43 @@ export default function CompanyDetailsPage() {
                     />
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+
+          <div className="rounded-xl border bg-slate-50 p-4">
+            <h2 className="text-xl font-bold mb-2">Currency</h2>
+            <p className="text-sm text-slate-600 mb-3">
+              Select the currency symbol and wording used across materials, labour, machines, installation, recipes, estimations, quotes and invoices. This does not convert prices or apply exchange rates.
+            </p>
+
+            <label className="block font-medium mb-1">Company Currency</label>
+            <select
+              className={inputClass}
+              value={formData.currency_code || 'ZAR'}
+              onChange={(e) => {
+                const selected = currencyOptions.find((item) => item.code === e.target.value);
+
+                setFormData((prev) => ({
+                  ...prev,
+                  currency_code: selected?.code || 'ZAR',
+                  currency_symbol: selected?.symbol || 'R',
+                  currency_name: selected?.name || 'South African Rand',
+                }));
+              }}
+            >
+              {currencyOptions.map((item) => (
+                <option key={item.code} value={item.code}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+
+            <div className="mt-3 rounded border bg-white p-3 text-sm text-slate-700">
+              Selected: <strong>{selectedCurrencyLabel}</strong>
+              <div className="mt-1 text-slate-500">
+                Example display: <strong>{formData.currency_symbol || 'R'} 1,000.00</strong>
               </div>
             </div>
           </div>
