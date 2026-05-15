@@ -98,6 +98,7 @@ export default function CompanyDetailsPage() {
 
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [currencySearch, setCurrencySearch] = useState('');
 
   useEffect(() => {
     api.get('/company-details')
@@ -243,6 +244,19 @@ export default function CompanyDetailsPage() {
   const selectedCurrencyLabel =
     currencyOptions.find((item) => item.code === formData.currency_code)?.label ||
     `${formData.currency_symbol || 'R'} — ${formData.currency_name || 'South African Rand'} (${formData.currency_code || 'ZAR'})`;
+
+  const filteredCurrencyOptions = useMemo(() => {
+    const term = currencySearch.trim().toLowerCase();
+
+    if (!term) return currencyOptions;
+
+    return currencyOptions.filter((item) =>
+      item.code.toLowerCase().includes(term) ||
+      item.name.toLowerCase().includes(term) ||
+      item.symbol.toLowerCase().includes(term) ||
+      item.label.toLowerCase().includes(term)
+    );
+  }, [currencyOptions, currencySearch]);
 
   return (
     <Layout>
@@ -421,7 +435,15 @@ export default function CompanyDetailsPage() {
               Select the currency symbol and wording used across materials, labour, machines, installation, recipes, estimations, quotes and invoices. This does not convert prices or apply exchange rates.
             </p>
 
-            <label className="block font-medium mb-1">Company Currency</label>
+            <label className="block font-medium mb-1">Search Currency</label>
+            <input
+              className={inputClass}
+              value={currencySearch}
+              onChange={(e) => setCurrencySearch(e.target.value)}
+              placeholder="Type country, currency name, symbol or code e.g. dollar, USD, pound, euro"
+            />
+
+            <label className="mt-3 block font-medium mb-1">Company Currency</label>
             <select
               className={inputClass}
               value={formData.currency_code || 'ZAR'}
@@ -434,13 +456,21 @@ export default function CompanyDetailsPage() {
                   currency_symbol: selected?.symbol || 'R',
                   currency_name: selected?.name || 'South African Rand',
                 }));
+
+                setCurrencySearch('');
               }}
             >
-              {currencyOptions.map((item) => (
-                <option key={item.code} value={item.code}>
-                  {item.label}
+              {filteredCurrencyOptions.length === 0 ? (
+                <option value={formData.currency_code || 'ZAR'}>
+                  No matching currency found
                 </option>
-              ))}
+              ) : (
+                filteredCurrencyOptions.map((item) => (
+                  <option key={item.code} value={item.code}>
+                    {item.label}
+                  </option>
+                ))
+              )}
             </select>
 
             <div className="mt-3 rounded border bg-white p-3 text-sm text-slate-700">
