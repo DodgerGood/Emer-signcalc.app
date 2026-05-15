@@ -22,6 +22,19 @@ export default function CompanyDetailsPage() {
     invoice_footer: '',
     statement_footer: '',
     logo_data_url: '',
+
+    production_work_start: '08:00',
+    production_work_end: '17:00',
+    production_working_hours: '9',
+
+    production_tea_1_start: '10:00',
+    production_tea_1_end: '10:15',
+
+    production_lunch_start: '13:00',
+    production_lunch_end: '13:30',
+
+    production_tea_2_start: '15:00',
+    production_tea_2_end: '15:15',
   });
 
   const [password, setPassword] = useState('');
@@ -166,6 +179,123 @@ export default function CompanyDetailsPage() {
           <div>
             <label className="block font-medium mb-1">Company Address</label>
             <textarea className={inputClass} value={formData.address || ''} onChange={(e) => update('address', e.target.value)} />
+          </div>
+
+          <div className="rounded-xl border bg-slate-50 p-4 space-y-4">
+            <div>
+              <h2 className="text-xl font-bold">Production Working Hours</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Set the normal working day and break times used for production planning.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block font-medium mb-1">Work Start</label>
+                <input
+                  type="time"
+                  className={inputClass}
+                  value={formData.production_work_start || '08:00'}
+                  onChange={(e) => update('production_work_start', e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block font-medium mb-1">Work End</label>
+                <input
+                  type="time"
+                  className={inputClass}
+                  value={formData.production_work_end || '17:00'}
+                  onChange={(e) => update('production_work_end', e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block font-medium mb-1">Working Hours</label>
+                <input
+                  type="number"
+                  step="0.25"
+                  min="0"
+                  className={inputClass}
+                  value={formData.production_working_hours || '9'}
+                  onChange={(e) => update('production_working_hours', e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="rounded border bg-white p-3">
+                <h3 className="font-semibold mb-3">Tea Break 1</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Start</label>
+                    <input
+                      type="time"
+                      className={inputClass}
+                      value={formData.production_tea_1_start || '10:00'}
+                      onChange={(e) => update('production_tea_1_start', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">End</label>
+                    <input
+                      type="time"
+                      className={inputClass}
+                      value={formData.production_tea_1_end || '10:15'}
+                      onChange={(e) => update('production_tea_1_end', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded border bg-white p-3">
+                <h3 className="font-semibold mb-3">Lunch Break</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Start</label>
+                    <input
+                      type="time"
+                      className={inputClass}
+                      value={formData.production_lunch_start || '13:00'}
+                      onChange={(e) => update('production_lunch_start', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">End</label>
+                    <input
+                      type="time"
+                      className={inputClass}
+                      value={formData.production_lunch_end || '13:30'}
+                      onChange={(e) => update('production_lunch_end', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded border bg-white p-3">
+                <h3 className="font-semibold mb-3">Tea Break 2</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Start</label>
+                    <input
+                      type="time"
+                      className={inputClass}
+                      value={formData.production_tea_2_start || '15:00'}
+                      onChange={(e) => update('production_tea_2_start', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">End</label>
+                    <input
+                      type="time"
+                      className={inputClass}
+                      value={formData.production_tea_2_end || '15:15'}
+                      onChange={(e) => update('production_tea_2_end', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div>

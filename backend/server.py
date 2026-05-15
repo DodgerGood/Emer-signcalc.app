@@ -725,6 +725,20 @@ class CompanyDetails(BaseModel):
     logo_data_url: Optional[str] = None
     verification_password: Optional[str] = None
 
+    # Production working hours / breaks.
+    production_work_start: Optional[str] = None
+    production_work_end: Optional[str] = None
+    production_working_hours: Optional[float] = None
+
+    production_tea_1_start: Optional[str] = None
+    production_tea_1_end: Optional[str] = None
+
+    production_lunch_start: Optional[str] = None
+    production_lunch_end: Optional[str] = None
+
+    production_tea_2_start: Optional[str] = None
+    production_tea_2_end: Optional[str] = None
+
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
@@ -7372,6 +7386,19 @@ async def get_company_details(user: dict = Depends(get_current_user)):
         "invoice_footer": company.get("invoice_footer") or "",
         "statement_footer": company.get("statement_footer") or "",
         "logo_data_url": company.get("logo_data_url") or "",
+
+        "production_work_start": company.get("production_work_start") or "08:00",
+        "production_work_end": company.get("production_work_end") or "17:00",
+        "production_working_hours": company.get("production_working_hours") or 9,
+
+        "production_tea_1_start": company.get("production_tea_1_start") or "10:00",
+        "production_tea_1_end": company.get("production_tea_1_end") or "10:15",
+
+        "production_lunch_start": company.get("production_lunch_start") or "13:00",
+        "production_lunch_end": company.get("production_lunch_end") or "13:30",
+
+        "production_tea_2_start": company.get("production_tea_2_start") or "15:00",
+        "production_tea_2_end": company.get("production_tea_2_end") or "15:15",
     }
 
     return safe_company
@@ -7405,6 +7432,20 @@ async def save_company_details(
         "invoice_footer": payload.invoice_footer or "",
         "statement_footer": payload.statement_footer or "",
         "logo_data_url": payload.logo_data_url or "",
+
+        "production_work_start": payload.production_work_start or "08:00",
+        "production_work_end": payload.production_work_end or "17:00",
+        "production_working_hours": payload.production_working_hours or 9,
+
+        "production_tea_1_start": payload.production_tea_1_start or "10:00",
+        "production_tea_1_end": payload.production_tea_1_end or "10:15",
+
+        "production_lunch_start": payload.production_lunch_start or "13:00",
+        "production_lunch_end": payload.production_lunch_end or "13:30",
+
+        "production_tea_2_start": payload.production_tea_2_start or "15:00",
+        "production_tea_2_end": payload.production_tea_2_end or "15:15",
+
         "company_id": user["company_id"],
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
