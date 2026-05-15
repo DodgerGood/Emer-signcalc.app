@@ -203,33 +203,76 @@ function getJobLabel(job) {
 function getRecipeMachineEntries(job) {
   const blueprint = job.blueprint || {};
   const estimateLines = Array.isArray(blueprint.estimate_lines) ? blueprint.estimate_lines : [];
-  const recipeBreakdowns = [];
+  const workflowEntries = [];
 
-  estimateLines.forEach((line) => {
+  estimateLines.forEach((line, estimateLineIndex) => {
     const qty = safeNumber(line.quantity, 1);
+    const productName =
+      line.item_name ||
+      line.product_name ||
+      line.recipe_name ||
+      line.name ||
+      line.description ||
+      `Product ${estimateLineIndex + 1}`;
 
-    if (Array.isArray(line.recipe_breakdown)) {
-      line.recipe_breakdown.forEach((entry) => {
-        recipeBreakdowns.push({
+    if (Array.isArray(line.recipe_workflow) && line.recipe_workflow.length > 0) {
+      line.recipe_workflow.forEach((entry, workflowIndex) => {
+        workflowEntries.push({
           ...entry,
           quoteQuantity: qty,
+          productName,
+          estimateLineIndex,
+          workflowIndex,
+          sourceName: entry.name || productName,
+          source: 'recipe_workflow',
+        });
+      });
+
+      return;
+    }
+
+    if (Array.isArray(line.recipe_breakdown)) {
+      line.recipe_breakdown.forEach((entry, workflowIndex) => {
+        workflowEntries.push({
+          ...entry,
+          quoteQuantity: qty,
+          productName,
+          estimateLineIndex,
+          workflowIndex,
           sourceName: line.item_name || line.product_name || line.recipe_name || entry.name,
+          source: 'recipe_breakdown',
         });
       });
     }
 
     if (Array.isArray(line.breakdown)) {
-      line.breakdown.forEach((entry) => {
-        recipeBreakdowns.push({
+      line.breakdown.forEach((entry, workflowIndex) => {
+        workflowEntries.push({
           ...entry,
           quoteQuantity: qty,
+          productName,
+          estimateLineIndex,
+          workflowIndex,
           sourceName: line.item_name || line.product_name || line.recipe_name || entry.name,
+          source: 'breakdown',
         });
       });
     }
   });
 
-  return recipeBreakdowns;
+  return workflowEntries.sort((a, b) => {
+    const aOrder = Number(a.sequence_order) || 999;
+    const bOrder = Number(b.sequence_order) || 999;
+
+    if (aOrder !== bOrder) return aOrder - bOrder;
+
+    const aEstimate = Number(a.estimateLineIndex) || 0;
+    const bEstimate = Number(b.estimateLineIndex) || 0;
+
+    if (aEstimate !== bEstimate) return aEstimate - bEstimate;
+
+    return (Number(a.workflowIndex) || 0) - (Number(b.workflowIndex) || 0);
+  });
 }
 
 function makeStep({
@@ -350,6 +393,8 @@ function buildWorkflow(job, jobColour, today) {
     const rawType = String(entry.line_type || entry.type || entry.department || '').toUpperCase();
     const rawName = entry.name || entry.custom_name || entry.sourceName || entry.description || 'Production item';
     const qty = safeNumber(entry.quoteQuantity, 1);
+    const sequenceOrder = Number(entry.sequence_order) || index + 1;
+    const dependencyText = entry.dependency_steps ? ` | Depends on: ${entry.dependency_steps}` : '';
 
     let department = '';
     if (rawType.includes('MACHINE')) department = 'MACHINE';
@@ -374,12 +419,12 @@ function buildWorkflow(job, jobColour, today) {
 
     steps.push(
       makeStep({
-        id: `${job.id}-recipe-${department}-${index}`,
-        name: `${department}: ${rawName}`,
+        id: `${job.id}-recipe-${department}-${entry.estimateLineIndex || 0}-${sequenceOrder}-${index}`,
+        name: `Step ${sequenceOrder}: ${rawName}${dependencyText}`,
         department,
-        resource: entry.resource_name || entry.machine_name || entry.labour_type_name || entry.install_type_name || department,
+        resource: rawName || entry.resource_name || entry.machine_name || entry.labour_type_name || entry.install_type_name || department,
         minutes,
-        dayOffset: department === 'INSTALLATION' ? 6 : 2 + index,
+        dayOffset: department === 'INSTALLATION' ? 6 : 2 + Math.max(0, sequenceOrder - 1),
         job,
         jobColour,
         today,
