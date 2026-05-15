@@ -746,6 +746,30 @@ class CompanyDetails(BaseModel):
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
+
+def get_company_currency_symbol(company_details=None):
+    if not company_details:
+        return "R"
+
+    symbol = (
+        company_details.get("currency_symbol")
+        or company_details.get("currency_code")
+        or "R"
+    )
+
+    return str(symbol).strip() or "R"
+
+
+def money_pdf(value, company_details=None):
+    try:
+        amount = float(value or 0)
+    except Exception:
+        amount = 0.0
+
+    symbol = get_company_currency_symbol(company_details)
+    return f"{symbol} {amount:.2f}"
+
+
 class ApprovalRequest(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -2390,16 +2414,16 @@ async def generate_billing_invoice_pdf(company_id: str):
         pdf.drawString(50, y, str(line.full_name or "-")[:28])
         pdf.drawString(220, y, str(line.email or "-")[:28])
         pdf.drawString(380, y, str(line.role or "-")[:12])
-        pdf.drawRightString(560, y, f"R {line.seat_price_ex_vat:.2f}")
+        pdf.drawRightString(560, y, money_pdf(line.seat_price_ex_vat, locals().get("company_details")))
         y -= 16
 
     y -= 20
     pdf.setFont("Helvetica-Bold", 11)
-    pdf.drawRightString(560, y, f"Subtotal Excl. VAT: R {billing.subtotal_ex_vat:.2f}")
+    pdf.drawRightString(560, y, f"Subtotal Excl. VAT: {money_pdf(billing.subtotal_ex_vat, locals().get('company_details'))}")
     y -= 18
-    pdf.drawRightString(560, y, f"VAT 15%: R {billing.vat_amount:.2f}")
+    pdf.drawRightString(560, y, f"VAT 15%: {money_pdf(billing.vat_amount, locals().get('company_details'))}")
     y -= 18
-    pdf.drawRightString(560, y, f"Total Incl. VAT: R {billing.total_incl_vat:.2f}")
+    pdf.drawRightString(560, y, f"Total Incl. VAT: {money_pdf(billing.total_incl_vat, locals().get('company_details'))}")
 
     pdf.showPage()
     pdf.save()
@@ -2751,12 +2775,12 @@ async def generate_bill_tracking_statement_pdf(company_id: str):
 
             pdf.drawString(50, y, str(line["month_name"] or "-")[:30])
             pdf.drawString(300, y, str(line["status"] or "-")[:20])
-            pdf.drawRightString(560, y, f"R {float(line['amount']):.2f}")
+            pdf.drawRightString(560, y, money_pdf(float(line['amount']), locals().get("company_details")))
             y -= 16
 
     y -= 20
     pdf.setFont("Helvetica-Bold", 11)
-    pdf.drawRightString(560, y, f"Total Due: R {statement_total_due:.2f}")
+    pdf.drawRightString(560, y, f"Total Due: {money_pdf(statement_total_due, locals().get('company_details'))}")
 
     pdf.showPage()
     pdf.save()
@@ -4546,9 +4570,9 @@ async def export_client_statement_pdf(
         table_data.append([
             invoice.get("invoice_number") or "-",
             (invoice.get("invoice_created_at") or invoice.get("created_at") or "")[:10],
-            f"R {total:.2f}",
-            f"R {credit:.2f}",
-            f"R {balance:.2f}",
+            money_pdf(total, locals().get("company_details")),
+            money_pdf(credit, locals().get("company_details")),
+            money_pdf(balance, locals().get("company_details")),
             "PAID" if is_paid else "UNPAID",
             paid_date or "-",
         ])
@@ -4581,7 +4605,7 @@ async def export_client_statement_pdf(
         [[
             "",
             Paragraph("<b>TOTAL OUTSTANDING</b>", normal),
-            Paragraph(f"<b>R {unpaid_total:.2f}</b>", ParagraphStyle(
+            Paragraph(f"<b>{money_pdf(unpaid_total, locals().get('company_details'))}</b>", ParagraphStyle(
                 "TotalAmount",
                 parent=normal,
                 fontSize=13,
@@ -4599,7 +4623,7 @@ async def export_client_statement_pdf(
     ]))
     elements.append(total_table)
     elements.append(Spacer(1, 8))
-    elements.append(Paragraph("Paid invoices are shown for record purposes and carry R 0.00 outstanding.", small))
+    elements.append(Paragraph(f"Paid invoices are shown for record purposes and carry {money_pdf(0, locals().get('company_details'))} outstanding.", small))
 
     def draw_header_footer(canvas_obj, doc_obj):
         content_left = 18 * mm
@@ -7074,8 +7098,8 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         table_data.append([
             f"{qty:g}",
             Paragraph(description, normal),
-            f"R {selling_each:.2f}",
-            f"R {job_price:.2f}",
+            money_pdf(selling_each, locals().get("company_details")),
+            money_pdf(job_price, locals().get("company_details")),
         ])
 
         if fulfilment_type == "SITE_INSTALL":
@@ -7087,7 +7111,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
                 "",
                 Paragraph(fulfilment_description, small),
                 "",
-                f"R {fulfilment_price:.2f}",
+                money_pdf(fulfilment_price, locals().get("company_details")),
             ])
 
         elif fulfilment_type == "DELIVERY":
@@ -7099,7 +7123,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
                 "",
                 Paragraph(fulfilment_description, small),
                 "",
-                f"R {fulfilment_price:.2f}",
+                money_pdf(fulfilment_price, locals().get("company_details")),
             ])
 
         # Collection rows are hidden on the client-facing quote.
@@ -7112,8 +7136,8 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         table_data.append([
             "1",
             Paragraph(addon.get("description") or "Add-on", normal),
-            f"R {amount:.2f}",
-            f"R {amount:.2f}",
+            money_pdf(amount, locals().get("company_details")),
+            money_pdf(amount, locals().get("company_details")),
         ])
         table_data.append(["", "", "", ""])
 
@@ -7167,14 +7191,14 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
     elements.append(Spacer(1, 8))
 
     # Totals
-    totals_data = [["Subtotal", f"R {subtotal:.2f}"]]
+    totals_data = [["Subtotal", money_pdf(subtotal, locals().get("company_details"))]]
 
     if discount_percent > 0:
-        totals_data.append([f"Discount ({discount_percent:.2f}%)", f"- R {discount_value:.2f}"])
-        totals_data.append(["Subtotal after Discount", f"R {subtotal_after_discount:.2f}"])
+        totals_data.append([f"Discount ({discount_percent:.2f}%)", f"- {money_pdf(discount_value, locals().get('company_details'))}"])
+        totals_data.append(["Subtotal after Discount", money_pdf(subtotal_after_discount, locals().get("company_details"))])
 
-    totals_data.append(["VAT (15%)", f"R {vat:.2f}"])
-    totals_data.append(["TOTAL", f"R {total_amount:.2f}"])
+    totals_data.append(["VAT (15%)", money_pdf(vat, locals().get("company_details"))])
+    totals_data.append(["TOTAL", money_pdf(total_amount, locals().get("company_details"))])
 
     totals_table = Table(totals_data, colWidths=[105 * mm, 65 * mm])
     totals_table.setStyle(TableStyle([
@@ -7660,8 +7684,8 @@ async def export_company_details_template_pdf(user: dict = Depends(require_manag
 
     table_data = [
         ["Description", "Qty", "Unit", "Total"],
-        ["Example signage item", "1", "R 1 000.00", "R 1 000.00"],
-        ["Example installation", "1", "R 500.00", "R 500.00"],
+        ["Example signage item", "1", money_pdf(1000, company_details), money_pdf(1000, company_details)],
+        ["Example installation", "1", money_pdf(500, company_details), money_pdf(500, company_details)],
     ]
 
     preview_table = Table(table_data, colWidths=[90 * mm, 20 * mm, 30 * mm, 30 * mm])
@@ -7685,7 +7709,7 @@ async def export_company_details_template_pdf(user: dict = Depends(require_manag
         [[
             "",
             Paragraph("<b>TOTAL PREVIEW</b>", normal),
-            Paragraph("<b>R 1 500.00</b>", ParagraphStyle(
+            Paragraph(f"<b>{money_pdf(1500, company_details)}</b>", ParagraphStyle(
                 "TotalPreview",
                 parent=normal,
                 fontSize=13,
