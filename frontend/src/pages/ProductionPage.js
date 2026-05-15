@@ -121,6 +121,22 @@ const departmentOptions = [
   'DISPATCH',
 ];
 
+const departmentOrder = {
+  ADMIN: 1,
+  DESIGN: 2,
+  PROCUREMENT: 3,
+  STOCK: 4,
+  MACHINE: 5,
+  LABOUR: 6,
+  INSTALLATION: 7,
+  'MACHINE HIRE': 8,
+  QC: 9,
+  PACKING: 10,
+  DISPATCH: 11,
+  OTHER: 99,
+};
+
+
 function startOfDay(value) {
   const date = value ? new Date(value) : new Date();
 
@@ -892,7 +908,16 @@ export default function ProductionPage() {
       });
     });
 
-    return Array.from(rows.values());
+    return Array.from(rows.values()).sort((a, b) => {
+      const orderA = departmentOrder[a.department] || departmentOrder.OTHER;
+      const orderB = departmentOrder[b.department] || departmentOrder.OTHER;
+
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+
+      return String(a.resource || '').localeCompare(String(b.resource || ''));
+    });
   }, [scheduledJobs, departmentFilter]);
 
   const productionStats = useMemo(() => {

@@ -6845,6 +6845,89 @@ async def get_production_jobs(user: dict = Depends(get_current_user)):
         {"_id": 0}
     ).sort("production_posted_at", -1).to_list(1000)
 
+    company_id = user["company_id"]
+
+    async def build_recipe_workflow(recipe_id: str):
+        if not recipe_id:
+            return []
+
+        recipe = await db.recipes.find_one(
+            {"id": recipe_id, "company_id": company_id},
+            {"_id": 0}
+        )
+
+        if not recipe:
+            return []
+
+        workflow = []
+
+        for index, recipe_line in enumerate(recipe.get("lines", [])):
+            line_type = (recipe_line.get("line_type") or "").upper()
+
+            if line_type not in ["LABOUR", "MACHINE", "INSTALLATION", "MACHINE HIRE"]:
+                continue
+
+            reference_id = recipe_line.get("reference_id")
+            item_name = recipe_line.get("custom_name") or ""
+            resource_name = ""
+            cost_type = line_type
+
+            if line_type in ["LABOUR", "MACHINE", "MACHINE HIRE"] and reference_id:
+                labour_machine = await db.labour_types.find_one(
+                    {"id": reference_id, "company_id": company_id},
+                    {"_id": 0}
+                )
+
+                if labour_machine:
+                    item_name = item_name or labour_machine.get("name") or line_type.title()
+                    resource_name = labour_machine.get("name") or item_name
+                    cost_type = (labour_machine.get("cost_type") or line_type).upper()
+
+            elif line_type == "INSTALLATION" and reference_id:
+                install_type = await db.install_types.find_one(
+                    {"id": reference_id, "company_id": company_id},
+                    {"_id": 0}
+                )
+
+                if install_type:
+                    item_name = item_name or install_type.get("name") or "Installation"
+                    resource_name = install_type.get("name") or item_name
+                    cost_type = "INSTALLATION"
+
+            workflow.append({
+                "line_type": cost_type,
+                "type": cost_type,
+                "name": item_name or line_type.title(),
+                "resource_name": resource_name or item_name or line_type.title(),
+                "sequence_order": recipe_line.get("sequence_order") or index + 1,
+                "dependency_steps": recipe_line.get("dependency_steps") or "",
+                "reference_id": reference_id,
+            })
+
+        workflow.sort(key=lambda item: (
+            int(item.get("sequence_order") or 999),
+            str(item.get("name") or "")
+        ))
+
+        return workflow
+
+    for job in jobs:
+        blueprint = job.get("blueprint") or {}
+        estimate_lines = blueprint.get("estimate_lines") or []
+
+        if not isinstance(estimate_lines, list):
+            continue
+
+        for estimate_line in estimate_lines:
+            if not isinstance(estimate_line, dict):
+                continue
+
+            recipe_id = estimate_line.get("recipe_id")
+            estimate_line["recipe_workflow"] = await build_recipe_workflow(recipe_id)
+
+        blueprint["estimate_lines"] = estimate_lines
+        job["blueprint"] = blueprint
+
     return jobs
 
 
