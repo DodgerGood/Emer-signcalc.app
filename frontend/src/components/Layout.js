@@ -126,7 +126,7 @@ export const Layout = ({ children }) => {
   };
 
   const labelClass = sidebarCollapsed
-    ? 'block max-w-[46px] text-center text-[8px] font-medium leading-tight'
+    ? 'block max-w-[58px] text-center text-[8px] font-medium leading-tight'
     : 'text-sm font-medium';
 
   const NavLinkItem = ({ to, icon: Icon, label, testId }) => {
@@ -149,7 +149,7 @@ export const Layout = ({ children }) => {
     <div className="min-h-screen flex">
       <aside
         className={`${
-          sidebarCollapsed ? 'w-[52px]' : 'w-64'
+          sidebarCollapsed ? 'w-[68px]' : 'w-64'
         } shrink-0 bg-[#0F172A] text-white flex flex-col transition-all duration-300`}
       >
         <div className={`${sidebarCollapsed ? 'p-2' : 'p-6'} border-b border-slate-700`}>
