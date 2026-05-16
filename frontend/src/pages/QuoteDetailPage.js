@@ -40,6 +40,34 @@ const newAddon = () => ({
   selling_price: '',
 });
 
+
+function countWorkingDaysFromToday(dateString) {
+  if (!dateString) return null;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const due = new Date(`${dateString}T00:00:00`);
+  due.setHours(0, 0, 0, 0);
+
+  if (Number.isNaN(due.getTime())) return null;
+  if (due < today) return -1;
+
+  let count = 0;
+  const cursor = new Date(today);
+
+  while (cursor < due) {
+    cursor.setDate(cursor.getDate() + 1);
+    const day = cursor.getDay();
+
+    if (day !== 0 && day !== 6) {
+      count += 1;
+    }
+  }
+
+  return count;
+}
+
 export default function QuoteDetailPage() {
   const currency = useCompanyCurrency();
   const money = (value) => formatMoney(value, currency);
@@ -62,6 +90,7 @@ export default function QuoteDetailPage() {
     client_phone: '',
     client_address: '',
     description: '',
+    due_date: '',
     discount_percent: '',
   });
 
@@ -144,6 +173,9 @@ export default function QuoteDetailPage() {
   const exactClientExists = clients.some(
     (client) => client.company_name?.trim().toLowerCase() === clientData.client_name.trim().toLowerCase()
   );
+
+  const dueWorkingDays = countWorkingDaysFromToday(clientData.due_date);
+  const dueWarning = dueWorkingDays !== null && dueWorkingDays < 15;
 
   const saveClientIfNew = async () => {
     if (!clientData.client_name.trim() || exactClientExists) return;
@@ -323,6 +355,7 @@ export default function QuoteDetailPage() {
         client_phone: clientData.client_phone,
         client_address: clientData.client_address,
         description: clientData.description,
+        due_date: clientData.due_date || '',
         lines: calculatedLines,
         addons: addons || [],
         discount_percent: discountPercentForSave,
