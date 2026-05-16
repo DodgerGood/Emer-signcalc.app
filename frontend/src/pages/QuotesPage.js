@@ -60,6 +60,7 @@ export default function QuotesPage() {
     client_phone: '',
     client_address: '',
     description: '',
+    due_date: '',
   });
 
   const itemsPerPage = 10;
@@ -98,6 +99,7 @@ export default function QuotesPage() {
       client_phone: client.phone || '',
       client_address: client.billing_address || client.site_address || '',
       description: formData.description || client.notes || '',
+      due_date: formData.due_date || '',
     });
     setClientSearch(client.company_name || '');
   };
@@ -335,6 +337,17 @@ export default function QuotesPage() {
                         value={formData.client_email}
                         onChange={(e) => setFormData({ ...formData, client_email: e.target.value })}
                         placeholder="client@example.com"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Job Due Date *</Label>
+                      <Input
+                        type="date"
+                        value={formData.due_date || ''}
+                        onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                        required
+                        data-testid="new-estimate-due-date-input"
                       />
                     </div>
 

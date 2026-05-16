@@ -154,6 +154,7 @@ export default function QuoteDetailPage() {
       client_phone: client.phone || '',
       client_address: client.billing_address || client.site_address || '',
       description: clientData.description || client.notes || '',
+      due_date: clientData.due_date || '',
     });
     setClientSearch(client.company_name || '');
   };
@@ -328,6 +329,11 @@ export default function QuoteDetailPage() {
   };
 
   const handleSaveAndClose = async () => {
+    if (!clientData.due_date) {
+      toast.error('Job Due Date is required before saving the estimate.');
+      return;
+    }
+
     try {
       const calculatedLines = await calculateAllLines(false);
       await saveClientIfNew();
@@ -515,6 +521,7 @@ export default function QuoteDetailPage() {
                   type="date"
                   value={clientData.due_date || ''}
                   onChange={(e) => setClientData({ ...clientData, due_date: e.target.value })}
+                  required
                   data-testid="estimate-due-date-input"
                 />
                 <p className="text-xs text-slate-500">

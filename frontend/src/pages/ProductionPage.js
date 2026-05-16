@@ -180,7 +180,12 @@ function addWorkdays(date, workdays) {
 }
 
 function dateKey(date) {
-  return startOfDay(date).toISOString().slice(0, 10);
+  const localDate = startOfDay(date);
+  const year = localDate.getFullYear();
+  const month = String(localDate.getMonth() + 1).padStart(2, '0');
+  const day = String(localDate.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
 }
 
 function isWeekend(date) {
@@ -747,44 +752,34 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
-function getCurrentMinuteOfDay() {
-  const now = new Date();
+function getCurrentMinuteOfDay(now) {
   return now.getHours() * 60 + now.getMinutes();
 }
 
-function getTimeLeftInDay(timeSlots) {
-  if (!timeSlots.length) return 0;
+function getTwentyFourHourLeftInDay(day, now, timeSlots) {
+  const dayWidth = getDayWidth(day, timeSlots);
+  const currentMinute = getCurrentMinuteOfDay(now);
+  const dayProgress = currentMinute / (24 * 60);
 
-  const currentMinute = getCurrentMinuteOfDay();
-  const workStart = timeSlots[0].start;
-  const workEnd = timeSlots[timeSlots.length - 1].end;
-  const clampedMinute = clamp(currentMinute, workStart, workEnd);
-
-  const slotIndex = timeSlots.findIndex((slot) => (
-    clampedMinute >= slot.start && clampedMinute < slot.end
-  ));
-
-  if (slotIndex < 0) {
-    return timeSlots.length * SLOT_WIDTH;
-  }
-
-  const slot = timeSlots[slotIndex];
-  const progress = (clampedMinute - slot.start) / Math.max(1, slot.end - slot.start);
-
-  return (slotIndex * SLOT_WIDTH) + (progress * SLOT_WIDTH);
+  return dayWidth * dayProgress;
 }
 
-function TodayLine({ calendarDays, today, timeSlots }) {
+function TodayLine({ calendarDays, now, timeSlots }) {
+  const today = startOfDay(now);
   const left = getTodayLeft(calendarDays, today, timeSlots);
 
   if (left < 0) return null;
+
+  const todayDay = calendarDays.find((day) => dateKey(day) === dateKey(today));
+  if (!todayDay) return null;
 
   return (
     <div
       className="pointer-events-none absolute top-0 z-30 h-full w-[3px] bg-red-600"
       style={{
-        left: `${left + getTimeLeftInDay(timeSlots)}px`,
+        left: `${left + getTwentyFourHourLeftInDay(todayDay, now, timeSlots)}px`,
       }}
+      title={`Current time: ${now.toLocaleString('en-ZA')}`}
     />
   );
 }
@@ -814,7 +809,16 @@ export default function ProductionPage() {
   const jobScrollRef = useRef(null);
   const resourceScrollRef = useRef(null);
 
-  const today = useMemo(() => startOfDay(new Date()), []);
+  const [now, setNow] = useState(() => new Date());
+  const today = useMemo(() => startOfDay(now), [now]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNow(new Date());
+    }, 60 * 1000);
+
+    return () => window.clearInterval(timer);
+  }, []);
 
   const calendarStart = useMemo(() => addDays(today, -DAYS_BACK), [today]);
 
@@ -1140,7 +1144,7 @@ export default function ProductionPage() {
                     </div>
                   ))}
 
-                  <TodayLine calendarDays={calendarDays} today={today} timeSlots={timeSlots} />
+                  <TodayLine calendarDays={calendarDays} now={now} timeSlots={timeSlots} />
                 </div>
               </div>
             </div>
@@ -1284,7 +1288,7 @@ export default function ProductionPage() {
                     </div>
                   ))}
 
-                  <TodayLine calendarDays={calendarDays} today={today} timeSlots={timeSlots} />
+                  <TodayLine calendarDays={calendarDays} now={now} timeSlots={timeSlots} />
                 </div>
               </div>
             </div>
