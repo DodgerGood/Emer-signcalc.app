@@ -1035,6 +1035,14 @@ export default function ProductionPage() {
                           <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${job.job_ticket_document_filename ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
                             {truncateFileName(job.job_ticket_document_filename)}
                           </span>
+
+                            <span className="rounded-full bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700">
+                              Launched: {formatDateBadge(job.production_posted_at)}
+                            </span>
+
+                            <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${job.due_date ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
+                              Due: {formatDateBadge(job.due_date)}
+                            </span>
                         </div>
 
                         <Button

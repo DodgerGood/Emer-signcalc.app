@@ -509,6 +509,25 @@ export default function QuoteDetailPage() {
               />
             </div>
 
+              <div className="space-y-2">
+                <Label>Job Due Date</Label>
+                <Input
+                  type="date"
+                  value={clientData.due_date || ''}
+                  onChange={(e) => setClientData({ ...clientData, due_date: e.target.value })}
+                  data-testid="estimate-due-date-input"
+                />
+                <p className="text-xs text-slate-500">
+                  This date follows the estimate through quote, invoice and production.
+                </p>
+              </div>
+
+              {dueWarning && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-800 md:col-span-2">
+                  Warning: this due date is {dueWorkingDays < 0 ? 'already overdue' : `${dueWorkingDays} working day${dueWorkingDays === 1 ? '' : 's'} away`}. It is less than the 15 working day planning window.
+                </div>
+              )}
+
             <div className="space-y-2 md:col-span-2">
               <Label>Project Description</Label>
               <Textarea
