@@ -12,6 +12,22 @@ import ActionIconButton from '../components/ActionIconButton';
 import { FileText, Upload, Download, Trash2, RotateCcw, Factory } from 'lucide-react';
 import { toast } from 'sonner';
 
+function formatDisplayDate(value) {
+  if (!value) return '-';
+
+  const text = String(value);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    const [year, month, day] = text.split('-');
+    return `${day}/${month}/${year}`;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+
+  return date.toLocaleDateString('en-ZA');
+}
+
+
 export default function ApprovalsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -289,10 +305,11 @@ export default function ApprovalsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border bg-white">
-            <Table className="w-full min-w-[1550px] text-sm">
+            <Table className="w-full min-w-[1650px] text-sm">
               <TableHeader className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                 <TableRow>
                   <TableHead className="px-4 py-3">Client Name</TableHead>
+                  <TableHead className="px-4 py-3 text-center">Due Date</TableHead>
                   <TableHead className="px-4 py-3 text-center">Invoice</TableHead>
                   <TableHead className="px-4 py-3 text-center">Delivery Note</TableHead>
                   <TableHead className="px-4 py-3 text-center">BOM</TableHead>
@@ -306,7 +323,7 @@ export default function ApprovalsPage() {
               <TableBody className="divide-y">
                 {filteredJobs.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-12 text-center text-slate-500">
+                    <TableCell colSpan={9} className="py-12 text-center text-slate-500">
                       No approved invoices yet.
                     </TableCell>
                   </TableRow>
@@ -315,6 +332,12 @@ export default function ApprovalsPage() {
                     <TableRow key={job.id}>
                       <TableCell className="px-4 py-3 font-semibold">
                         {job.client_name}
+                      </TableCell>
+
+                      <TableCell className="px-4 py-3 text-center">
+                        <span className={`rounded-full px-2 py-1 text-xs font-semibold ${job.due_date ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
+                          {formatDisplayDate(job.due_date)}
+                        </span>
                       </TableCell>
 
                       <TableCell className="px-4 py-3 text-center">

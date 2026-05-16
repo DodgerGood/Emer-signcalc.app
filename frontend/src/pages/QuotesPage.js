@@ -16,6 +16,22 @@ import { Plus, Info, Pencil, Trash2, CheckCircle, FileText } from 'lucide-react'
 import { toast } from 'sonner';
 import { useCompanyCurrency, formatMoney } from '../lib/currency';
 
+function formatDisplayDate(value) {
+  if (!value) return '-';
+
+  const text = String(value);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    const [year, month, day] = text.split('-');
+    return `${day}/${month}/${year}`;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+
+  return date.toLocaleDateString('en-ZA');
+}
+
+
 
 export default function QuotesPage() {
   const currency = useCompanyCurrency();
@@ -408,6 +424,7 @@ export default function QuotesPage() {
                     <TableHead className="px-4 py-3">Staff</TableHead>
                     <TableHead className="px-4 py-3">Total</TableHead>
                     <TableHead className="px-4 py-3">Date</TableHead>
+                    <TableHead className="px-4 py-3">Due Date</TableHead>
                     <TableHead className="px-4 py-3">Status</TableHead>
                     <TableHead className="px-4 py-3 text-right">Actions</TableHead>
                   </TableRow>
@@ -416,7 +433,7 @@ export default function QuotesPage() {
                 <TableBody className="divide-y">
                   {paginatedQuotes.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="py-12 text-center">
+                      <TableCell colSpan={8} className="py-12 text-center">
                         No {isEstimationsPage ? 'estimates' : 'quotes'} found.
                       </TableCell>
                     </TableRow>
@@ -458,7 +475,12 @@ export default function QuotesPage() {
                             {money(quote.total_amount)}
                           </TableCell>
                           <TableCell className="px-4 py-3">
-                            {quote.created_at ? new Date(quote.created_at).toLocaleDateString() : '-'}
+                            {formatDisplayDate(quote.created_at)}
+                          </TableCell>
+                          <TableCell className="px-4 py-3">
+                            <span className={`rounded-full px-2 py-1 text-xs font-semibold ${quote.due_date ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
+                              {formatDisplayDate(quote.due_date)}
+                            </span>
                           </TableCell>
                           <TableCell className="px-4 py-3">
                             {quote.quote_status || 'DRAFT'}
@@ -568,7 +590,8 @@ export default function QuotesPage() {
                 <div><strong>Quote #:</strong> {infoQuote.quoteNumber || '-'}</div>
                 <div><strong>Client:</strong> {infoQuote.client_name}</div>
                 <div><strong>Total:</strong> {money(infoQuote.total_amount)}</div>
-                <div><strong>Date:</strong> {infoQuote.created_at ? new Date(infoQuote.created_at).toLocaleDateString() : '-'}</div>
+                <div><strong>Date:</strong> {formatDisplayDate(infoQuote.created_at)}</div>
+                <div><strong>Due Date:</strong> {formatDisplayDate(infoQuote.due_date)}</div>
               </div>
             )}
           </DialogContent>
