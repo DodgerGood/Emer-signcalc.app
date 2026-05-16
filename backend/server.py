@@ -1490,7 +1490,6 @@ async def update_platform_settings(req: PlatformOwnerSettings):
         "message": "Platform settings saved",
         "settings": doc,
     }
-)
 
 @api_router.get("/admin/support-requests", response_model=List[SupportRequestRecord])
 async def list_support_requests():
