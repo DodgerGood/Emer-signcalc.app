@@ -284,7 +284,7 @@ export default function QuotesPage() {
                 </Button>
               </DialogTrigger>
 
-              <DialogContent className="max-w-lg">
+              <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto overscroll-contain touch-pan-y">
                 <DialogHeader>
                   <DialogTitle>Create New Estimate</DialogTitle>
                 </DialogHeader>
