@@ -19,7 +19,6 @@ import {
   ChevronsLeft,
   ChevronsRight,
 } from 'lucide-react';
-import { Button } from './ui/button';
 
 export const Layout = ({ children }) => {
   const { user, logout } = useAuth();
@@ -35,12 +34,16 @@ export const Layout = ({ children }) => {
     localStorage.setItem('signomics-sidebar-collapsed', String(sidebarCollapsed));
   }, [sidebarCollapsed]);
 
+  // Main app body always opens at the top on page change.
   useEffect(() => {
     if (mainRef.current) {
       mainRef.current.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     }
+
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, [location.pathname]);
 
+  // Sidebar scrolls independently and keeps the selected menu item in view.
   useEffect(() => {
     if (activeLinkRef.current) {
       activeLinkRef.current.scrollIntoView({
@@ -142,10 +145,9 @@ export const Layout = ({ children }) => {
   ];
 
   const menuItems = [
-    ...mainLinks.map((item) => ({ ...item, section: 'main', type: 'link' })),
+    ...mainLinks.map((item) => ({ ...item, type: 'link' })),
     ...utilityLinks.map((item, index) => ({
       ...item,
-      section: 'utility',
       type: 'link',
       firstUtility: index === 0,
     })),
@@ -153,14 +155,18 @@ export const Layout = ({ children }) => {
       label: 'Logout',
       icon: LogOut,
       type: 'button',
-      section: 'utility',
       testId: 'logout-btn',
     },
   ];
 
+  const isActivePath = (to) => {
+    if (to === '/') return location.pathname === '/';
+    return location.pathname === to || location.pathname.startsWith(`${to}/`);
+  };
+
   const getNavClass = (active) => {
     const base = sidebarCollapsed
-      ? 'flex min-h-[50px] w-full flex-col items-center justify-center gap-1 rounded-md px-1 py-1.5 text-center transition-colors'
+      ? 'flex min-h-[48px] w-full flex-col items-center justify-center gap-0.5 rounded-md px-1 py-1 text-center transition-colors'
       : 'flex w-full items-center gap-3 rounded-md px-4 py-2.5 transition-colors';
 
     const tone = active
@@ -173,11 +179,6 @@ export const Layout = ({ children }) => {
   const labelClass = sidebarCollapsed
     ? 'block max-w-[56px] text-center text-[8px] font-medium leading-tight'
     : 'text-sm font-medium';
-
-  const isActivePath = (to) => {
-    if (to === '/') return location.pathname === '/';
-    return location.pathname === to || location.pathname.startsWith(`${to}/`);
-  };
 
   const NavLinkItem = ({ to, icon: Icon, label, testId }) => {
     const active = isActivePath(to);
@@ -204,7 +205,7 @@ export const Layout = ({ children }) => {
       title={label}
       className={`${
         sidebarCollapsed
-          ? 'flex min-h-[50px] w-full flex-col items-center justify-center gap-1 rounded-md px-1 py-1.5 text-center transition-colors'
+          ? 'flex min-h-[48px] w-full flex-col items-center justify-center gap-0.5 rounded-md px-1 py-1 text-center transition-colors'
           : 'flex w-full items-center gap-3 rounded-md px-4 py-2.5 transition-colors'
       } text-slate-300 hover:bg-red-900/40 hover:text-white`}
     >
@@ -214,13 +215,13 @@ export const Layout = ({ children }) => {
   );
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
+    <div className="flex h-[100dvh] max-h-[100dvh] overflow-hidden bg-slate-50">
       <aside
         className={`${
           sidebarCollapsed ? 'w-[68px]' : 'w-64'
-        } h-screen shrink-0 bg-[#0F172A] text-white transition-all duration-300`}
+        } h-[100dvh] max-h-[100dvh] shrink-0 overflow-hidden bg-[#0F172A] text-white transition-all duration-300`}
       >
-        <div className="flex h-full flex-col">
+        <div className="flex h-full min-h-0 flex-col">
           <div className={`${sidebarCollapsed ? 'p-2' : 'p-6'} shrink-0 border-b border-slate-700`}>
             <div className={sidebarCollapsed ? 'flex flex-col items-center gap-2' : 'flex items-start justify-between gap-3'}>
               {!sidebarCollapsed && (
@@ -248,7 +249,7 @@ export const Layout = ({ children }) => {
             )}
           </div>
 
-          <nav className={`${sidebarCollapsed ? 'p-1.5 pb-20' : 'p-4 pb-20'} min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain`}>
+          <nav className={`${sidebarCollapsed ? 'p-1.5 pb-56' : 'p-4 pb-56'} min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain touch-pan-y`}>
             {menuItems.map((item, index) => {
               const wrapperClass = item.firstUtility ? 'mt-4 border-t border-slate-700 pt-4' : '';
 
@@ -271,13 +272,15 @@ export const Layout = ({ children }) => {
                 </div>
               );
             })}
+
+            <div className="h-40 shrink-0" aria-hidden="true" />
           </nav>
         </div>
       </aside>
 
       <main
         ref={mainRef}
-        className="h-screen min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-slate-50 py-8 pl-8 pr-[12mm] overscroll-contain"
+        className="h-[100dvh] min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-slate-50 py-8 pl-8 pr-[12mm] overscroll-contain touch-pan-y"
       >
         <div className="min-w-0 pr-[7mm]">
           {children}
