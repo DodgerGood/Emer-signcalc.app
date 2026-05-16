@@ -129,6 +129,7 @@ export default function QuoteDetailPage() {
         client_phone: q.client_phone || '',
         client_address: q.client_address || '',
         description: q.description || '',
+        due_date: q.due_date || '',
         discount_percent: q.blueprint?.discount_percent?.toString() || '',
       });
 
@@ -329,6 +330,11 @@ export default function QuoteDetailPage() {
   };
 
   const handleSaveAndClose = async () => {
+    if (!clientData.due_date) {
+      toast.error('Please select a job due date before saving');
+      return;
+    }
+
     if (!clientData.due_date) {
       toast.error('Job Due Date is required before saving the estimate.');
       return;
