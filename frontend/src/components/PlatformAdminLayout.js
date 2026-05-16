@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Headset,
@@ -7,6 +7,8 @@ import {
   ArrowLeftRight,
   ShieldCheck,
   LogOut,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -18,7 +20,15 @@ export function PlatformAdminLayout({ children }) {
   const mainRef = useRef(null);
   const navRef = useRef(null);
 
-  // Main body always opens at top when changing platform-admin pages.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    return localStorage.getItem('signomics-platform-sidebar-collapsed') !== 'false';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('signomics-platform-sidebar-collapsed', String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
+
+  // Main body opens at the top on page change. Sidebar is NOT moved.
   useEffect(() => {
     if (mainRef.current) {
       mainRef.current.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -26,14 +36,6 @@ export function PlatformAdminLayout({ children }) {
 
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, [location.pathname]);
-
-  const saveSidebarScroll = () => {
-    if (!navRef.current) return;
-
-    const value = navRef.current.scrollTop;
-    window.__signomicsPlatformSidebarScrollTop = value;
-    sessionStorage.setItem('signomics-platform-sidebar-scroll-top', String(value));
-  };
 
   const navItems = [
     {
@@ -76,81 +78,108 @@ export function PlatformAdminLayout({ children }) {
     },
   ];
 
-  const getLinkClass = (active) => (
-    `flex items-center gap-3 rounded-xl px-4 py-3 transition ${
-      active
-        ? 'bg-[#2563EB] text-white'
-        : 'text-slate-200 hover:bg-slate-800 hover:text-white'
-    }`
-  );
+  const isActive = (href) => {
+    if (href === '/') return location.pathname === '/';
+    return location.pathname === href || location.pathname.startsWith(`${href}/`);
+  };
+
+  const getLinkClass = (active) => {
+    const base = sidebarCollapsed
+      ? 'flex min-h-[50px] w-full flex-col items-center justify-center gap-1 rounded-md px-1 py-1.5 text-center transition-colors'
+      : 'flex w-full items-center gap-3 rounded-xl px-4 py-3 transition-colors';
+
+    const tone = active
+      ? 'bg-[#2563EB] text-white'
+      : 'text-slate-200 hover:bg-slate-800 hover:text-white';
+
+    return `${base} ${tone}`;
+  };
+
+  const labelClass = sidebarCollapsed
+    ? 'block max-w-[58px] text-center text-[8px] font-medium leading-tight'
+    : 'text-lg';
+
+  const NavItem = ({ item }) => {
+    const Icon = item.icon;
+    const active = isActive(item.href);
+
+    return (
+      <Link
+        to={item.href}
+        className={getLinkClass(active)}
+        title={item.label}
+      >
+        <Icon size={20} className="shrink-0" />
+        <span className={labelClass}>{item.label}</span>
+      </Link>
+    );
+  };
 
   return (
     <div className="flex h-[100dvh] max-h-[100dvh] overflow-hidden bg-[#F8FAFC]">
-      <aside className="h-[100dvh] max-h-[100dvh] w-[280px] shrink-0 overflow-hidden border-r border-slate-800 bg-[#0F172A] text-white">
+      <aside
+        className={`${
+          sidebarCollapsed ? 'w-[68px]' : 'w-64'
+        } h-[100dvh] max-h-[100dvh] shrink-0 overflow-hidden border-r border-slate-800 bg-[#0F172A] text-white transition-all duration-300`}
+      >
         <div className="flex h-full min-h-0 flex-col">
-          <div className="shrink-0 border-b border-slate-700 px-8 py-8">
-            <div className="text-4xl font-black tracking-tight leading-none">
-              SignageQuote
+          <div className={`${sidebarCollapsed ? 'p-2' : 'p-6'} shrink-0 border-b border-slate-700`}>
+            <div className={sidebarCollapsed ? 'flex flex-col items-center gap-2' : 'flex items-start justify-between gap-3'}>
+              {!sidebarCollapsed && (
+                <div className="min-w-0">
+                  <div className="text-xl font-bold tracking-tight">SignageQuote</div>
+                  <div className="mt-2 text-sm font-semibold">Platform Admin</div>
+                  <div className="mt-1 truncate text-xs text-slate-300">{user?.full_name}</div>
+                  <div className="truncate text-xs text-slate-400">{user?.role}</div>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setSidebarCollapsed((prev) => !prev)}
+                className="rounded-md border border-slate-700 p-1.5 text-slate-300 hover:bg-slate-800 hover:text-white"
+                title={sidebarCollapsed ? 'Expand menu' : 'Collapse menu'}
+              >
+                {sidebarCollapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
+              </button>
             </div>
 
-            <div className="mt-4">
-              <div className="text-xl font-semibold">Platform Admin</div>
-              <div className="mt-2 truncate text-slate-300">{user?.full_name}</div>
-              <div className="truncate text-slate-400">{user?.role}</div>
-            </div>
+            {sidebarCollapsed && (
+              <div className="mt-1 truncate text-center text-[8px] leading-tight text-slate-400" title={user?.full_name}>
+                {user?.full_name?.split(' ')[0] || 'Admin'}
+              </div>
+            )}
           </div>
 
           <nav
             ref={navRef}
-            onScroll={saveSidebarScroll}
-            className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-4 py-6 pb-40 touch-pan-y"
+            className={`${sidebarCollapsed ? 'p-1.5 pb-56' : 'p-4 pb-56'} min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain touch-pan-y`}
           >
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const active = location.pathname === item.href || location.pathname.startsWith(`${item.href}/`);
+            {navItems.map((item) => (
+              <NavItem key={item.href} item={item} />
+            ))}
 
-              return (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  onClick={saveSidebarScroll}
-                  className={getLinkClass(active)}
-                >
-                  <Icon size={20} className="shrink-0" />
-                  <span className="text-lg">{item.label}</span>
-                </Link>
-              );
-            })}
-
-            <div className="mt-5 border-t border-slate-700 pt-5">
-              {utilityItems.map((item) => {
-                const Icon = item.icon;
-                const active = location.pathname === item.href || location.pathname.startsWith(`${item.href}/`);
-
-                return (
-                  <Link
-                    key={item.href}
-                    to={item.href}
-                    onClick={saveSidebarScroll}
-                    className={getLinkClass(active)}
-                  >
-                    <Icon size={20} className="shrink-0" />
-                    <span className="text-lg">{item.label}</span>
-                  </Link>
-                );
-              })}
+            <div className="mt-4 border-t border-slate-700 pt-4">
+              {utilityItems.map((item) => (
+                <NavItem key={item.href} item={item} />
+              ))}
 
               <button
                 type="button"
                 onClick={logout}
-                className="mt-2 flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-slate-200 transition hover:bg-red-900/40 hover:text-white"
+                title="Logout"
+                className={`${
+                  sidebarCollapsed
+                    ? 'flex min-h-[50px] w-full flex-col items-center justify-center gap-1 rounded-md px-1 py-1.5 text-center transition-colors'
+                    : 'flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors'
+                } mt-1 text-slate-200 hover:bg-red-900/40 hover:text-white`}
               >
                 <LogOut size={20} className="shrink-0 text-red-300" />
-                <span className="text-lg">Logout</span>
+                <span className={labelClass}>Logout</span>
               </button>
             </div>
 
-            <div className="h-24 shrink-0" aria-hidden="true" />
+            <div className="h-32 shrink-0" aria-hidden="true" />
           </nav>
         </div>
       </aside>
