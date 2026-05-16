@@ -16,6 +16,34 @@ import { Plus, Info, Pencil, Trash2, CheckCircle, FileText } from 'lucide-react'
 import { toast } from 'sonner';
 import { useCompanyCurrency, formatMoney } from '../lib/currency';
 
+function countWorkingDaysFromToday(dateString) {
+  if (!dateString) return null;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const due = new Date(`${dateString}T00:00:00`);
+  due.setHours(0, 0, 0, 0);
+
+  if (Number.isNaN(due.getTime())) return null;
+  if (due < today) return -1;
+
+  let days = 0;
+  const cursor = new Date(today);
+
+  while (cursor < due) {
+    cursor.setDate(cursor.getDate() + 1);
+    const day = cursor.getDay();
+
+    if (day !== 0 && day !== 6) {
+      days += 1;
+    }
+  }
+
+  return days;
+}
+
+
 function formatDisplayDate(value) {
   if (!value) return '-';
 
@@ -251,6 +279,9 @@ export default function QuotesPage() {
 
     return belongsOnThisPage && matchesSearch && matchesStaff;
   });
+
+  const newEstimateDueWorkingDays = countWorkingDaysFromToday(formData.due_date);
+  const newEstimateDueWarning = newEstimateDueWorkingDays !== null && newEstimateDueWorkingDays < 15;
 
   const totalPages = Math.max(1, Math.ceil(filteredQuotes.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
