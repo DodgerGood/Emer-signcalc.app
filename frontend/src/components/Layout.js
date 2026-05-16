@@ -24,25 +24,30 @@ import { Button } from './ui/button';
 export const Layout = ({ children }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const mainRef = useRef(null);
+  const activeLinkRef = useRef(null);
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     return localStorage.getItem('signomics-sidebar-collapsed') === 'true';
   });
-  const activeNavRef = useRef(null);
 
   useEffect(() => {
     localStorage.setItem('signomics-sidebar-collapsed', String(sidebarCollapsed));
   }, [sidebarCollapsed]);
 
   useEffect(() => {
-    window.setTimeout(() => {
-      if (activeNavRef.current) {
-        activeNavRef.current.scrollIntoView({
-          block: 'nearest',
-          inline: 'nearest',
-          behavior: 'smooth',
-        });
-      }
-    }, 80);
+    if (mainRef.current) {
+      mainRef.current.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    }
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (activeLinkRef.current) {
+      activeLinkRef.current.scrollIntoView({
+        block: 'nearest',
+        inline: 'nearest',
+      });
+    }
   }, [location.pathname, sidebarCollapsed]);
 
   const role = user?.role;
@@ -124,7 +129,19 @@ export const Layout = ({ children }) => {
     return [];
   };
 
-  const links = getLinks();
+  const mainLinks = getLinks();
+
+  const utilityLinks = [
+    ...(isPlatformAdmin
+      ? [{ to: '/platform-admin/login', icon: Headset, label: 'Platform Support' }]
+      : []),
+    ...(['MD_ADMIN', 'CEO', 'MANAGER'].includes(role)
+      ? [{ to: '/company-details', icon: Building2, label: 'Company Details', testId: 'nav-company-details' }]
+      : []),
+    { to: '/settings', icon: Settings, label: 'Settings', testId: 'nav-settings' },
+  ];
+
+  const allLinks = [...mainLinks, ...utilityLinks];
 
   const getNavClass = (active) => {
     const base = sidebarCollapsed
@@ -143,10 +160,11 @@ export const Layout = ({ children }) => {
     : 'text-sm font-medium';
 
   const NavLinkItem = ({ to, icon: Icon, label, testId }) => {
-    const active = to === '/' ? location.pathname === '/' : location.pathname === to;
+    const active = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
 
     return (
       <Link
+        ref={active ? activeLinkRef : null}
         to={to}
         data-testid={testId || `nav-${label.toLowerCase().replace(/\s+/g, '-')}`}
         className={getNavClass(active)}
@@ -159,93 +177,81 @@ export const Layout = ({ children }) => {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-slate-50">
       <aside
         className={`${
           sidebarCollapsed ? 'w-[68px]' : 'w-64'
-        } sticky top-0 h-screen shrink-0 bg-[#0F172A] text-white flex flex-col overflow-hidden transition-all duration-300`}
+        } h-screen shrink-0 bg-[#0F172A] text-white transition-all duration-300`}
       >
-        <div className={`${sidebarCollapsed ? 'p-2' : 'p-6'} border-b border-slate-700`}>
-          <div className={sidebarCollapsed ? 'flex flex-col items-center gap-2' : 'flex items-start justify-between gap-3'}>
-            {!sidebarCollapsed && (
-              <div className="min-w-0">
-                <h1 className="text-xl font-bold tracking-tight">SignageQuote</h1>
-                <p className="text-xs text-slate-400 mt-1 truncate">{user?.full_name}</p>
-                <p className="text-xs text-slate-500 truncate">{user?.role}</p>
+        <div className="flex h-full flex-col">
+          <div className={`${sidebarCollapsed ? 'p-2' : 'p-6'} border-b border-slate-700`}>
+            <div className={sidebarCollapsed ? 'flex flex-col items-center gap-2' : 'flex items-start justify-between gap-3'}>
+              {!sidebarCollapsed && (
+                <div className="min-w-0">
+                  <h1 className="text-xl font-bold tracking-tight">SignageQuote</h1>
+                  <p className="mt-1 truncate text-xs text-slate-400">{user?.full_name}</p>
+                  <p className="truncate text-xs text-slate-500">{user?.role}</p>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setSidebarCollapsed((prev) => !prev)}
+                className="rounded-md border border-slate-700 p-1.5 text-slate-300 hover:bg-slate-800 hover:text-white"
+                title={sidebarCollapsed ? 'Expand menu' : 'Collapse menu'}
+              >
+                {sidebarCollapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
+              </button>
+            </div>
+
+            {sidebarCollapsed && (
+              <div className="mt-1 truncate text-center text-[8px] leading-tight text-slate-400" title={user?.full_name}>
+                {user?.full_name?.split(' ')[0] || 'User'}
               </div>
             )}
-
-            <button
-              type="button"
-              onClick={() => setSidebarCollapsed((prev) => !prev)}
-              className="rounded-md border border-slate-700 p-1.5 text-slate-300 hover:bg-slate-800 hover:text-white"
-              title={sidebarCollapsed ? 'Expand menu' : 'Collapse menu'}
-            >
-              {sidebarCollapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
-            </button>
           </div>
 
-          {sidebarCollapsed && (
-            <div className="mt-1 truncate text-center text-[8px] leading-tight text-slate-400" title={user?.full_name}>
-              {user?.full_name?.split(' ')[0] || 'User'}
-            </div>
-          )}
-        </div>
+          <nav className={`${sidebarCollapsed ? 'p-1.5' : 'p-4'} flex-1 space-y-1 overflow-y-auto overscroll-contain`}>
+            {allLinks.map((link) => {
+              const firstUtility = utilityLinks.length > 0 && link.to === utilityLinks[0].to;
 
-        <nav className={`${sidebarCollapsed ? 'p-1.5' : 'p-4'} min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain touch-pan-y`}>
-          {links.map((link) => (
-            <NavLinkItem
-              key={link.to}
-              to={link.to}
-              icon={link.icon}
-              label={link.label}
-            />
-          ))}
-        </nav>
+              return (
+                <div
+                  key={link.to}
+                  className={firstUtility ? 'mt-5 border-t border-slate-700 pt-5' : ''}
+                >
+                  <NavLinkItem
+                    to={link.to}
+                    icon={link.icon}
+                    label={link.label}
+                    testId={link.testId}
+                  />
+                </div>
+              );
+            })}
 
-        <div className={`${sidebarCollapsed ? 'p-1.5' : 'p-4'} shrink-0 border-t border-slate-700 space-y-1`}>
-          {isPlatformAdmin && (
-            <NavLinkItem
-              to="/platform-admin/login"
-              icon={Headset}
-              label="Platform Support"
-            />
-          )}
-
-          {['MD_ADMIN', 'CEO', 'MANAGER'].includes(role) && (
-            <NavLinkItem
-              to="/company-details"
-              icon={Building2}
-              label="Company Details"
-              testId="nav-company-details"
-            />
-          )}
-
-          <NavLinkItem
-            to="/settings"
-            icon={Settings}
-            label="Settings"
-            testId="nav-settings"
-          />
-
-          <Button
-            variant="ghost"
-            onClick={logout}
-            data-testid="logout-btn"
-            title="Logout"
-            className={`${
-              sidebarCollapsed
-                ? 'flex h-auto w-full flex-col items-center justify-center gap-1 px-1 py-2 text-center'
-                : 'w-full justify-start gap-3 px-4 py-2.5'
-            } text-slate-300 hover:bg-slate-800 hover:text-white`}
-          >
-            <LogOut size={18} strokeWidth={1.5} className="shrink-0" />
-            <span className={labelClass}>Logout</span>
-          </Button>
+            <Button
+              variant="ghost"
+              onClick={logout}
+              data-testid="logout-btn"
+              title="Logout"
+              className={`${
+                sidebarCollapsed
+                  ? 'flex h-auto w-full flex-col items-center justify-center gap-1 px-1 py-2 text-center'
+                  : 'w-full justify-start gap-3 px-4 py-2.5'
+              } text-slate-300 hover:bg-slate-800 hover:text-white`}
+            >
+              <LogOut size={18} strokeWidth={1.5} className="shrink-0" />
+              <span className={labelClass}>Logout</span>
+            </Button>
+          </nav>
         </div>
       </aside>
 
-      <main className="h-screen flex-1 overflow-y-auto overflow-x-hidden bg-slate-50 p-8 overscroll-contain touch-pan-y">
+      <main
+        ref={mainRef}
+        className="h-screen flex-1 overflow-y-auto overflow-x-hidden bg-slate-50 py-8 pl-8 pr-[7mm] overscroll-contain"
+      >
         {children}
       </main>
     </div>
