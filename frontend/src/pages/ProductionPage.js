@@ -353,6 +353,19 @@ function getStepPlacementsForDay(steps, day, timeSlots) {
   return placements;
 }
 
+
+function formatDateBadge(value) {
+  if (!value) return 'Not set';
+
+  const text = String(value);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return text.slice(0, 10) || 'Not set';
+
+  return date.toISOString().slice(0, 10);
+}
+
 function truncateFileName(name) {
   if (!name) return 'No job pack';
   return name.length > 24 ? `${name.slice(0, 21)}...` : name;

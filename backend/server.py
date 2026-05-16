@@ -666,6 +666,7 @@ class QuoteCreate(BaseModel):
     client_phone: Optional[str] = None
     client_address: Optional[str] = None
     description: Optional[str] = None
+    due_date: Optional[str] = None
 
 class Quote(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -680,6 +681,7 @@ class Quote(BaseModel):
     client_phone: Optional[str] = None
     client_address: Optional[str] = None
     description: Optional[str] = None
+    due_date: Optional[str] = None
     lines: List[QuoteLine] = []
     labour_items: List[QuoteLabour] = []
     installation_items: List[QuoteInstallation] = []
@@ -5293,6 +5295,7 @@ async def get_quote_blueprint(quote_id: str, user: dict = Depends(can_view_bluep
         "client_phone": quote.get("client_phone"),
         "client_address": quote.get("client_address"),
         "description": quote.get("description"),
+        "due_date": quote.get("due_date") or "",
         "blueprint": quote.get("blueprint") or {"signs": [], "total_cost": 0, "total_selling": 0, "total_profit": 0, "profit_margin_percent": 0},
         "quote_status": quote["quote_status"],
         "can_edit": can_edit,
@@ -5307,6 +5310,7 @@ class EstimateDraftSave(BaseModel):
     client_phone: Optional[str] = None
     client_address: Optional[str] = None
     description: Optional[str] = None
+    due_date: Optional[str] = None
     lines: List[dict] = []
     addons: List[dict] = []
     discount_percent: float = 0.0
@@ -5406,6 +5410,7 @@ async def save_estimate_draft(
             "client_phone": estimate.client_phone,
             "client_address": estimate.client_address,
             "description": estimate.description,
+            "due_date": estimate.due_date or "",
             "blueprint": blueprint,
             "total_amount": estimate.total_amount,
             "updated_at": datetime.now(timezone.utc).isoformat()
@@ -5413,6 +5418,37 @@ async def save_estimate_draft(
     )
 
     return {"message": "Estimate draft saved", "total_amount": estimate.total_amount}
+
+
+@api_router.put("/quotes/{quote_id}/due-date")
+async def update_quote_due_date(
+    quote_id: str,
+    payload: dict,
+    user: dict = Depends(can_edit_blueprint)
+):
+    quote = await db.quotes.find_one(
+        {"id": quote_id, "company_id": user["company_id"]},
+        {"_id": 0}
+    )
+
+    if not quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+
+    if quote.get("created_by") != user["id"] and user.get("role") != "MD_ADMIN":
+        raise HTTPException(status_code=403, detail="Only the quote creator can update the due date")
+
+    due_date = payload.get("due_date") or ""
+
+    await db.quotes.update_one(
+        {"id": quote_id, "company_id": user["company_id"]},
+        {"$set": {
+            "due_date": due_date,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+
+    return {"message": "Due date updated", "due_date": due_date}
+
 
 @api_router.put("/quotes/{quote_id}/client-details")
 async def update_quote_client_details(quote_id: str, client_name: str, client_email: Optional[str] = None, client_phone: Optional[str] = None, client_address: Optional[str] = None, description: Optional[str] = None, user: dict = Depends(can_edit_blueprint)):
@@ -5947,6 +5983,12 @@ async def export_delivery_note_pdf(quote_id: str, user: dict = Depends(get_curre
         ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
     ]))
     elements.append(info_table)
+
+    document_info = f"<b>{document_heading} DATE:</b> {quote_date}"
+    if due_date:
+        document_info += f" &nbsp;&nbsp; <b>DUE DATE:</b> {due_date}"
+    elements.append(Paragraph(document_info, normal))
+    elements.append(Spacer(1, 8))
 
     if quote.get("description"):
         elements.append(Paragraph(f"<b>PROJECT:</b> {quote.get('description')}", normal))
@@ -7007,6 +7049,7 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         quote_number = quote.get("quote_number") or quote.get("estimate_number") or "QUOTE"
         document_heading = "QUOTE"
     quote_date = quote.get("created_at", "")[:10] or datetime.now(timezone.utc).date().isoformat()
+    due_date = quote.get("due_date") or ""
     estimate_lines = blueprint.get("estimate_lines") or []
     addons = blueprint.get("estimate_addons") or []
 
@@ -7171,6 +7214,12 @@ async def export_quote_pdf(quote_id: str, user: dict = Depends(get_current_user)
         ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
     ]))
     elements.append(info_table)
+
+    document_info = f"<b>{document_heading} DATE:</b> {quote_date}"
+    if due_date:
+        document_info += f" &nbsp;&nbsp; <b>DUE DATE:</b> {due_date}"
+    elements.append(Paragraph(document_info, normal))
+    elements.append(Spacer(1, 8))
 
     if quote.get("description"):
         elements.append(Paragraph(f"<b>PROJECT:</b> {quote.get('description')}", normal))

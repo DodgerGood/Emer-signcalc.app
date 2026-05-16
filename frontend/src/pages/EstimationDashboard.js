@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo} from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
@@ -15,6 +15,55 @@ import ActionIconButton from '../components/ActionIconButton';
 import { Plus, Trash2, Calculator, FileText, Check, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCompanyCurrency, formatMoney } from '../lib/currency';
+
+
+function startLocalDay(value) {
+  const date = value ? new Date(value) : new Date();
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function isWeekendDate(date) {
+  const day = date.getDay();
+  return day === 0 || day === 6;
+}
+
+function workingDaysUntil(dateString) {
+  if (!dateString) return null;
+
+  const today = startLocalDay(new Date());
+  const due = startLocalDay(`${dateString}T00:00:00`);
+
+  if (Number.isNaN(due.getTime())) return null;
+
+  if (due < today) return -1;
+
+  let days = 0;
+  const cursor = new Date(today);
+
+  while (cursor < due) {
+    cursor.setDate(cursor.getDate() + 1);
+    if (!isWeekendDate(cursor)) {
+      days += 1;
+    }
+  }
+
+  return days;
+}
+
+function formatDateLabel(value) {
+  if (!value) return 'Not set';
+
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleDateString('en-ZA', {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+}
 
 export default function EstimationDashboard() {
   const currency = useCompanyCurrency();
@@ -59,6 +108,11 @@ export default function EstimationDashboard() {
   });
 
   const canEdit = user?.role === 'QUOTING_STAFF' && (!quote || quote.created_by === user?.id);
+  const [dueDate, setDueDate] = useState('');
+  const [savingDueDate, setSavingDueDate] = useState(false);
+
+  const dueDateWorkingDays = useMemo(() => workingDaysUntil(dueDate), [dueDate]);
+  const showDueDateWarning = dueDateWorkingDays !== null && dueDateWorkingDays < 15;
 
   // ✅ FIXED: wrap in useCallback
   const loadData = useCallback(async () => {
@@ -77,6 +131,7 @@ export default function EstimationDashboard() {
         const blueprintRes = await api.get(`/quotes/${quoteId}/blueprint`);
         setQuote(blueprintRes.data);
         setBlueprint(blueprintRes.data.blueprint);
+        setDueDate(blueprintRes.data.due_date || '');
       }
     } catch (error) {
       toast.error('Failed to load data');
@@ -232,6 +287,27 @@ export default function EstimationDashboard() {
     }
   };
 
+
+  const saveDueDate = async () => {
+    try {
+      setSavingDueDate(true);
+      const response = await api.put(`/quotes/${quoteId}/due-date`, {
+        due_date: dueDate || '',
+      });
+
+      setQuote((prev) => ({
+        ...(prev || {}),
+        due_date: response.data?.due_date || dueDate || '',
+      }));
+
+      toast.success('Due date saved');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to save due date');
+    } finally {
+      setSavingDueDate(false);
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -274,6 +350,53 @@ export default function EstimationDashboard() {
             )}
           </div>
         </div>
+
+
+        {quote && (
+          <Card className={showDueDateWarning ? 'border-amber-300 bg-amber-50' : ''}>
+            <CardHeader>
+              <CardTitle>Job Due Date</CardTitle>
+              <CardDescription>
+                This due date follows the estimate through quote, invoice and production.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto] md:items-end">
+                <div className="space-y-2">
+                  <Label>Due Date</Label>
+                  <Input
+                    type="date"
+                    value={dueDate || ''}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    disabled={!canEdit}
+                    data-testid="estimate-due-date-input"
+                  />
+                </div>
+
+                {canEdit && (
+                  <Button
+                    type="button"
+                    onClick={saveDueDate}
+                    disabled={savingDueDate}
+                    data-testid="save-due-date-btn"
+                  >
+                    {savingDueDate ? 'Saving...' : 'Save Due Date'}
+                  </Button>
+                )}
+              </div>
+
+              <div className="text-sm text-slate-600">
+                Selected due date: <strong>{formatDateLabel(dueDate)}</strong>
+              </div>
+
+              {showDueDateWarning && (
+                <div className="rounded-md border border-amber-300 bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-900">
+                  Warning: this due date is {dueDateWorkingDays < 0 ? 'overdue' : `${dueDateWorkingDays} working day${dueDateWorkingDays === 1 ? '' : 's'} away`}. It is less than 15 working days from today.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Sign Configuration Form */}
