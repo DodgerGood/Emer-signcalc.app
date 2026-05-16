@@ -431,7 +431,7 @@ export default function QuoteDetailPage() {
 
   return (
     <Layout>
-      <div className="space-y-6 fade-in max-w-7xl">
+      <div className="space-y-6 fade-in max-w-7xl pb-24 touch-pan-y">
         <div>
           <div className="flex justify-between items-center">
         <h1 className="text-4xl font-black tracking-tight leading-none">Estimate Builder</h1>
