@@ -27,6 +27,28 @@ export default function AdminSupportPage() {
     loadRequests();
   }, []);
 
+  const downloadAttachment = async (request, attachment) => {
+    try {
+      const response = await api.get(
+        `/admin/support-requests/${request.support_case_id}/attachments/${attachment.id}`,
+        { responseType: 'blob' }
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data], {
+        type: attachment.content_type || 'application/octet-stream',
+      }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', attachment.filename || 'support-attachment');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || 'Failed to download attachment.');
+    }
+  };
+
 const filteredRequests = requests.filter((request) => {
   const status = (request.status || '').toUpperCase().trim();
 
@@ -128,10 +150,13 @@ return (
                   <thead className="bg-slate-100 text-slate-700">
                     <tr>
                       <th className="text-left px-4 py-3">Case ID</th>
+                      <th className="text-left px-4 py-3">User / Seat</th>
                       <th className="text-left px-4 py-3">Email</th>
                       <th className="text-left px-4 py-3">Company</th>
                       <th className="text-left px-4 py-3">Role</th>
                       <th className="text-left px-4 py-3">Reason</th>
+                      <th className="text-left px-4 py-3">Message</th>
+                      <th className="text-left px-4 py-3">Attachments</th>
                       <th className="text-left px-4 py-3">Status</th>
                       <th className="text-left px-4 py-3">Created</th>
                       <th className="text-left px-4 py-3">Actions</th>
@@ -144,16 +169,41 @@ return (
                         <td className="px-4 py-3">
                           {request.support_case_id || 'Legacy record'}
                         </td>
+                        <td className="px-4 py-3">{request.full_name || '—'}</td>
                         <td className="px-4 py-3">{request.email}</td>
                         <td className="px-4 py-3">{request.company_name || '—'}</td>
                         <td className="px-4 py-3">{request.role || '—'}</td>
                         <td className="px-4 py-3">{request.reason}</td>
+                        <td className="px-4 py-3 max-w-xs">
+                          <div className="whitespace-pre-wrap text-slate-700">
+                            {request.message || '—'}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          {request.attachments?.length ? (
+                            <div className="flex flex-col gap-1">
+                              {request.attachments.map((attachment) => (
+                                <button
+                                  key={attachment.id}
+                                  type="button"
+                                  onClick={() => downloadAttachment(request, attachment)}
+                                  className="max-w-[180px] truncate rounded bg-slate-100 px-2 py-1 text-left text-xs text-blue-700 hover:bg-blue-50"
+                                  title={attachment.filename}
+                                >
+                                  {attachment.filename}
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
                         <td className="px-4 py-3">{request.status}</td>
                         <td className="px-4 py-3">{request.created_at}</td>
 
                         <td className="px-4 py-3">
                           <div className="flex flex-col gap-2 items-start">
-                            {request.status === 'OPEN' && (
+                            {request.status === 'OPEN' && request.request_type !== 'IN_APP_SUPPORT' && (
                               <>
                                 <button
                                   onClick={async () => {

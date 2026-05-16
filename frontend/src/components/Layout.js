@@ -157,9 +157,7 @@ export const Layout = ({ children }) => {
   const mainLinks = getMainLinks();
 
   const utilityLinks = [
-    ...(isPlatformAdmin
-      ? [{ to: '/platform-admin/login', icon: Headset, label: 'Platform Support' }]
-      : []),
+    { to: '/contact-support', icon: Headset, label: 'Contact Support', testId: 'nav-contact-support' },
     ...(['MD_ADMIN', 'CEO', 'MANAGER'].includes(role)
       ? [{ to: '/company-details', icon: Building2, label: 'Company Details', testId: 'nav-company-details' }]
       : []),

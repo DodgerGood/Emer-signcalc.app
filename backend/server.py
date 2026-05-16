@@ -1,5 +1,5 @@
-from fastapi import UploadFile, File, HTTPException
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Response, UploadFile, File
+from fastapi import UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Response, UploadFile, File, Form
 from fastapi.exceptions import RequestValidationError
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
@@ -177,6 +177,7 @@ class AdminSupportActionRequest(BaseModel):
 class SupportRequestRecord(BaseModel):
     id: str
     support_case_id: Optional[str] = None
+    request_type: Optional[str] = None
     email: EmailStr
     full_name: Optional[str] = None
     company_id: Optional[str] = None
@@ -188,6 +189,7 @@ class SupportRequestRecord(BaseModel):
     current_lockout_until: Optional[str] = None
     current_device_lock_until: Optional[str] = None
     message: Optional[str] = None
+    attachments: List[dict] = []
     created_at: str
     status: str
     resolved_at: Optional[str] = None
@@ -1264,10 +1266,178 @@ async def contact_support(req: SupportRequest):
 
     return {"message": "Support request submitted successfully."}
 
+
+
+@api_router.post("/support/contact")
+async def create_in_app_support_request(
+    reason: str = Form("General Support"),
+    message: str = Form(...),
+    attachments: List[UploadFile] = File(default=[]),
+    user: dict = Depends(get_current_user)
+):
+    company = None
+
+    if user.get("company_id"):
+        company = await db.companies.find_one(
+            {"id": user.get("company_id")},
+            {"_id": 0}
+        )
+
+    allowed_content_types = {
+        "application/pdf",
+        "image/png",
+        "image/jpeg",
+        "image/jpg",
+        "text/plain",
+        "text/csv",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    }
+
+    max_file_size = 5 * 1024 * 1024
+    stored_attachments = []
+
+    for upload in attachments or []:
+        if not upload or not upload.filename:
+            continue
+
+        content_type = upload.content_type or "application/octet-stream"
+
+        if content_type not in allowed_content_types:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported file type: {upload.filename}"
+            )
+
+        file_bytes = await upload.read()
+
+        if len(file_bytes) > max_file_size:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{upload.filename} is larger than 5MB"
+            )
+
+        stored_attachments.append({
+            "id": str(uuid.uuid4()),
+            "filename": upload.filename,
+            "content_type": content_type,
+            "size_bytes": len(file_bytes),
+            "content_base64": base64.b64encode(file_bytes).decode("utf-8"),
+            "uploaded_at": datetime.now(timezone.utc).isoformat(),
+        })
+
+    support_doc = {
+        "id": str(uuid.uuid4()),
+        "support_case_id": f"SUP-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}",
+        "request_type": "IN_APP_SUPPORT",
+        "email": user.get("email"),
+        "full_name": user.get("full_name"),
+        "company_id": user.get("company_id"),
+        "company_name": (company or {}).get("name"),
+        "role": user.get("role"),
+        "reason": reason or "General Support",
+        "requested_device_id": None,
+        "current_device_id": user.get("device_id"),
+        "current_lockout_until": user.get("lockout_until"),
+        "current_device_lock_until": user.get("device_lock_until"),
+        "message": message,
+        "attachments": stored_attachments,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "status": "OPEN",
+        "resolved_at": None,
+        "resolution_action": None,
+        "resolved_by": None,
+    }
+
+    await db.support_requests.insert_one(support_doc)
+
+    try:
+        attachment_list = "\\n".join(
+            [f"- {item.get('filename')} ({item.get('content_type')})" for item in stored_attachments]
+        ) or "No attachments"
+
+        send_email_alert(
+            subject=f"[Signomics Support] {support_doc['support_case_id']} | {support_doc.get('company_name') or 'Unknown Company'} | Contact Support",
+            body=f"""A new in-app support request has been submitted.
+
+Support Case ID: {support_doc['support_case_id']}
+Status: {support_doc['status']}
+
+Company: {support_doc.get('company_name') or 'Not provided'}
+User: {support_doc.get('full_name') or 'Not provided'}
+Email: {support_doc.get('email') or 'Not provided'}
+Role: {support_doc.get('role') or 'Not provided'}
+
+Reason: {support_doc.get('reason')}
+
+Message:
+{support_doc.get('message') or 'No message provided'}
+
+Attachments:
+{attachment_list}
+""",
+            to_email=SMTP_FROM_EMAIL
+        )
+    except Exception as e:
+        print(f"Failed to send in-app support email: {e}")
+
+    return {
+        "message": "Support request submitted successfully.",
+        "support_case_id": support_doc["support_case_id"],
+    }
+
+
+@api_router.get("/admin/support-requests/{case_id}/attachments/{attachment_id}")
+async def download_support_attachment(case_id: str, attachment_id: str):
+    support_request = await db.support_requests.find_one(
+        {"support_case_id": case_id},
+        {"_id": 0}
+    )
+
+    if not support_request:
+        raise HTTPException(status_code=404, detail="Support request not found")
+
+    attachment = next(
+        (
+            item for item in support_request.get("attachments", [])
+            if item.get("id") == attachment_id
+        ),
+        None
+    )
+
+    if not attachment:
+        raise HTTPException(status_code=404, detail="Attachment not found")
+
+    try:
+        file_bytes = base64.b64decode(attachment.get("content_base64") or "")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Stored attachment could not be decoded")
+
+    safe_filename = (
+        attachment.get("filename") or "support-attachment"
+    ).replace('"', "").replace("\\n", " ").replace("\\r", " ")
+
+    return Response(
+        content=file_bytes,
+        media_type=attachment.get("content_type") or "application/octet-stream",
+        headers={
+            "Content-Disposition": f'attachment; filename="{safe_filename}"'
+        }
+    )
+
 @api_router.get("/admin/support-requests", response_model=List[SupportRequestRecord])
 async def list_support_requests():
     requests = await db.support_requests.find({}, {"_id": 0}).to_list(1000)
     requests.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+
+    for request in requests:
+        safe_attachments = []
+        for attachment in request.get("attachments", []) or []:
+            safe_attachment = dict(attachment)
+            safe_attachment.pop("content_base64", None)
+            safe_attachments.append(safe_attachment)
+        request["attachments"] = safe_attachments
+
     return [SupportRequestRecord(**r) for r in requests]
 
 
@@ -1415,6 +1585,15 @@ async def hard_delete_support_request(case_id: str):
 async def list_support_requests():
     requests = await db.support_requests.find({}, {"_id": 0}).to_list(1000)
     requests.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+
+    for request in requests:
+        safe_attachments = []
+        for attachment in request.get("attachments", []) or []:
+            safe_attachment = dict(attachment)
+            safe_attachment.pop("content_base64", None)
+            safe_attachments.append(safe_attachment)
+        request["attachments"] = safe_attachments
+
     return [SupportRequestRecord(**r) for r in requests]
 
 class NewCompanySetupRequest(BaseModel):

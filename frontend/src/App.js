@@ -28,6 +28,7 @@ import AdminCommissioningPage from './pages/AdminCommissioningPage';
 import AdminSeatManagementPage from './pages/AdminSeatManagementPage';
 import AdminCompanyDetailPage from './pages/AdminCompanyDetailPage';
 import PlatformAdminLoginPage from './pages/PlatformAdminLoginPage';
+import ContactSupportPage from './pages/ContactSupportPage';
 import AdminBillingTrackingPage from './pages/AdminBillingTrackingPage';
 
 
@@ -222,6 +223,15 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <SettingsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/contact-support"
+        element={
+          <ProtectedRoute>
+            <ContactSupportPage />
           </ProtectedRoute>
         }
       />
