@@ -43,7 +43,7 @@ export const Layout = ({ children }) => {
         });
       }
     }, 80);
-  }, [location.pathname, sidebarCollapsed, role]);
+  }, [location.pathname, sidebarCollapsed]);
 
   const role = user?.role;
 
