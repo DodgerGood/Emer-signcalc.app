@@ -172,6 +172,13 @@ export default function ApprovalsPage() {
     return date.toLocaleDateString('en-ZA');
   };
 
+  const formatDueDate = (value) => {
+    if (!value) return '-';
+    const date = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return String(value).slice(0, 10) || '-';
+    return date.toLocaleDateString('en-ZA');
+  };
+
   const uploadJobTicket = async (job) => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -332,6 +339,10 @@ export default function ApprovalsPage() {
                     <TableRow key={job.id}>
                       <TableCell className="px-4 py-3 font-semibold">
                         {job.client_name}
+                      </TableCell>
+
+                      <TableCell className="px-4 py-3 text-center font-semibold text-amber-700">
+                        {formatDueDate(job.due_date)}
                       </TableCell>
 
                       <TableCell className="px-4 py-3 text-center">

@@ -331,11 +331,6 @@ export default function QuoteDetailPage() {
 
   const handleSaveAndClose = async () => {
     if (!clientData.due_date) {
-      toast.error('Please select a job due date before saving');
-      return;
-    }
-
-    if (!clientData.due_date) {
       toast.error('Job Due Date is required before saving the estimate.');
       return;
     }
