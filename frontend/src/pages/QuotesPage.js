@@ -180,7 +180,14 @@ export default function QuotesPage() {
         });
       }
 
-      const response = await api.post('/quotes', formData);
+      const response = await api.post('/quotes', {
+        client_name: formData.client_name,
+        client_email: formData.client_email || null,
+        client_phone: formData.client_phone || null,
+        client_address: formData.client_address || null,
+        description: formData.description || null,
+        due_date: formData.due_date || null,
+      });
       toast.success('Estimate created');
 
       setDialogOpen(false);
@@ -190,6 +197,7 @@ export default function QuotesPage() {
         client_phone: '',
         client_address: '',
         description: '',
+        due_date: '',
       });
       setClientSearch('');
 

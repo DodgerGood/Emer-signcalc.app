@@ -346,12 +346,6 @@ export default function ApprovalsPage() {
                       </TableCell>
 
                       <TableCell className="px-4 py-3 text-center">
-                        <span className={`rounded-full px-2 py-1 text-xs font-semibold ${job.due_date ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
-                          {formatDisplayDate(job.due_date)}
-                        </span>
-                      </TableCell>
-
-                      <TableCell className="px-4 py-3 text-center">
                         <ActionIconButton
                           icon={<FileText size={16} />}
                           label={job.invoice_number || 'Invoice'}
