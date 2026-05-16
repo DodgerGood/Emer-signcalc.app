@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -27,10 +27,23 @@ export const Layout = ({ children }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     return localStorage.getItem('signomics-sidebar-collapsed') === 'true';
   });
+  const activeNavRef = useRef(null);
 
   useEffect(() => {
     localStorage.setItem('signomics-sidebar-collapsed', String(sidebarCollapsed));
   }, [sidebarCollapsed]);
+
+  useEffect(() => {
+    window.setTimeout(() => {
+      if (activeNavRef.current) {
+        activeNavRef.current.scrollIntoView({
+          block: 'nearest',
+          inline: 'nearest',
+          behavior: 'smooth',
+        });
+      }
+    }, 80);
+  }, [location.pathname, sidebarCollapsed, role]);
 
   const role = user?.role;
 
@@ -146,11 +159,11 @@ export const Layout = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="flex h-screen overflow-hidden">
       <aside
         className={`${
           sidebarCollapsed ? 'w-[68px]' : 'w-64'
-        } shrink-0 bg-[#0F172A] text-white flex flex-col transition-all duration-300`}
+        } sticky top-0 h-screen shrink-0 bg-[#0F172A] text-white flex flex-col overflow-hidden transition-all duration-300`}
       >
         <div className={`${sidebarCollapsed ? 'p-2' : 'p-6'} border-b border-slate-700`}>
           <div className={sidebarCollapsed ? 'flex flex-col items-center gap-2' : 'flex items-start justify-between gap-3'}>
@@ -179,7 +192,7 @@ export const Layout = ({ children }) => {
           )}
         </div>
 
-        <nav className={`${sidebarCollapsed ? 'p-1.5' : 'p-4'} flex-1 space-y-1 overflow-y-auto`}>
+        <nav className={`${sidebarCollapsed ? 'p-1.5' : 'p-4'} min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain touch-pan-y`}>
           {links.map((link) => (
             <NavLinkItem
               key={link.to}
@@ -190,7 +203,7 @@ export const Layout = ({ children }) => {
           ))}
         </nav>
 
-        <div className={`${sidebarCollapsed ? 'p-1.5' : 'p-4'} border-t border-slate-700 space-y-1`}>
+        <div className={`${sidebarCollapsed ? 'p-1.5' : 'p-4'} shrink-0 border-t border-slate-700 space-y-1`}>
           {isPlatformAdmin && (
             <NavLinkItem
               to="/platform-admin/login"
@@ -232,7 +245,7 @@ export const Layout = ({ children }) => {
         </div>
       </aside>
 
-      <main className="flex-1 bg-slate-50 p-8 overflow-x-hidden">
+      <main className="h-screen flex-1 overflow-y-auto overflow-x-hidden bg-slate-50 p-8 overscroll-contain touch-pan-y">
         {children}
       </main>
     </div>
