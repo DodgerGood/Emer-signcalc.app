@@ -24,7 +24,6 @@ export const Layout = ({ children }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const mainRef = useRef(null);
-  const activeLinkRef = useRef(null);
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     return localStorage.getItem('signomics-sidebar-collapsed') === 'true';
@@ -42,16 +41,6 @@ export const Layout = ({ children }) => {
 
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, [location.pathname]);
-
-  // Sidebar scrolls independently and keeps the selected menu item in view.
-  useEffect(() => {
-    if (activeLinkRef.current) {
-      activeLinkRef.current.scrollIntoView({
-        block: 'nearest',
-        inline: 'nearest',
-      });
-    }
-  }, [location.pathname, sidebarCollapsed]);
 
   const role = user?.role;
 
@@ -185,7 +174,6 @@ export const Layout = ({ children }) => {
 
     return (
       <Link
-        ref={active ? activeLinkRef : null}
         to={to}
         data-testid={testId || `nav-${label.toLowerCase().replace(/\s+/g, '-')}`}
         className={getNavClass(active)}
