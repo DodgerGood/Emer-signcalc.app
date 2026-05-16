@@ -61,7 +61,7 @@ export const Layout = ({ children }) => {
     (user?.email || '').trim().toLowerCase()
   );
 
-  const getLinks = () => {
+  const getMainLinks = () => {
     if (role === 'MD_ADMIN') {
       return [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -129,7 +129,7 @@ export const Layout = ({ children }) => {
     return [];
   };
 
-  const mainLinks = getLinks();
+  const mainLinks = getMainLinks();
 
   const utilityLinks = [
     ...(isPlatformAdmin
@@ -141,12 +141,27 @@ export const Layout = ({ children }) => {
     { to: '/settings', icon: Settings, label: 'Settings', testId: 'nav-settings' },
   ];
 
-  const allLinks = [...mainLinks, ...utilityLinks];
+  const menuItems = [
+    ...mainLinks.map((item) => ({ ...item, section: 'main', type: 'link' })),
+    ...utilityLinks.map((item, index) => ({
+      ...item,
+      section: 'utility',
+      type: 'link',
+      firstUtility: index === 0,
+    })),
+    {
+      label: 'Logout',
+      icon: LogOut,
+      type: 'button',
+      section: 'utility',
+      testId: 'logout-btn',
+    },
+  ];
 
   const getNavClass = (active) => {
     const base = sidebarCollapsed
-      ? 'flex min-h-[58px] flex-col items-center justify-center gap-1 rounded-md px-1 py-2 text-center transition-colors'
-      : 'flex items-center gap-3 rounded-md px-4 py-2.5 transition-colors';
+      ? 'flex min-h-[58px] w-full flex-col items-center justify-center gap-1 rounded-md px-1 py-2 text-center transition-colors'
+      : 'flex w-full items-center gap-3 rounded-md px-4 py-2.5 transition-colors';
 
     const tone = active
       ? 'bg-[#2563EB] text-white'
@@ -159,8 +174,13 @@ export const Layout = ({ children }) => {
     ? 'block max-w-[58px] text-center text-[8px] font-medium leading-tight'
     : 'text-sm font-medium';
 
+  const isActivePath = (to) => {
+    if (to === '/') return location.pathname === '/';
+    return location.pathname === to || location.pathname.startsWith(`${to}/`);
+  };
+
   const NavLinkItem = ({ to, icon: Icon, label, testId }) => {
-    const active = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
+    const active = isActivePath(to);
 
     return (
       <Link
@@ -176,6 +196,19 @@ export const Layout = ({ children }) => {
     );
   };
 
+  const LogoutItem = ({ icon: Icon, label, testId }) => (
+    <Button
+      variant="ghost"
+      onClick={logout}
+      data-testid={testId}
+      title={label}
+      className={`${getNavClass(false)} h-auto`}
+    >
+      <Icon size={18} strokeWidth={1.5} className="shrink-0" />
+      <span className={labelClass}>{label}</span>
+    </Button>
+  );
+
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
       <aside
@@ -184,7 +217,7 @@ export const Layout = ({ children }) => {
         } h-screen shrink-0 bg-[#0F172A] text-white transition-all duration-300`}
       >
         <div className="flex h-full flex-col">
-          <div className={`${sidebarCollapsed ? 'p-2' : 'p-6'} border-b border-slate-700`}>
+          <div className={`${sidebarCollapsed ? 'p-2' : 'p-6'} shrink-0 border-b border-slate-700`}>
             <div className={sidebarCollapsed ? 'flex flex-col items-center gap-2' : 'flex items-start justify-between gap-3'}>
               {!sidebarCollapsed && (
                 <div className="min-w-0">
@@ -211,39 +244,29 @@ export const Layout = ({ children }) => {
             )}
           </div>
 
-          <nav className={`${sidebarCollapsed ? 'p-1.5' : 'p-4'} flex-1 space-y-1 overflow-y-auto overscroll-contain`}>
-            {allLinks.map((link) => {
-              const firstUtility = utilityLinks.length > 0 && link.to === utilityLinks[0].to;
+          <nav className={`${sidebarCollapsed ? 'p-1.5 pb-10' : 'p-4 pb-10'} flex-1 space-y-1 overflow-y-auto overscroll-contain`}>
+            {menuItems.map((item, index) => {
+              const wrapperClass = item.firstUtility ? 'mt-4 border-t border-slate-700 pt-4' : '';
 
               return (
-                <div
-                  key={link.to}
-                  className={firstUtility ? 'mt-5 border-t border-slate-700 pt-5' : ''}
-                >
-                  <NavLinkItem
-                    to={link.to}
-                    icon={link.icon}
-                    label={link.label}
-                    testId={link.testId}
-                  />
+                <div key={`${item.type}-${item.to || item.label}-${index}`} className={wrapperClass}>
+                  {item.type === 'button' ? (
+                    <LogoutItem
+                      icon={item.icon}
+                      label={item.label}
+                      testId={item.testId}
+                    />
+                  ) : (
+                    <NavLinkItem
+                      to={item.to}
+                      icon={item.icon}
+                      label={item.label}
+                      testId={item.testId}
+                    />
+                  )}
                 </div>
               );
             })}
-
-            <Button
-              variant="ghost"
-              onClick={logout}
-              data-testid="logout-btn"
-              title="Logout"
-              className={`${
-                sidebarCollapsed
-                  ? 'flex h-auto w-full flex-col items-center justify-center gap-1 px-1 py-2 text-center'
-                  : 'w-full justify-start gap-3 px-4 py-2.5'
-              } text-slate-300 hover:bg-slate-800 hover:text-white`}
-            >
-              <LogOut size={18} strokeWidth={1.5} className="shrink-0" />
-              <span className={labelClass}>Logout</span>
-            </Button>
           </nav>
         </div>
       </aside>
