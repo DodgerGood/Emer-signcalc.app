@@ -21,7 +21,13 @@ export function PlatformAdminLayout({ children }) {
   const navRef = useRef(null);
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    return localStorage.getItem('signomics-platform-sidebar-collapsed') !== 'false';
+    const saved = localStorage.getItem('signomics-platform-sidebar-collapsed');
+
+    if (saved === null) {
+      return true;
+    }
+
+    return saved === 'true';
   });
 
   useEffect(() => {
