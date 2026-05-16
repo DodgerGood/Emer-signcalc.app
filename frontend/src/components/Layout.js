@@ -160,7 +160,7 @@ export const Layout = ({ children }) => {
 
   const getNavClass = (active) => {
     const base = sidebarCollapsed
-      ? 'flex min-h-[58px] w-full flex-col items-center justify-center gap-1 rounded-md px-1 py-2 text-center transition-colors'
+      ? 'flex min-h-[50px] w-full flex-col items-center justify-center gap-1 rounded-md px-1 py-1.5 text-center transition-colors'
       : 'flex w-full items-center gap-3 rounded-md px-4 py-2.5 transition-colors';
 
     const tone = active
@@ -171,7 +171,7 @@ export const Layout = ({ children }) => {
   };
 
   const labelClass = sidebarCollapsed
-    ? 'block max-w-[58px] text-center text-[8px] font-medium leading-tight'
+    ? 'block max-w-[56px] text-center text-[8px] font-medium leading-tight'
     : 'text-sm font-medium';
 
   const isActivePath = (to) => {
@@ -197,16 +197,20 @@ export const Layout = ({ children }) => {
   };
 
   const LogoutItem = ({ icon: Icon, label, testId }) => (
-    <Button
-      variant="ghost"
+    <button
+      type="button"
       onClick={logout}
       data-testid={testId}
       title={label}
-      className={`${getNavClass(false)} h-auto`}
+      className={`${
+        sidebarCollapsed
+          ? 'flex min-h-[50px] w-full flex-col items-center justify-center gap-1 rounded-md px-1 py-1.5 text-center transition-colors'
+          : 'flex w-full items-center gap-3 rounded-md px-4 py-2.5 transition-colors'
+      } text-slate-300 hover:bg-red-900/40 hover:text-white`}
     >
-      <Icon size={18} strokeWidth={1.5} className="shrink-0" />
+      <Icon size={18} strokeWidth={1.5} className="shrink-0 text-red-300" />
       <span className={labelClass}>{label}</span>
-    </Button>
+    </button>
   );
 
   return (
@@ -244,7 +248,7 @@ export const Layout = ({ children }) => {
             )}
           </div>
 
-          <nav className={`${sidebarCollapsed ? 'p-1.5 pb-10' : 'p-4 pb-10'} flex-1 space-y-1 overflow-y-auto overscroll-contain`}>
+          <nav className={`${sidebarCollapsed ? 'p-1.5 pb-20' : 'p-4 pb-20'} min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain`}>
             {menuItems.map((item, index) => {
               const wrapperClass = item.firstUtility ? 'mt-4 border-t border-slate-700 pt-4' : '';
 
@@ -273,9 +277,11 @@ export const Layout = ({ children }) => {
 
       <main
         ref={mainRef}
-        className="h-screen flex-1 overflow-y-auto overflow-x-hidden bg-slate-50 py-8 pl-8 pr-[7mm] overscroll-contain"
+        className="h-screen min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-slate-50 py-8 pl-8 pr-[12mm] overscroll-contain"
       >
-        {children}
+        <div className="min-w-0 pr-[7mm]">
+          {children}
+        </div>
       </main>
     </div>
   );
