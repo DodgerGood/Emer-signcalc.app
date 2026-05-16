@@ -170,6 +170,23 @@ class SupportRequest(BaseModel):
     current_lockout_until: Optional[str] = None
     current_device_lock_until: Optional[str] = None
 
+
+class PlatformOwnerSettings(BaseModel):
+    company_name: Optional[str] = None
+    trading_name: Optional[str] = None
+    registration_number: Optional[str] = None
+    vat_number: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[EmailStr] = None
+    website: Optional[str] = None
+    address: Optional[str] = None
+    bank_name: Optional[str] = None
+    bank_account_name: Optional[str] = None
+    bank_account_number: Optional[str] = None
+    bank_branch_code: Optional[str] = None
+    logo_data_url: Optional[str] = None
+    platform_logo_data_url: Optional[str] = None
+
 class AdminSupportActionRequest(BaseModel):
     action: str
     resolved_by: Optional[str] = None
@@ -1424,6 +1441,56 @@ async def download_support_attachment(case_id: str, attachment_id: str):
             "Content-Disposition": f'attachment; filename="{safe_filename}"'
         }
     )
+
+
+@api_router.get("/admin/platform-settings")
+async def get_platform_settings():
+    settings = await db.platform_settings.find_one(
+        {"id": "owner_details"},
+        {"_id": 0}
+    )
+
+    if not settings:
+        return {
+            "id": "owner_details",
+            "company_name": "",
+            "trading_name": "",
+            "registration_number": "",
+            "vat_number": "",
+            "phone": "",
+            "email": "",
+            "website": "",
+            "address": "",
+            "bank_name": "",
+            "bank_account_name": "",
+            "bank_account_number": "",
+            "bank_branch_code": "",
+            "logo_data_url": "",
+            "platform_logo_data_url": "",
+        }
+
+    return settings
+
+
+@api_router.put("/admin/platform-settings")
+async def update_platform_settings(req: PlatformOwnerSettings):
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    doc = req.model_dump()
+    doc["id"] = "owner_details"
+    doc["updated_at"] = now_iso
+
+    await db.platform_settings.update_one(
+        {"id": "owner_details"},
+        {"$set": doc},
+        upsert=True
+    )
+
+    return {
+        "message": "Platform settings saved",
+        "settings": doc,
+    }
+)
 
 @api_router.get("/admin/support-requests", response_model=List[SupportRequestRecord])
 async def list_support_requests():

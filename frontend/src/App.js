@@ -28,6 +28,7 @@ import AdminCommissioningPage from './pages/AdminCommissioningPage';
 import AdminSeatManagementPage from './pages/AdminSeatManagementPage';
 import AdminCompanyDetailPage from './pages/AdminCompanyDetailPage';
 import PlatformAdminLoginPage from './pages/PlatformAdminLoginPage';
+import PlatformAdminSettingsPage from './pages/PlatformAdminSettingsPage';
 import ContactSupportPage from './pages/ContactSupportPage';
 import AdminBillingTrackingPage from './pages/AdminBillingTrackingPage';
 
@@ -295,6 +296,15 @@ const AppRoutes = () => {
         element={
           <PlatformAdminProtectedRoute>
             <AdminSeatManagementPage />
+          </PlatformAdminProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/platform-admin/settings"
+        element={
+          <PlatformAdminProtectedRoute>
+            <PlatformAdminSettingsPage />
           </PlatformAdminProtectedRoute>
         }
       />

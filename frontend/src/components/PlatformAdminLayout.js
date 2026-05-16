@@ -11,6 +11,7 @@ import {
   ChevronsRight,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import api from '../lib/api';
 
 export function PlatformAdminLayout({ children }) {
   const location = useLocation();
@@ -30,9 +31,34 @@ export function PlatformAdminLayout({ children }) {
     return saved === 'true';
   });
 
+  const [platformSettings, setPlatformSettings] = useState({
+    trading_name: '',
+    company_name: '',
+    platform_logo_data_url: '',
+    logo_data_url: '',
+  });
+
   useEffect(() => {
     localStorage.setItem('signomics-platform-sidebar-collapsed', String(sidebarCollapsed));
   }, [sidebarCollapsed]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    api.get('/admin/platform-settings')
+      .then((response) => {
+        if (isMounted) {
+          setPlatformSettings(response.data || {});
+        }
+      })
+      .catch(() => {
+        // Keep default branding if settings are not available.
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Main body opens at the top on page change. Sidebar is NOT moved.
   useEffect(() => {
@@ -72,11 +98,6 @@ export function PlatformAdminLayout({ children }) {
   ];
 
   const utilityItems = [
-    {
-      label: 'Back to Main App',
-      href: '/',
-      icon: ArrowLeftRight,
-    },
     {
       label: 'Admin Settings',
       href: '/platform-admin/settings',
@@ -133,7 +154,17 @@ export function PlatformAdminLayout({ children }) {
             <div className={sidebarCollapsed ? 'flex flex-col items-center gap-2' : 'flex items-start justify-between gap-3'}>
               {!sidebarCollapsed && (
                 <div className="min-w-0">
-                  <div className="text-xl font-bold tracking-tight">SignageQuote</div>
+                  {(platformSettings.platform_logo_data_url || platformSettings.logo_data_url) ? (
+                    <img
+                      src={platformSettings.platform_logo_data_url || platformSettings.logo_data_url}
+                      alt="Platform logo"
+                      className="mb-3 max-h-14 max-w-full object-contain"
+                    />
+                  ) : (
+                    <div className="text-xl font-bold tracking-tight">
+                      {platformSettings.trading_name || platformSettings.company_name || 'SignageQuote'}
+                    </div>
+                  )}
                   <div className="mt-2 text-sm font-semibold">Platform Admin</div>
                   <div className="mt-1 truncate text-xs text-slate-300">{user?.full_name}</div>
                   <div className="truncate text-xs text-slate-400">{user?.role}</div>
@@ -151,8 +182,17 @@ export function PlatformAdminLayout({ children }) {
             </div>
 
             {sidebarCollapsed && (
-              <div className="mt-1 truncate text-center text-[8px] leading-tight text-slate-400" title={user?.full_name}>
-                {user?.full_name?.split(' ')[0] || 'Admin'}
+              <div className="mt-1 flex flex-col items-center gap-1">
+                {(platformSettings.platform_logo_data_url || platformSettings.logo_data_url) ? (
+                  <img
+                    src={platformSettings.platform_logo_data_url || platformSettings.logo_data_url}
+                    alt="Platform logo"
+                    className="max-h-8 max-w-[44px] object-contain"
+                  />
+                ) : null}
+                <div className="truncate text-center text-[8px] leading-tight text-slate-400" title={user?.full_name}>
+                  {user?.full_name?.split(' ')[0] || 'Admin'}
+                </div>
               </div>
             )}
           </div>
