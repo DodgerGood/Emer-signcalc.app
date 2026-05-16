@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -24,6 +24,7 @@ export const Layout = ({ children }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const mainRef = useRef(null);
+  const navRef = useRef(null);
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     return localStorage.getItem('signomics-sidebar-collapsed') === 'true';
@@ -41,6 +42,38 @@ export const Layout = ({ children }) => {
 
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, [location.pathname]);
+
+  const saveSidebarScroll = () => {
+    if (!navRef.current) return;
+
+    const value = navRef.current.scrollTop;
+    window.__signomicsSidebarScrollTop = value;
+    sessionStorage.setItem('signomics-sidebar-scroll-top', String(value));
+  };
+
+  const restoreSidebarScroll = () => {
+    if (!navRef.current) return;
+
+    const value = Number(
+      window.__signomicsSidebarScrollTop ??
+      sessionStorage.getItem('signomics-sidebar-scroll-top') ??
+      0
+    ) || 0;
+
+    navRef.current.scrollTop = value;
+
+    requestAnimationFrame(() => {
+      if (navRef.current) navRef.current.scrollTop = value;
+    });
+
+    setTimeout(() => {
+      if (navRef.current) navRef.current.scrollTop = value;
+    }, 50);
+  };
+
+  useLayoutEffect(() => {
+    restoreSidebarScroll();
+  }, [location.pathname, sidebarCollapsed]);
 
   const role = user?.role;
 
@@ -175,6 +208,7 @@ export const Layout = ({ children }) => {
     return (
       <Link
         to={to}
+        onClick={saveSidebarScroll}
         data-testid={testId || `nav-${label.toLowerCase().replace(/\s+/g, '-')}`}
         className={getNavClass(active)}
         title={label}
@@ -237,7 +271,11 @@ export const Layout = ({ children }) => {
             )}
           </div>
 
-          <nav className={`${sidebarCollapsed ? 'p-1.5 pb-56' : 'p-4 pb-56'} min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain touch-pan-y`}>
+          <nav
+            ref={navRef}
+            onScroll={saveSidebarScroll}
+            className={`${sidebarCollapsed ? 'p-1.5 pb-56' : 'p-4 pb-56'} min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain touch-pan-y`}
+          >
             {menuItems.map((item, index) => {
               const wrapperClass = item.firstUtility ? 'mt-4 border-t border-slate-700 pt-4' : '';
 
