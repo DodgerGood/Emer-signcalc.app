@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Toaster } from './components/ui/sonner';
 import '@/App.css';
@@ -29,6 +29,28 @@ import AdminSeatManagementPage from './pages/AdminSeatManagementPage';
 import AdminCompanyDetailPage from './pages/AdminCompanyDetailPage';
 import PlatformAdminLoginPage from './pages/PlatformAdminLoginPage';
 import AdminBillingTrackingPage from './pages/AdminBillingTrackingPage';
+
+
+function ScrollToTop() {
+  const location = useLocation();
+
+  React.useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+
+    const scrollableElements = document.querySelectorAll(
+      'main, [role="main"], .overflow-y-auto, .overflow-auto'
+    );
+
+    scrollableElements.forEach((element) => {
+      if (element && typeof element.scrollTo === 'function') {
+        element.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      }
+    });
+  }, [location.pathname]);
+
+  return null;
+}
+
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -274,6 +296,7 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+      <ScrollToTop />
         <div className="App paper-grain">
           <ErrorBoundary>
             <AppRoutes />
