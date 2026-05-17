@@ -171,7 +171,7 @@ export default function StockPage() {
 
   return (
     <Layout>
-      <div className="space-y-6 fade-in max-w-7xl">
+      <div className="space-y-6 fade-in w-full">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <h1 className="text-4xl font-black tracking-tight leading-none">Stock</h1>

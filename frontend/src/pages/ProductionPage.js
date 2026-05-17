@@ -963,7 +963,7 @@ export default function ProductionPage() {
 
   return (
     <Layout>
-      <div className="max-w-7xl space-y-6 fade-in">
+      <div className="w-full space-y-6 fade-in">
         <div>
           <h1 className="text-4xl font-black tracking-tight">Production Tracking</h1>
           <p className="mt-2 text-slate-600">

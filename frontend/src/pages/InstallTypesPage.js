@@ -299,7 +299,7 @@ export default function InstallTypesPage() {
 
   return (
     <Layout>
-      <div className="space-y-6 fade-in max-w-7xl">
+      <div className="space-y-6 fade-in w-full">
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-4xl font-black tracking-tight leading-none">Installation Pricelist</h1>

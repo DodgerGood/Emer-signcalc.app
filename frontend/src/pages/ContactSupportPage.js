@@ -58,7 +58,7 @@ export default function ContactSupportPage() {
 
   return (
     <Layout>
-      <div className="max-w-3xl space-y-6 fade-in">
+      <div className="w-full space-y-6 fade-in">
         <div>
           <h1 className="flex items-center gap-3 text-4xl font-black tracking-tight leading-none">
             <Headset size={32} />
