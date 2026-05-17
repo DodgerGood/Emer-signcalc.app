@@ -63,6 +63,12 @@ export function PlatformAdminLayout({ children }) {
   useEffect(() => {
     if (mainRef.current) {
       mainRef.current.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+
+      mainRef.current
+        .querySelectorAll('.overflow-x-auto, [data-reset-horizontal-scroll="true"]')
+        .forEach((element) => {
+          element.scrollLeft = 0;
+        });
     }
 
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
