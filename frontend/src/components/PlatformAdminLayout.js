@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   Headset,
   Building2,
@@ -15,7 +15,6 @@ import api from '../lib/api';
 
 export function PlatformAdminLayout({ children }) {
   const location = useLocation();
-  const navigate = useNavigate();
   const { user, logout } = useAuth();
 
   const mainRef = useRef(null);
@@ -235,15 +234,6 @@ export function PlatformAdminLayout({ children }) {
         className="h-[100dvh] min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-[#F8FAFC] py-8 pl-8 pr-[12mm] overscroll-contain touch-pan-y"
       >
         <div className="min-w-0 pr-[7mm]">
-          <div className="mb-4">
-            <button
-              type="button"
-              onClick={() => navigate(-1)}
-              className="inline-flex items-center rounded bg-slate-100 px-3 py-2 text-sm text-slate-900 hover:bg-slate-200"
-            >
-              ← Back
-            </button>
-          </div>
 
           {children}
         </div>
