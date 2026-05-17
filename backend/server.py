@@ -187,6 +187,11 @@ class PlatformOwnerSettings(BaseModel):
     logo_data_url: Optional[str] = None
     platform_logo_data_url: Optional[str] = None
 
+class AdminSupportReplyRequest(BaseModel):
+    message: str
+    sent_by: Optional[str] = None
+
+
 class AdminSupportActionRequest(BaseModel):
     action: str
     resolved_by: Optional[str] = None
@@ -1535,6 +1540,77 @@ async def get_item_usage(item_id: str, user: dict = Depends(get_current_user)):
                 break
 
     return {"used_in": used_in}
+
+
+@api_router.post("/admin/support-requests/{case_id}/reply")
+async def reply_support_request(case_id: str, req: AdminSupportReplyRequest):
+    support_request = await db.support_requests.find_one(
+        {"support_case_id": case_id},
+        {"_id": 0}
+    )
+
+    if not support_request:
+        raise HTTPException(status_code=404, detail="Support request not found")
+
+    message = (req.message or "").strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="Reply message is required")
+
+    to_email = support_request.get("email")
+    if not to_email:
+        raise HTTPException(status_code=400, detail="Support request has no email address")
+
+    sent_at = datetime.now(timezone.utc).isoformat()
+    reply_doc = {
+        "id": str(uuid.uuid4()),
+        "message": message,
+        "sent_by": req.sent_by or "Platform Admin",
+        "sent_at": sent_at,
+    }
+
+    subject = f"[Signomics Support] Reply to {support_request.get('support_case_id') or case_id}"
+
+    body = f"""Hello {support_request.get('full_name') or support_request.get('email') or 'User'},
+
+Your support request has been updated.
+
+Case ID: {support_request.get('support_case_id') or case_id}
+Company: {support_request.get('company_name') or 'Not provided'}
+
+Message:
+{message}
+
+Regards,
+Signomics Support
+"""
+
+    try:
+        send_email_alert(
+            subject=subject,
+            body=body,
+            to_email=to_email
+        )
+    except Exception as e:
+        print(f"Failed to send support reply email: {e}")
+        raise HTTPException(status_code=500, detail="Reply could not be emailed. Please check SMTP settings.")
+
+    await db.support_requests.update_one(
+        {"support_case_id": case_id},
+        {
+            "$push": {"replies": reply_doc},
+            "$set": {
+                "last_reply_at": sent_at,
+                "last_reply_by": reply_doc["sent_by"],
+                "status": "OPEN",
+            }
+        }
+    )
+
+    return {
+        "message": "Reply sent successfully",
+        "reply": reply_doc,
+    }
+
 
 @api_router.post("/admin/support-requests/{case_id}/action")
 async def action_support_request(case_id: str, req: AdminSupportActionRequest):
