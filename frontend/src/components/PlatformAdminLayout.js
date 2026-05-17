@@ -239,7 +239,7 @@ export function PlatformAdminLayout({ children }) {
         ref={mainRef}
         className="h-[100dvh] min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-[#F8FAFC] py-8 pl-8 pr-[12mm] overscroll-contain touch-pan-y"
       >
-        <div className="min-w-0 w-full box-border py-8 pl-8 pr-[7mm]">{children}</div>
+        <div className="min-w-0 w-full box-border py-8 pl-8 pr-[5mm]">{children}</div>
       </main>
     </div>
   );
