@@ -7,6 +7,8 @@ import { Input } from '../components/ui/input';
 
 import {
   CalendarDays,
+  ChevronsDown,
+  ChevronsRight,
   ClipboardList,
   Download,
   Factory,
@@ -94,23 +96,43 @@ const departmentOrder = {
 
 const defaultAdminStepMinutes = {
   jobPack: 30,
+  design: 60,
+  procurement: 60,
   productionBrief: 30,
+  stockIssuing: 30,
+  qc: 30,
+  packing: 30,
+  dispatch: 45,
+  deliveryNoteSigned: 15,
   closeJob: 15,
 };
 
+const editableJobTimeFields = [
+  { key: 'jobPack', label: 'Job Pack' },
+  { key: 'design', label: 'Design' },
+  { key: 'procurement', label: 'Procurement' },
+  { key: 'productionBrief', label: 'Production Brief' },
+  { key: 'stockIssuing', label: 'Stock Issuing' },
+  { key: 'qc', label: 'QC' },
+  { key: 'packing', label: 'Packing' },
+  { key: 'dispatch', label: 'Dispatch' },
+  { key: 'deliveryNoteSigned', label: 'Delivery Note Signed' },
+  { key: 'closeJob', label: 'Close Job' },
+];
+
 const earlyWorkflow = [
   { name: 'Job Pack', department: 'ADMIN', minutes: 30, sequenceOrder: 10, adminKey: 'jobPack' },
-  { name: 'Design', department: 'DESIGN', minutes: 60, sequenceOrder: 20 },
-  { name: 'Procurement', department: 'PROCUREMENT', minutes: 60, sequenceOrder: 30 },
+  { name: 'Design', department: 'DESIGN', minutes: 60, sequenceOrder: 20, adminKey: 'design' },
+  { name: 'Procurement', department: 'PROCUREMENT', minutes: 60, sequenceOrder: 30, adminKey: 'procurement' },
   { name: 'Production Brief', department: 'ADMIN', minutes: 30, sequenceOrder: 40, adminKey: 'productionBrief' },
-  { name: 'Stock Issuing', department: 'STOCK', minutes: 30, sequenceOrder: 50 },
+  { name: 'Stock Issuing', department: 'STOCK', minutes: 30, sequenceOrder: 50, adminKey: 'stockIssuing' },
 ];
 
 const lateWorkflow = [
-  { name: 'QC', department: 'QC', minutes: 30, sequenceOrder: 900 },
-  { name: 'Packing', department: 'PACKING', minutes: 30, sequenceOrder: 910 },
-  { name: 'Dispatch', department: 'DISPATCH', minutes: 45, sequenceOrder: 920 },
-  { name: 'Delivery Note Signed', department: 'DISPATCH', minutes: 15, sequenceOrder: 930 },
+  { name: 'QC', department: 'QC', minutes: 30, sequenceOrder: 900, adminKey: 'qc' },
+  { name: 'Packing', department: 'PACKING', minutes: 30, sequenceOrder: 910, adminKey: 'packing' },
+  { name: 'Dispatch', department: 'DISPATCH', minutes: 45, sequenceOrder: 920, adminKey: 'dispatch' },
+  { name: 'Delivery Note Signed', department: 'DISPATCH', minutes: 15, sequenceOrder: 930, adminKey: 'deliveryNoteSigned' },
   { name: 'Close Job', department: 'ADMIN', minutes: 15, sequenceOrder: 940, adminKey: 'closeJob' },
 ];
 
@@ -988,6 +1010,7 @@ export default function ProductionPage() {
       return {};
     }
   });
+  const [expandedJobCards, setExpandedJobCards] = useState({});
 
   const jobScrollRef = useRef(null);
   const resourceScrollRef = useRef(null);
@@ -1008,11 +1031,14 @@ export default function ProductionPage() {
   }, [jobAdminStepMinutes]);
 
   const getJobAdminStepMinutes = useCallback((jobId) => {
-    return {
-      jobPack: jobAdminStepMinutes?.[jobId]?.jobPack ?? String(defaultAdminStepMinutes.jobPack),
-      productionBrief: jobAdminStepMinutes?.[jobId]?.productionBrief ?? String(defaultAdminStepMinutes.productionBrief),
-      closeJob: jobAdminStepMinutes?.[jobId]?.closeJob ?? String(defaultAdminStepMinutes.closeJob),
-    };
+    const saved = jobAdminStepMinutes?.[jobId] || {};
+
+    return Object.fromEntries(
+      Object.entries(defaultAdminStepMinutes).map(([key, defaultValue]) => [
+        key,
+        saved[key] ?? String(defaultValue),
+      ])
+    );
   }, [jobAdminStepMinutes]);
 
   const getJobAdminStepNumber = useCallback((jobId, key) => {
@@ -1064,6 +1090,24 @@ export default function ProductionPage() {
     });
   };
 
+  const toggleJobCard = (jobId) => {
+    setExpandedJobCards((prev) => ({
+      ...prev,
+      [jobId]: !prev[jobId],
+    }));
+  };
+
+  const updateJobLine = (job) => {
+    const savedTimes = getJobAdminStepMinutes(job.id);
+
+    setJobAdminStepMinutes((prev) => ({
+      ...prev,
+      [job.id]: savedTimes,
+    }));
+
+    toast.success(`${job.invoice_number || job.quote_number || job.estimate_number || 'Job'} production times updated`);
+  };
+
   const calendarStart = useMemo(() => addDays(today, -DAYS_BACK), [today]);
 
   const calendarDays = useMemo(() => {
@@ -1101,11 +1145,17 @@ export default function ProductionPage() {
   const scheduledData = useMemo(() => {
     const jobModels = jobs.map((job, index) => {
       const colour = jobColours[index % jobColours.length];
-      const rawSteps = buildRawWorkflow(job, colour, today, {
-        jobPack: getJobAdminStepNumber(job.id, 'jobPack'),
-        productionBrief: getJobAdminStepNumber(job.id, 'productionBrief'),
-        closeJob: getJobAdminStepNumber(job.id, 'closeJob'),
-      });
+      const rawSteps = buildRawWorkflow(
+        job,
+        colour,
+        today,
+        Object.fromEntries(
+          Object.keys(defaultAdminStepMinutes).map((key) => [
+            key,
+            getJobAdminStepNumber(job.id, key),
+          ])
+        )
+      );
       const totalMinutes = rawSteps.reduce((sum, step) => sum + safeNumber(step.plannedMinutes), 0);
 
       return {
@@ -1299,7 +1349,22 @@ export default function ProductionPage() {
                       <div className={`mt-1 h-4 w-4 shrink-0 rounded-full ${colour.dot}`} />
 
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-black text-slate-900">{getJobLabel(job)}</div>
+                        <div className="flex items-start justify-between gap-2">
+                          <button
+                            type="button"
+                            onClick={() => toggleJobCard(job.id)}
+                            className="flex min-w-0 items-center gap-2 text-left"
+                            title={expandedJobCards[job.id] ? 'Hide job details' : 'Show job details'}
+                          >
+                            {expandedJobCards[job.id] ? (
+                              <ChevronsDown size={16} className="shrink-0 text-slate-500" />
+                            ) : (
+                              <ChevronsRight size={16} className="shrink-0 text-slate-500" />
+                            )}
+                            <span className="truncate text-sm font-black text-slate-900">{getJobLabel(job)}</span>
+                          </button>
+                        </div>
+
                         <div className="mt-1 text-xs text-slate-500">
                           {rawSteps.length} steps • {formatHours(totalMinutes)}
                         </div>
@@ -1322,57 +1387,55 @@ export default function ProductionPage() {
                           </span>
                         </div>
 
-                        <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg border bg-slate-50 p-2">
-                          <label className="space-y-1 text-[10px] font-bold text-slate-600">
-                            <span>Job Pack</span>
-                            <Input
-                              type="text"
-                              inputMode="numeric"
-                              value={getJobAdminStepMinutes(job.id).jobPack}
-                              onChange={(event) => updateJobAdminStepMinutes(job.id, 'jobPack', event.target.value)}
-                              onBlur={() => normaliseJobAdminStepMinutes(job.id, 'jobPack')}
-                              className="h-7 px-2 text-xs"
-                              placeholder="0"
-                            />
-                          </label>
+                        {expandedJobCards[job.id] && (
+                          <div className="mt-3 space-y-3 rounded-xl border bg-slate-50 p-3">
+                            <div className="grid gap-2 text-[11px] text-slate-600">
+                              <div><span className="font-black">Invoice / Job:</span> {job.invoice_number || job.quote_number || job.estimate_number || 'Not set'}</div>
+                              <div><span className="font-black">Client:</span> {job.client_name || 'Not set'}</div>
+                              <div><span className="font-black">Into Production:</span> {formatDateBadge(job.production_posted_at)}</div>
+                              <div><span className="font-black">Due Date:</span> {formatDateBadge(job.due_date)}</div>
+                            </div>
 
-                          <label className="space-y-1 text-[10px] font-bold text-slate-600">
-                            <span>Brief</span>
-                            <Input
-                              type="text"
-                              inputMode="numeric"
-                              value={getJobAdminStepMinutes(job.id).productionBrief}
-                              onChange={(event) => updateJobAdminStepMinutes(job.id, 'productionBrief', event.target.value)}
-                              onBlur={() => normaliseJobAdminStepMinutes(job.id, 'productionBrief')}
-                              className="h-7 px-2 text-xs"
-                              placeholder="0"
-                            />
-                          </label>
+                            <div className="grid grid-cols-2 gap-2">
+                              {editableJobTimeFields.map((field) => (
+                                <label key={`${job.id}-${field.key}`} className="space-y-1 text-[10px] font-bold text-slate-600">
+                                  <span>{field.label}</span>
+                                  <Input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={getJobAdminStepMinutes(job.id)[field.key]}
+                                    onChange={(event) => updateJobAdminStepMinutes(job.id, field.key, event.target.value)}
+                                    onBlur={() => normaliseJobAdminStepMinutes(job.id, field.key)}
+                                    className="h-7 px-2 text-xs"
+                                    placeholder="0"
+                                  />
+                                </label>
+                              ))}
+                            </div>
 
-                          <label className="space-y-1 text-[10px] font-bold text-slate-600">
-                            <span>Close</span>
-                            <Input
-                              type="text"
-                              inputMode="numeric"
-                              value={getJobAdminStepMinutes(job.id).closeJob}
-                              onChange={(event) => updateJobAdminStepMinutes(job.id, 'closeJob', event.target.value)}
-                              onBlur={() => normaliseJobAdminStepMinutes(job.id, 'closeJob')}
-                              className="h-7 px-2 text-xs"
-                              placeholder="0"
-                            />
-                          </label>
-                        </div>
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => updateJobLine(job)}
+                                className="h-8 bg-[#2563EB] text-xs text-white hover:bg-[#1d4ed8]"
+                              >
+                                Update Job Line
+                              </Button>
 
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => downloadJobPack(job)}
-                          className="mt-3 h-8 gap-2 text-xs"
-                        >
-                          <Download size={14} />
-                          Download Job Pack
-                        </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => downloadJobPack(job)}
+                                className="h-8 gap-2 text-xs"
+                              >
+                                <Download size={14} />
+                                Download Job Pack
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
