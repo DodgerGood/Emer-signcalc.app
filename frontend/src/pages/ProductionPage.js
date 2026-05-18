@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Layout } from '../components/Layout';
 import api from '../lib/api';
 
@@ -981,15 +981,11 @@ export default function ProductionPage() {
   const [jobSearch, setJobSearch] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
-  const [adminStepMinutes, setAdminStepMinutes] = useState(() => {
+  const [jobAdminStepMinutes, setJobAdminStepMinutes] = useState(() => {
     try {
-      const stored = JSON.parse(localStorage.getItem('signomics-production-admin-step-minutes') || '{}');
-      return {
-        ...defaultAdminStepMinutes,
-        ...stored,
-      };
+      return JSON.parse(localStorage.getItem('signomics-production-job-admin-step-minutes') || '{}');
     } catch {
-      return defaultAdminStepMinutes;
+      return {};
     }
   });
 
@@ -1008,16 +1004,64 @@ export default function ProductionPage() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('signomics-production-admin-step-minutes', JSON.stringify(adminStepMinutes));
-  }, [adminStepMinutes]);
+    localStorage.setItem('signomics-production-job-admin-step-minutes', JSON.stringify(jobAdminStepMinutes));
+  }, [jobAdminStepMinutes]);
 
-  const updateAdminStepMinutes = (key, value) => {
-    const minutes = Math.max(0, Math.round(Number(value) || 0));
+  const getJobAdminStepMinutes = useCallback((jobId) => {
+    return {
+      jobPack: jobAdminStepMinutes?.[jobId]?.jobPack ?? String(defaultAdminStepMinutes.jobPack),
+      productionBrief: jobAdminStepMinutes?.[jobId]?.productionBrief ?? String(defaultAdminStepMinutes.productionBrief),
+      closeJob: jobAdminStepMinutes?.[jobId]?.closeJob ?? String(defaultAdminStepMinutes.closeJob),
+    };
+  }, [jobAdminStepMinutes]);
 
-    setAdminStepMinutes((prev) => ({
+  const getJobAdminStepNumber = useCallback((jobId, key) => {
+    const rawValue = getJobAdminStepMinutes(jobId)[key];
+
+    if (rawValue === '') return 0;
+
+    const number = Number(rawValue);
+    return Number.isFinite(number) ? Math.max(0, Math.round(number)) : defaultAdminStepMinutes[key];
+  }, [getJobAdminStepMinutes]);
+
+  const updateJobAdminStepMinutes = (jobId, key, value) => {
+    const cleaned = String(value || '').replace(/[^0-9]/g, '');
+
+    setJobAdminStepMinutes((prev) => ({
       ...prev,
-      [key]: minutes,
+      [jobId]: {
+        ...getJobAdminStepMinutes(jobId),
+        ...prev[jobId],
+        [key]: cleaned,
+      },
     }));
+  };
+
+  const normaliseJobAdminStepMinutes = (jobId, key) => {
+    setJobAdminStepMinutes((prev) => {
+      const current = prev[jobId] || getJobAdminStepMinutes(jobId);
+      const rawValue = current[key];
+
+      if (rawValue === '') {
+        return {
+          ...prev,
+          [jobId]: {
+            ...current,
+            [key]: '',
+          },
+        };
+      }
+
+      const number = Math.max(0, Math.round(Number(rawValue) || 0));
+
+      return {
+        ...prev,
+        [jobId]: {
+          ...current,
+          [key]: String(number),
+        },
+      };
+    });
   };
 
   const calendarStart = useMemo(() => addDays(today, -DAYS_BACK), [today]);
@@ -1057,7 +1101,11 @@ export default function ProductionPage() {
   const scheduledData = useMemo(() => {
     const jobModels = jobs.map((job, index) => {
       const colour = jobColours[index % jobColours.length];
-      const rawSteps = buildRawWorkflow(job, colour, today, adminStepMinutes);
+      const rawSteps = buildRawWorkflow(job, colour, today, {
+        jobPack: getJobAdminStepNumber(job.id, 'jobPack'),
+        productionBrief: getJobAdminStepNumber(job.id, 'productionBrief'),
+        closeJob: getJobAdminStepNumber(job.id, 'closeJob'),
+      });
       const totalMinutes = rawSteps.reduce((sum, step) => sum + safeNumber(step.plannedMinutes), 0);
 
       return {
@@ -1092,7 +1140,7 @@ export default function ProductionPage() {
       allSteps,
       unscheduled: schedule.unscheduled,
     };
-  }, [jobs, today, calendarDays, timeSlots, adminStepMinutes]);
+  }, [jobs, today, calendarDays, timeSlots, getJobAdminStepNumber]);
 
   useEffect(() => {
     if (loading) return;
@@ -1214,48 +1262,7 @@ export default function ProductionPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border bg-white p-4 shadow-sm">
-          <div className="mb-3">
-            <h2 className="text-sm font-black uppercase tracking-wide text-slate-600">Admin Time Settings</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Adjust estimated admin time used on this production board. These settings are saved on this device.
-            </p>
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-3">
-            <label className="space-y-1 text-sm font-semibold text-slate-700">
-              <span>Job Pack Minutes</span>
-              <Input
-                type="number"
-                min="0"
-                value={adminStepMinutes.jobPack}
-                onChange={(event) => updateAdminStepMinutes('jobPack', event.target.value)}
-              />
-            </label>
-
-            <label className="space-y-1 text-sm font-semibold text-slate-700">
-              <span>Production Brief Minutes</span>
-              <Input
-                type="number"
-                min="0"
-                value={adminStepMinutes.productionBrief}
-                onChange={(event) => updateAdminStepMinutes('productionBrief', event.target.value)}
-              />
-            </label>
-
-            <label className="space-y-1 text-sm font-semibold text-slate-700">
-              <span>Close Job Minutes</span>
-              <Input
-                type="number"
-                min="0"
-                value={adminStepMinutes.closeJob}
-                onChange={(event) => updateAdminStepMinutes('closeJob', event.target.value)}
-              />
-            </label>
-          </div>
-        </div>
-
-        <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+<section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
           <div className="border-b bg-slate-50 p-4">
             <h2 className="flex items-center gap-2 text-lg font-black">
               <CalendarDays size={18} />
@@ -1313,6 +1320,47 @@ export default function ProductionPage() {
                           <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${job.due_date ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
                             Due: {formatDateBadge(job.due_date)}
                           </span>
+                        </div>
+
+                        <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg border bg-slate-50 p-2">
+                          <label className="space-y-1 text-[10px] font-bold text-slate-600">
+                            <span>Job Pack</span>
+                            <Input
+                              type="text"
+                              inputMode="numeric"
+                              value={getJobAdminStepMinutes(job.id).jobPack}
+                              onChange={(event) => updateJobAdminStepMinutes(job.id, 'jobPack', event.target.value)}
+                              onBlur={() => normaliseJobAdminStepMinutes(job.id, 'jobPack')}
+                              className="h-7 px-2 text-xs"
+                              placeholder="0"
+                            />
+                          </label>
+
+                          <label className="space-y-1 text-[10px] font-bold text-slate-600">
+                            <span>Brief</span>
+                            <Input
+                              type="text"
+                              inputMode="numeric"
+                              value={getJobAdminStepMinutes(job.id).productionBrief}
+                              onChange={(event) => updateJobAdminStepMinutes(job.id, 'productionBrief', event.target.value)}
+                              onBlur={() => normaliseJobAdminStepMinutes(job.id, 'productionBrief')}
+                              className="h-7 px-2 text-xs"
+                              placeholder="0"
+                            />
+                          </label>
+
+                          <label className="space-y-1 text-[10px] font-bold text-slate-600">
+                            <span>Close</span>
+                            <Input
+                              type="text"
+                              inputMode="numeric"
+                              value={getJobAdminStepMinutes(job.id).closeJob}
+                              onChange={(event) => updateJobAdminStepMinutes(job.id, 'closeJob', event.target.value)}
+                              onBlur={() => normaliseJobAdminStepMinutes(job.id, 'closeJob')}
+                              className="h-7 px-2 text-xs"
+                              placeholder="0"
+                            />
+                          </label>
                         </div>
 
                         <Button
