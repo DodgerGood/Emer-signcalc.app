@@ -1399,19 +1399,29 @@ export default function ProductionPage() {
                               <div><span className="font-black">Due Date:</span> {formatDateBadge(job.due_date)}</div>
                             </div>
 
+                            <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-[11px] font-semibold leading-relaxed text-blue-800">
+                              Enter planning time in minutes. Example: 30 = 30 minutes, 60 = 1 hour, 120 = 2 hours.
+                            </div>
+
                             <div className="grid grid-cols-2 gap-2">
                               {editableJobTimeFields.map((field) => (
                                 <label key={`${job.id}-${field.key}`} className="space-y-1 text-[10px] font-bold text-slate-600">
-                                  <span>{field.label}</span>
-                                  <Input
-                                    type="text"
-                                    inputMode="numeric"
-                                    value={getJobAdminStepMinutes(job.id)[field.key]}
-                                    onChange={(event) => updateJobAdminStepMinutes(job.id, field.key, event.target.value)}
-                                    onBlur={() => normaliseJobAdminStepMinutes(job.id, field.key)}
-                                    className="h-7 px-2 text-xs"
-                                    placeholder="0"
-                                  />
+                                  <span>{field.label} <span className="font-semibold text-slate-400">(min)</span></span>
+                                  <div className="relative">
+                                    <Input
+                                      type="text"
+                                      inputMode="numeric"
+                                      value={getJobAdminStepMinutes(job.id)[field.key]}
+                                      onChange={(event) => updateJobAdminStepMinutes(job.id, field.key, event.target.value)}
+                                      onBlur={() => normaliseJobAdminStepMinutes(job.id, field.key)}
+                                      className="h-7 px-2 pr-10 text-xs"
+                                      placeholder="0"
+                                      title={`${field.label} time in minutes`}
+                                    />
+                                    <span className="pointer-events-none absolute right-2 top-1.5 text-[10px] font-bold text-slate-400">
+                                      min
+                                    </span>
+                                  </div>
                                 </label>
                               ))}
                             </div>
