@@ -1349,19 +1349,22 @@ export default function ProductionPage() {
                       <div className={`mt-1 h-4 w-4 shrink-0 rounded-full ${colour.dot}`} />
 
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1 truncate text-sm font-black text-slate-900">
+                            {getJobLabel(job)}
+                          </div>
+
                           <button
                             type="button"
                             onClick={() => toggleJobCard(job.id)}
-                            className="flex min-w-0 items-center gap-2 text-left"
+                            className="ml-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-900"
                             title={expandedJobCards[job.id] ? 'Hide job details' : 'Show job details'}
                           >
                             {expandedJobCards[job.id] ? (
-                              <ChevronsDown size={16} className="shrink-0 text-slate-500" />
+                              <ChevronsDown size={17} />
                             ) : (
-                              <ChevronsRight size={16} className="shrink-0 text-slate-500" />
+                              <ChevronsRight size={17} />
                             )}
-                            <span className="truncate text-sm font-black text-slate-900">{getJobLabel(job)}</span>
                           </button>
                         </div>
 
