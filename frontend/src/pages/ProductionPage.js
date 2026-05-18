@@ -92,11 +92,17 @@ const departmentOrder = {
   OTHER: 99,
 };
 
+const defaultAdminStepMinutes = {
+  jobPack: 30,
+  productionBrief: 30,
+  closeJob: 15,
+};
+
 const earlyWorkflow = [
-  { name: 'Job Pack', department: 'ADMIN', minutes: 30, sequenceOrder: 10 },
+  { name: 'Job Pack', department: 'ADMIN', minutes: 30, sequenceOrder: 10, adminKey: 'jobPack' },
   { name: 'Design', department: 'DESIGN', minutes: 60, sequenceOrder: 20 },
   { name: 'Procurement', department: 'PROCUREMENT', minutes: 60, sequenceOrder: 30 },
-  { name: 'Production Brief', department: 'ADMIN', minutes: 30, sequenceOrder: 40 },
+  { name: 'Production Brief', department: 'ADMIN', minutes: 30, sequenceOrder: 40, adminKey: 'productionBrief' },
   { name: 'Stock Issuing', department: 'STOCK', minutes: 30, sequenceOrder: 50 },
 ];
 
@@ -105,7 +111,7 @@ const lateWorkflow = [
   { name: 'Packing', department: 'PACKING', minutes: 30, sequenceOrder: 910 },
   { name: 'Dispatch', department: 'DISPATCH', minutes: 45, sequenceOrder: 920 },
   { name: 'Delivery Note Signed', department: 'DISPATCH', minutes: 15, sequenceOrder: 930 },
-  { name: 'Close Job', department: 'ADMIN', minutes: 15, sequenceOrder: 940 },
+  { name: 'Close Job', department: 'ADMIN', minutes: 15, sequenceOrder: 940, adminKey: 'closeJob' },
 ];
 
 function startOfDay(value) {
@@ -266,12 +272,30 @@ function getCurrentMinuteOfDay(now) {
   return now.getHours() * 60 + now.getMinutes();
 }
 
-function getTwentyFourHourLeftInDay(day, now, timeSlots) {
+function getCurrentTimeLeftInDay(day, now, timeSlots) {
   const dayWidth = getDayWidth(day, timeSlots);
   const currentMinute = getCurrentMinuteOfDay(now);
-  const dayProgress = currentMinute / (24 * 60);
 
-  return dayWidth * dayProgress;
+  if (isWeekend(day) || !timeSlots.length) {
+    return dayWidth * (currentMinute / (24 * 60));
+  }
+
+  const firstSlot = timeSlots[0];
+  const lastSlot = timeSlots[timeSlots.length - 1];
+
+  if (currentMinute <= firstSlot.start) return 0;
+  if (currentMinute >= lastSlot.end) return dayWidth;
+
+  const slotIndex = timeSlots.findIndex((slot) => (
+    currentMinute >= slot.start && currentMinute < slot.end
+  ));
+
+  if (slotIndex < 0) return 0;
+
+  const slot = timeSlots[slotIndex];
+  const slotProgress = (currentMinute - slot.start) / Math.max(1, slot.end - slot.start);
+
+  return (slotIndex * SLOT_WIDTH) + (slotProgress * SLOT_WIDTH);
 }
 
 function formatDateBadge(value) {
@@ -454,7 +478,7 @@ function makeRawStep({
   };
 }
 
-function buildRawWorkflow(job, jobColour, today) {
+function buildRawWorkflow(job, jobColour, today, adminStepMinutes = defaultAdminStepMinutes) {
   const steps = [];
 
   earlyWorkflow.forEach((step, index) => {
@@ -464,7 +488,7 @@ function buildRawWorkflow(job, jobColour, today) {
         name: step.name,
         department: step.department,
         resource: getDefaultResourceForDepartment(job, step.department, step.department),
-        minutes: step.minutes,
+        minutes: step.adminKey ? (adminStepMinutes[step.adminKey] ?? step.minutes) : step.minutes,
         sequenceOrder: step.sequenceOrder,
         job,
         jobColour,
@@ -616,7 +640,7 @@ function buildRawWorkflow(job, jobColour, today) {
         name: step.name,
         department: step.department,
         resource: getDefaultResourceForDepartment(job, step.department, step.department),
-        minutes: step.minutes,
+        minutes: step.adminKey ? (adminStepMinutes[step.adminKey] ?? step.minutes) : step.minutes,
         sequenceOrder: step.sequenceOrder,
         job,
         jobColour,
@@ -923,7 +947,7 @@ function TodayLine({ calendarDays, now, timeSlots }) {
     <div
       className="pointer-events-none absolute top-0 z-30 h-full w-[3px] bg-red-600"
       style={{
-        left: `${left + getTwentyFourHourLeftInDay(todayDay, now, timeSlots)}px`,
+        left: `${left + getCurrentTimeLeftInDay(todayDay, now, timeSlots)}px`,
       }}
       title={`Current time: ${now.toLocaleString('en-ZA')}`}
     />
@@ -935,8 +959,8 @@ function StepCard({ segment, compact = false }) {
 
   return (
     <div
-      className={`rounded-md ${step.jobColour.card} px-2 py-1 text-[10px] font-bold leading-tight text-white shadow-sm`}
-      title={`${step.jobLabel} | ${step.name} | Segment: ${formatHours(segment.displayMinutes)} | Total step: ${formatHours(step.plannedMinutes)} | Resource: ${step.resource}`}
+      className={`cursor-help rounded-md ${step.jobColour.card} px-2 py-1 text-[10px] font-bold leading-tight text-white shadow-sm`}
+      title={`Job: ${step.jobLabel}\nStep: ${step.name}\nDepartment: ${step.department}\nResource: ${step.resource}\nThis block: ${formatHours(segment.displayMinutes)}\nTotal step time: ${formatHours(step.plannedMinutes)}${step.dependencySteps ? `\nDepends on: ${step.dependencySteps}` : ''}${step.productName ? `\nProduct: ${step.productName}` : ''}`}
     >
       <div className="flex items-center gap-1">
         {getStepIcon(step.department)}
@@ -957,6 +981,17 @@ export default function ProductionPage() {
   const [jobSearch, setJobSearch] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
+  const [adminStepMinutes, setAdminStepMinutes] = useState(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('signomics-production-admin-step-minutes') || '{}');
+      return {
+        ...defaultAdminStepMinutes,
+        ...stored,
+      };
+    } catch {
+      return defaultAdminStepMinutes;
+    }
+  });
 
   const jobScrollRef = useRef(null);
   const resourceScrollRef = useRef(null);
@@ -971,6 +1006,19 @@ export default function ProductionPage() {
 
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('signomics-production-admin-step-minutes', JSON.stringify(adminStepMinutes));
+  }, [adminStepMinutes]);
+
+  const updateAdminStepMinutes = (key, value) => {
+    const minutes = Math.max(0, Math.round(Number(value) || 0));
+
+    setAdminStepMinutes((prev) => ({
+      ...prev,
+      [key]: minutes,
+    }));
+  };
 
   const calendarStart = useMemo(() => addDays(today, -DAYS_BACK), [today]);
 
@@ -1009,7 +1057,7 @@ export default function ProductionPage() {
   const scheduledData = useMemo(() => {
     const jobModels = jobs.map((job, index) => {
       const colour = jobColours[index % jobColours.length];
-      const rawSteps = buildRawWorkflow(job, colour, today);
+      const rawSteps = buildRawWorkflow(job, colour, today, adminStepMinutes);
       const totalMinutes = rawSteps.reduce((sum, step) => sum + safeNumber(step.plannedMinutes), 0);
 
       return {
@@ -1044,7 +1092,7 @@ export default function ProductionPage() {
       allSteps,
       unscheduled: schedule.unscheduled,
     };
-  }, [jobs, today, calendarDays, timeSlots]);
+  }, [jobs, today, calendarDays, timeSlots, adminStepMinutes]);
 
   useEffect(() => {
     if (loading) return;
@@ -1166,6 +1214,47 @@ export default function ProductionPage() {
           </div>
         </div>
 
+        <div className="rounded-2xl border bg-white p-4 shadow-sm">
+          <div className="mb-3">
+            <h2 className="text-sm font-black uppercase tracking-wide text-slate-600">Admin Time Settings</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Adjust estimated admin time used on this production board. These settings are saved on this device.
+            </p>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-3">
+            <label className="space-y-1 text-sm font-semibold text-slate-700">
+              <span>Job Pack Minutes</span>
+              <Input
+                type="number"
+                min="0"
+                value={adminStepMinutes.jobPack}
+                onChange={(event) => updateAdminStepMinutes('jobPack', event.target.value)}
+              />
+            </label>
+
+            <label className="space-y-1 text-sm font-semibold text-slate-700">
+              <span>Production Brief Minutes</span>
+              <Input
+                type="number"
+                min="0"
+                value={adminStepMinutes.productionBrief}
+                onChange={(event) => updateAdminStepMinutes('productionBrief', event.target.value)}
+              />
+            </label>
+
+            <label className="space-y-1 text-sm font-semibold text-slate-700">
+              <span>Close Job Minutes</span>
+              <Input
+                type="number"
+                min="0"
+                value={adminStepMinutes.closeJob}
+                onChange={(event) => updateAdminStepMinutes('closeJob', event.target.value)}
+              />
+            </label>
+          </div>
+        </div>
+
         <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
           <div className="border-b bg-slate-50 p-4">
             <h2 className="flex items-center gap-2 text-lg font-black">
@@ -1198,7 +1287,7 @@ export default function ProductionPage() {
                 </div>
 
                 {filteredJobs.map(({ job, colour, rawSteps, totalMinutes }) => (
-                  <div key={job.id} className="min-h-[158px] border-b bg-white px-4 py-4">
+                  <div key={job.id} className="min-h-[110px] border-b bg-white px-4 py-4">
                     <div className="flex gap-3">
                       <div className={`mt-1 h-4 w-4 shrink-0 rounded-full ${colour.dot}`} />
 
@@ -1273,12 +1362,12 @@ export default function ProductionPage() {
                         return (
                           <div
                             key={`${job.id}-${dateKey(day)}`}
-                            className={`relative min-h-[158px] border-b border-r ${
+                            className={`relative min-h-[110px] border-b border-r ${
                               header.isToday ? 'bg-red-50/40' : header.weekend ? 'bg-slate-100' : 'bg-slate-50'
                             }`}
                           >
                             {header.weekend ? (
-                              <div className="flex h-full min-h-[158px] items-center justify-center px-2 text-center text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                              <div className="flex h-full min-h-[110px] items-center justify-center px-2 text-center text-[10px] font-bold uppercase tracking-wide text-slate-400">
                                 Weekend
                               </div>
                             ) : (
@@ -1368,7 +1457,7 @@ export default function ProductionPage() {
                 </div>
 
                 {resourceRows.map((row) => (
-                  <div key={row.id} className="min-h-[128px] border-b bg-white px-4 py-4">
+                  <div key={row.id} className="min-h-[110px] border-b bg-white px-4 py-4">
                     <div className="text-sm font-black text-slate-900">{row.resource}</div>
                     <div className="mt-1 text-xs text-slate-500">{row.department}</div>
                     <div className="mt-2 text-xs text-slate-500">
@@ -1409,12 +1498,12 @@ export default function ProductionPage() {
                         return (
                           <div
                             key={`${row.id}-${dateKey(day)}`}
-                            className={`relative min-h-[128px] border-b border-r ${
+                            className={`relative min-h-[110px] border-b border-r ${
                               header.isToday ? 'bg-red-50/40' : header.weekend ? 'bg-slate-100' : 'bg-slate-50'
                             }`}
                           >
                             {header.weekend ? (
-                              <div className="flex h-full min-h-[128px] items-center justify-center px-2 text-center text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                              <div className="flex h-full min-h-[110px] items-center justify-center px-2 text-center text-[10px] font-bold uppercase tracking-wide text-slate-400">
                                 Weekend
                               </div>
                             ) : (
