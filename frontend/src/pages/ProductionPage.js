@@ -12,7 +12,6 @@ import {
   Factory,
   FileCheck,
   FileText,
-  Hammer,
   Package,
   PackageCheck,
   Search,
@@ -25,8 +24,8 @@ import { toast } from 'sonner';
 const SLOT_WIDTH = 28;
 const WEEKEND_DAY_WIDTH = 120;
 const SLOT_MINUTES = 15;
-const JOB_COLUMN_WIDTH = 320;
-const RESOURCE_COLUMN_WIDTH = 280;
+const JOB_COLUMN_WIDTH = 340;
+const RESOURCE_COLUMN_WIDTH = 300;
 const DAYS_BACK = 7;
 const DAYS_FORWARD = 14;
 const CALENDAR_DAYS = DAYS_BACK + 1 + DAYS_FORWARD;
@@ -46,42 +45,12 @@ const SETUP_MINUTES = 15;
 const REMOVAL_MINUTES = 15;
 
 const jobColours = [
-  {
-    dot: 'bg-blue-500',
-    card: 'bg-blue-500',
-    soft: 'bg-blue-50',
-    text: 'text-blue-700',
-  },
-  {
-    dot: 'bg-emerald-500',
-    card: 'bg-emerald-500',
-    soft: 'bg-emerald-50',
-    text: 'text-emerald-700',
-  },
-  {
-    dot: 'bg-purple-500',
-    card: 'bg-purple-500',
-    soft: 'bg-purple-50',
-    text: 'text-purple-700',
-  },
-  {
-    dot: 'bg-orange-500',
-    card: 'bg-orange-500',
-    soft: 'bg-orange-50',
-    text: 'text-orange-700',
-  },
-  {
-    dot: 'bg-cyan-500',
-    card: 'bg-cyan-500',
-    soft: 'bg-cyan-50',
-    text: 'text-cyan-700',
-  },
-  {
-    dot: 'bg-rose-500',
-    card: 'bg-rose-500',
-    soft: 'bg-rose-50',
-    text: 'text-rose-700',
-  },
+  { dot: 'bg-blue-500', card: 'bg-blue-500', soft: 'bg-blue-50', text: 'text-blue-700' },
+  { dot: 'bg-emerald-500', card: 'bg-emerald-500', soft: 'bg-emerald-50', text: 'text-emerald-700' },
+  { dot: 'bg-purple-500', card: 'bg-purple-500', soft: 'bg-purple-50', text: 'text-purple-700' },
+  { dot: 'bg-orange-500', card: 'bg-orange-500', soft: 'bg-orange-50', text: 'text-orange-700' },
+  { dot: 'bg-cyan-500', card: 'bg-cyan-500', soft: 'bg-cyan-50', text: 'text-cyan-700' },
+  { dot: 'bg-rose-500', card: 'bg-rose-500', soft: 'bg-rose-50', text: 'text-rose-700' },
 ];
 
 const statusClasses = {
@@ -92,19 +61,6 @@ const statusClasses = {
   COMPLETE: 'bg-emerald-100 text-emerald-700 border-emerald-200',
   CLOSED: 'bg-emerald-100 text-emerald-700 border-emerald-200',
 };
-
-const baseWorkflow = [
-  { name: 'Job Pack', department: 'ADMIN', minutes: 30, dayOffset: 0 },
-  { name: 'Design', department: 'DESIGN', minutes: 60, dayOffset: 1 },
-  { name: 'Procurement', department: 'PROCUREMENT', minutes: 60, dayOffset: 1 },
-  { name: 'Production Brief', department: 'ADMIN', minutes: 30, dayOffset: 1 },
-  { name: 'Stock Issuing', department: 'STOCK', minutes: 30, dayOffset: 2 },
-  { name: 'QC', department: 'QC', minutes: 30, dayOffset: 3 },
-  { name: 'Packing', department: 'PACKING', minutes: 30, dayOffset: 4 },
-  { name: 'Dispatch', department: 'DISPATCH', minutes: 45, dayOffset: 5 },
-  { name: 'Delivery Note Signed', department: 'DISPATCH', minutes: 15, dayOffset: 6 },
-  { name: 'Close Job', department: 'ADMIN', minutes: 15, dayOffset: 6 },
-];
 
 const departmentOptions = [
   'ALL',
@@ -136,6 +92,21 @@ const departmentOrder = {
   OTHER: 99,
 };
 
+const earlyWorkflow = [
+  { name: 'Job Pack', department: 'ADMIN', minutes: 30, sequenceOrder: 10 },
+  { name: 'Design', department: 'DESIGN', minutes: 60, sequenceOrder: 20 },
+  { name: 'Procurement', department: 'PROCUREMENT', minutes: 60, sequenceOrder: 30 },
+  { name: 'Production Brief', department: 'ADMIN', minutes: 30, sequenceOrder: 40 },
+  { name: 'Stock Issuing', department: 'STOCK', minutes: 30, sequenceOrder: 50 },
+];
+
+const lateWorkflow = [
+  { name: 'QC', department: 'QC', minutes: 30, sequenceOrder: 900 },
+  { name: 'Packing', department: 'PACKING', minutes: 30, sequenceOrder: 910 },
+  { name: 'Dispatch', department: 'DISPATCH', minutes: 45, sequenceOrder: 920 },
+  { name: 'Delivery Note Signed', department: 'DISPATCH', minutes: 15, sequenceOrder: 930 },
+  { name: 'Close Job', department: 'ADMIN', minutes: 15, sequenceOrder: 940 },
+];
 
 function startOfDay(value) {
   const date = value ? new Date(value) : new Date();
@@ -153,29 +124,6 @@ function startOfDay(value) {
 function addDays(date, days) {
   const copy = new Date(date);
   copy.setDate(copy.getDate() + days);
-  return copy;
-}
-
-function addWorkdays(date, workdays) {
-  let copy = startOfDay(date);
-  let added = 0;
-
-  if (workdays <= 0) {
-    while (isWeekend(copy)) {
-      copy = addDays(copy, 1);
-    }
-
-    return copy;
-  }
-
-  while (added < workdays) {
-    copy = addDays(copy, 1);
-
-    if (!isWeekend(copy)) {
-      added += 1;
-    }
-  }
-
   return copy;
 }
 
@@ -314,50 +262,17 @@ function getTodayLeft(calendarDays, today, timeSlots) {
     .reduce((sum, day) => sum + getDayWidth(day, timeSlots), 0);
 }
 
-function getStepPlacementsForDay(steps, day, timeSlots) {
-  const daySteps = steps
-    .filter((step) => dateKey(step.startDate) === dateKey(day))
-    .sort((a, b) => String(a.id).localeCompare(String(b.id)));
-
-  const placements = [];
-  let cursor = 0;
-
-  daySteps.forEach((step) => {
-    let remainingMinutes = Math.max(SLOT_MINUTES, Math.round(safeNumber(step.plannedMinutes, SLOT_MINUTES)));
-
-    while (remainingMinutes > 0 && cursor < timeSlots.length) {
-      while (cursor < timeSlots.length && timeSlots[cursor].isBreak) {
-        cursor += 1;
-      }
-
-      if (cursor >= timeSlots.length) break;
-
-      const startIndex = cursor;
-      let span = 0;
-
-      while (
-        cursor < timeSlots.length &&
-        !timeSlots[cursor].isBreak &&
-        remainingMinutes > 0
-      ) {
-        remainingMinutes -= SLOT_MINUTES;
-        span += 1;
-        cursor += 1;
-      }
-
-      if (span > 0) {
-        placements.push({
-          step,
-          startIndex,
-          span,
-        });
-      }
-    }
-  });
-
-  return placements;
+function getCurrentMinuteOfDay(now) {
+  return now.getHours() * 60 + now.getMinutes();
 }
 
+function getTwentyFourHourLeftInDay(day, now, timeSlots) {
+  const dayWidth = getDayWidth(day, timeSlots);
+  const currentMinute = getCurrentMinuteOfDay(now);
+  const dayProgress = currentMinute / (24 * 60);
+
+  return dayWidth * dayProgress;
+}
 
 function formatDateBadge(value) {
   if (!value) return 'Not set';
@@ -405,9 +320,57 @@ function getJobLabel(job) {
   return `${job.invoice_number || job.quote_number || job.estimate_number || 'Job'} - ${job.client_name || 'Client'}`;
 }
 
-function getRecipeMachineEntries(job) {
+function getAdminResource(job) {
+  return (
+    job.created_by_name ||
+    job.quoted_by_name ||
+    job.estimate_created_by_name ||
+    job.sales_person_name ||
+    job.user_name ||
+    job.created_by_email ||
+    'Unassigned Admin'
+  );
+}
+
+function getDefaultResourceForDepartment(job, department, fallback = '') {
+  const cleanFallback = fallback || department;
+
+  if (department === 'ADMIN') return getAdminResource(job);
+  if (department === 'DESIGN') return job.designer_name || 'Design';
+  if (department === 'PROCUREMENT') return job.procurement_name || 'Procurement';
+  if (department === 'STOCK') return job.stock_controller_name || 'Stock';
+  if (department === 'QC') return job.qc_name || 'QC';
+  if (department === 'PACKING') return job.packing_name || 'Packing';
+  if (department === 'DISPATCH') return job.dispatch_name || 'Dispatch';
+
+  return cleanFallback;
+}
+
+function normalizeDepartment(value) {
+  const rawType = String(value || '').toUpperCase();
+
+  if (rawType.includes('MACHINE') && rawType.includes('HIRE')) return 'MACHINE HIRE';
+  if (rawType.includes('MACHINE')) return 'MACHINE';
+  if (rawType.includes('LABOUR') || rawType.includes('LABOR')) return 'LABOUR';
+  if (rawType.includes('INSTALL')) return 'INSTALLATION';
+  if (rawType.includes('DESIGN')) return 'DESIGN';
+  if (rawType.includes('PROCUREMENT')) return 'PROCUREMENT';
+  if (rawType.includes('STOCK')) return 'STOCK';
+  if (rawType.includes('QC')) return 'QC';
+  if (rawType.includes('PACK')) return 'PACKING';
+  if (rawType.includes('DISPATCH') || rawType.includes('DELIVERY')) return 'DISPATCH';
+  if (rawType.includes('ADMIN')) return 'ADMIN';
+
+  return '';
+}
+
+function getEstimateLines(job) {
   const blueprint = job.blueprint || {};
-  const estimateLines = Array.isArray(blueprint.estimate_lines) ? blueprint.estimate_lines : [];
+  return Array.isArray(blueprint.estimate_lines) ? blueprint.estimate_lines : [];
+}
+
+function getRecipeWorkflowEntries(job) {
+  const estimateLines = getEstimateLines(job);
   const workflowEntries = [];
 
   estimateLines.forEach((line, estimateLineIndex) => {
@@ -420,49 +383,27 @@ function getRecipeMachineEntries(job) {
       line.description ||
       `Product ${estimateLineIndex + 1}`;
 
-    if (Array.isArray(line.recipe_workflow) && line.recipe_workflow.length > 0) {
-      line.recipe_workflow.forEach((entry, workflowIndex) => {
+    const sources = [
+      { key: 'recipe_workflow', value: line.recipe_workflow },
+      { key: 'recipe_breakdown', value: line.recipe_breakdown },
+      { key: 'breakdown', value: line.breakdown },
+    ];
+
+    sources.forEach((source) => {
+      if (!Array.isArray(source.value)) return;
+
+      source.value.forEach((entry, workflowIndex) => {
         workflowEntries.push({
           ...entry,
           quoteQuantity: qty,
           productName,
           estimateLineIndex,
           workflowIndex,
-          sourceName: entry.name || productName,
-          source: 'recipe_workflow',
+          sourceName: entry.name || line.item_name || line.product_name || line.recipe_name || productName,
+          source: source.key,
         });
       });
-
-      return;
-    }
-
-    if (Array.isArray(line.recipe_breakdown)) {
-      line.recipe_breakdown.forEach((entry, workflowIndex) => {
-        workflowEntries.push({
-          ...entry,
-          quoteQuantity: qty,
-          productName,
-          estimateLineIndex,
-          workflowIndex,
-          sourceName: line.item_name || line.product_name || line.recipe_name || entry.name,
-          source: 'recipe_breakdown',
-        });
-      });
-    }
-
-    if (Array.isArray(line.breakdown)) {
-      line.breakdown.forEach((entry, workflowIndex) => {
-        workflowEntries.push({
-          ...entry,
-          quoteQuantity: qty,
-          productName,
-          estimateLineIndex,
-          workflowIndex,
-          sourceName: line.item_name || line.product_name || line.recipe_name || entry.name,
-          source: 'breakdown',
-        });
-      });
-    }
+    });
   });
 
   return workflowEntries.sort((a, b) => {
@@ -480,45 +421,51 @@ function getRecipeMachineEntries(job) {
   });
 }
 
-function makeStep({
+function makeRawStep({
   id,
   name,
   department,
   resource,
   minutes,
-  dayOffset,
+  sequenceOrder,
+  dependencySteps,
   job,
   jobColour,
   today,
+  productName,
 }) {
-  const startDate = addWorkdays(getJobDate(job, today), dayOffset);
+  const safeDepartment = department || 'OTHER';
 
   return {
     id,
     name,
-    department,
-    resource: resource || department,
+    department: safeDepartment,
+    resource: resource || getDefaultResourceForDepartment(job, safeDepartment, safeDepartment),
     plannedMinutes: Math.max(5, Math.round(safeNumber(minutes, 30))),
-    startDate,
-    endDate: startDate,
+    sequenceOrder: Number(sequenceOrder) || 999,
+    dependencySteps: dependencySteps || '',
     jobId: job.id,
+    job,
     jobLabel: getJobLabel(job),
     jobColour,
+    productName: productName || '',
+    earliestDate: getJobDate(job, today),
+    dependsOnIds: [],
   };
 }
 
-function buildWorkflow(job, jobColour, today) {
+function buildRawWorkflow(job, jobColour, today) {
   const steps = [];
 
-  baseWorkflow.forEach((step, index) => {
+  earlyWorkflow.forEach((step, index) => {
     steps.push(
-      makeStep({
-        id: `${job.id}-base-${index}`,
+      makeRawStep({
+        id: `${job.id}-base-early-${index}`,
         name: step.name,
         department: step.department,
-        resource: step.department,
+        resource: getDefaultResourceForDepartment(job, step.department, step.department),
         minutes: step.minutes,
-        dayOffset: step.dayOffset,
+        sequenceOrder: step.sequenceOrder,
         job,
         jobColour,
         today,
@@ -526,8 +473,7 @@ function buildWorkflow(job, jobColour, today) {
     );
   });
 
-  const blueprint = job.blueprint || {};
-  const estimateLines = Array.isArray(blueprint.estimate_lines) ? blueprint.estimate_lines : [];
+  const estimateLines = getEstimateLines(job);
 
   estimateLines.forEach((line, index) => {
     const qty = safeNumber(line.quantity, 1);
@@ -545,75 +491,73 @@ function buildWorkflow(job, jobColour, today) {
 
     if (machineHours > 0) {
       steps.push(
-        makeStep({
+        makeRawStep({
           id: `${job.id}-machine-line-${index}`,
           name: `Machine: ${productName}`,
           department: 'MACHINE',
           resource: line.machine_name || line.machine_type_name || 'Machine',
           minutes: machineHours * 60 + SETUP_MINUTES + REMOVAL_MINUTES,
-          dayOffset: 2 + index,
+          sequenceOrder: 100 + index,
           job,
           jobColour,
           today,
+          productName,
         })
       );
     }
 
     if (labourHours > 0) {
       steps.push(
-        makeStep({
+        makeRawStep({
           id: `${job.id}-labour-line-${index}`,
           name: `Labour: ${productName}`,
           department: 'LABOUR',
           resource: line.labour_type_name || 'Labour',
           minutes: labourHours * 60 * qty,
-          dayOffset: 2 + index,
+          sequenceOrder: 110 + index,
           job,
           jobColour,
           today,
+          productName,
         })
       );
     }
 
     if (installHours > 0) {
       steps.push(
-        makeStep({
+        makeRawStep({
           id: `${job.id}-install-line-${index}`,
           name: `Install: ${productName}`,
           department: 'INSTALLATION',
           resource: line.install_type_name || 'Installation',
           minutes: installHours * 60,
-          dayOffset: 6 + index,
+          sequenceOrder: 800 + index,
           job,
           jobColour,
           today,
+          productName,
         })
       );
     }
   });
 
-  const recipeEntries = getRecipeMachineEntries(job);
+  const recipeEntries = getRecipeWorkflowEntries(job);
 
   recipeEntries.forEach((entry, index) => {
-    const rawType = String(entry.line_type || entry.type || entry.department || '').toUpperCase();
+    const department = normalizeDepartment(entry.line_type || entry.type || entry.department);
+    if (!department) return;
+
     const rawName = entry.name || entry.custom_name || entry.sourceName || entry.description || 'Production item';
     const qty = safeNumber(entry.quoteQuantity, 1);
     const sequenceOrder = Number(entry.sequence_order) || index + 1;
-    const dependencyText = entry.dependency_steps ? ` | Depends on: ${entry.dependency_steps}` : '';
-
-    let department = '';
-    if (rawType.includes('MACHINE')) department = 'MACHINE';
-    if (rawType.includes('LABOUR') || rawType.includes('LABOR')) department = 'LABOUR';
-    if (rawType.includes('INSTALL')) department = 'INSTALLATION';
-    if (rawType.includes('HIRE')) department = 'MACHINE HIRE';
-
-    if (!department) return;
+    const dependencySteps = entry.dependency_steps || '';
+    const dependencyText = dependencySteps ? ` | Depends on: ${dependencySteps}` : '';
 
     const hours =
       safeNumber(entry.hours, 0) ||
       safeNumber(entry.time_hours, 0) ||
       safeNumber(entry.total_hours, 0) ||
-      safeNumber(entry.quantity, 0);
+      safeNumber(entry.production_hours, 0);
 
     const minutes =
       hours > 0
@@ -622,17 +566,28 @@ function buildWorkflow(job, jobColour, today) {
           ? SETUP_MINUTES + REMOVAL_MINUTES + 30
           : 30;
 
+    const resource =
+      entry.resource_name ||
+      entry.machine_name ||
+      entry.machine_type_name ||
+      entry.labour_type_name ||
+      entry.install_type_name ||
+      rawName ||
+      department;
+
     steps.push(
-      makeStep({
+      makeRawStep({
         id: `${job.id}-recipe-${department}-${entry.estimateLineIndex || 0}-${sequenceOrder}-${index}`,
         name: `Step ${sequenceOrder}: ${rawName}${dependencyText}`,
         department,
-        resource: rawName || entry.resource_name || entry.machine_name || entry.labour_type_name || entry.install_type_name || department,
+        resource,
         minutes,
-        dayOffset: department === 'INSTALLATION' ? 6 : 2 + Math.max(0, sequenceOrder - 1),
+        sequenceOrder: 100 + sequenceOrder,
+        dependencySteps,
         job,
         jobColour,
         today,
+        productName: entry.productName,
       })
     );
   });
@@ -640,13 +595,13 @@ function buildWorkflow(job, jobColour, today) {
   const installationItems = Array.isArray(job.installation_items) ? job.installation_items : [];
   installationItems.forEach((item, index) => {
     steps.push(
-      makeStep({
+      makeRawStep({
         id: `${job.id}-install-item-${index}`,
         name: item.install_type_name || 'Installation',
         department: 'INSTALLATION',
         resource: item.install_type_name || 'Installation',
         minutes: safeNumber(item.hours, 0) * 60 || 60,
-        dayOffset: 6 + index,
+        sequenceOrder: 820 + index,
         job,
         jobColour,
         today,
@@ -654,7 +609,216 @@ function buildWorkflow(job, jobColour, today) {
     );
   });
 
-  return steps;
+  lateWorkflow.forEach((step, index) => {
+    steps.push(
+      makeRawStep({
+        id: `${job.id}-base-late-${index}`,
+        name: step.name,
+        department: step.department,
+        resource: getDefaultResourceForDepartment(job, step.department, step.department),
+        minutes: step.minutes,
+        sequenceOrder: step.sequenceOrder,
+        job,
+        jobColour,
+        today,
+      })
+    );
+  });
+
+  return applyJobDependencies(steps);
+}
+
+function parseDependencyNumbers(value) {
+  if (!value) return [];
+
+  return String(value)
+    .split(/[,;| ]+/)
+    .map((part) => Number(String(part).replace(/[^\d.-]/g, '')))
+    .filter((number) => Number.isFinite(number) && number > 0);
+}
+
+function applyJobDependencies(steps) {
+  const sorted = [...steps].sort((a, b) => {
+    if (a.sequenceOrder !== b.sequenceOrder) return a.sequenceOrder - b.sequenceOrder;
+    return String(a.id).localeCompare(String(b.id));
+  });
+
+  const byRecipeNumber = new Map();
+
+  sorted.forEach((step) => {
+    const match = String(step.name || '').match(/^Step\s+(\d+)/i);
+    if (match) {
+      byRecipeNumber.set(Number(match[1]), step.id);
+    }
+  });
+
+  sorted.forEach((step, index) => {
+    const deps = new Set();
+
+    if (index > 0) {
+      deps.add(sorted[index - 1].id);
+    }
+
+    parseDependencyNumbers(step.dependencySteps).forEach((number) => {
+      const mapped = byRecipeNumber.get(number);
+      if (mapped) deps.add(mapped);
+    });
+
+    step.dependsOnIds = Array.from(deps).filter((id) => id !== step.id);
+  });
+
+  return sorted;
+}
+
+function buildCalendarSlots(calendarDays, timeSlots) {
+  const slots = [];
+
+  calendarDays.forEach((day) => {
+    if (isWeekend(day)) return;
+
+    timeSlots.forEach((slot, slotIndex) => {
+      if (slot.isBreak) return;
+
+      slots.push({
+        globalIndex: slots.length,
+        day,
+        dayKey: dateKey(day),
+        slot,
+        slotIndex,
+      });
+    });
+  });
+
+  return slots;
+}
+
+function findFirstCalendarSlotIndex(calendarSlots, targetDate) {
+  const targetKey = dateKey(targetDate);
+  const found = calendarSlots.findIndex((slot) => slot.dayKey >= targetKey);
+  return found >= 0 ? found : 0;
+}
+
+function getSlotKey(slot) {
+  return `${slot.dayKey}-${slot.slotIndex}`;
+}
+
+function sameSegmentRun(previousSlot, currentSlot) {
+  return (
+    previousSlot &&
+    currentSlot &&
+    previousSlot.dayKey === currentSlot.dayKey &&
+    currentSlot.slotIndex === previousSlot.slotIndex + 1
+  );
+}
+
+function scheduleSteps(rawSteps, calendarDays, timeSlots) {
+  const calendarSlots = buildCalendarSlots(calendarDays, timeSlots);
+  const resourceBusy = new Map();
+  const scheduledStepEndIndex = new Map();
+  const scheduledIds = new Set();
+  const segments = [];
+  const unscheduled = [...rawSteps].sort((a, b) => {
+    const aStart = getJobDate(a.job, new Date()).getTime();
+    const bStart = getJobDate(b.job, new Date()).getTime();
+
+    if (aStart !== bStart) return aStart - bStart;
+    if (a.sequenceOrder !== b.sequenceOrder) return a.sequenceOrder - b.sequenceOrder;
+
+    return String(a.id).localeCompare(String(b.id));
+  });
+
+  let guard = 0;
+
+  while (unscheduled.length > 0 && guard < rawSteps.length * 5) {
+    guard += 1;
+    let scheduledSomething = false;
+
+    for (let i = 0; i < unscheduled.length; i += 1) {
+      const step = unscheduled[i];
+      const dependenciesReady = step.dependsOnIds.every((id) => scheduledIds.has(id));
+
+      if (!dependenciesReady) continue;
+
+      const dependencyEndIndex = step.dependsOnIds.reduce((max, id) => {
+        return Math.max(max, scheduledStepEndIndex.get(id) ?? 0);
+      }, 0);
+
+      const jobStartIndex = findFirstCalendarSlotIndex(calendarSlots, step.earliestDate);
+      const earliestIndex = Math.max(jobStartIndex, dependencyEndIndex);
+      const resourceKey = `${step.department}-${step.resource}`;
+      const busySet = resourceBusy.get(resourceKey) || new Set();
+
+      let remainingMinutes = Math.max(SLOT_MINUTES, Math.ceil(step.plannedMinutes / SLOT_MINUTES) * SLOT_MINUTES);
+      let currentSegment = null;
+      let previousAllocatedSlot = null;
+      let lastAllocatedIndex = earliestIndex;
+
+      for (let slotPointer = earliestIndex; slotPointer < calendarSlots.length && remainingMinutes > 0; slotPointer += 1) {
+        const calendarSlot = calendarSlots[slotPointer];
+        const busyKey = getSlotKey(calendarSlot);
+
+        if (busySet.has(busyKey)) {
+          previousAllocatedSlot = null;
+          currentSegment = null;
+          continue;
+        }
+
+        busySet.add(busyKey);
+        lastAllocatedIndex = slotPointer + 1;
+
+        if (!currentSegment || !sameSegmentRun(previousAllocatedSlot, calendarSlot)) {
+          currentSegment = {
+            id: `${step.id}-segment-${segments.length}`,
+            step,
+            jobId: step.jobId,
+            resourceKey,
+            dayKey: calendarSlot.dayKey,
+            startIndex: calendarSlot.slotIndex,
+            span: 0,
+            displayMinutes: 0,
+          };
+          segments.push(currentSegment);
+        }
+
+        currentSegment.span += 1;
+        currentSegment.displayMinutes += SLOT_MINUTES;
+        remainingMinutes -= SLOT_MINUTES;
+        previousAllocatedSlot = calendarSlot;
+      }
+
+      resourceBusy.set(resourceKey, busySet);
+      scheduledStepEndIndex.set(step.id, lastAllocatedIndex);
+      scheduledIds.add(step.id);
+      unscheduled.splice(i, 1);
+      scheduledSomething = true;
+      break;
+    }
+
+    if (!scheduledSomething) {
+      unscheduled.forEach((step) => {
+        scheduledIds.add(step.id);
+        scheduledStepEndIndex.set(step.id, calendarSlots.length);
+      });
+      break;
+    }
+  }
+
+  return {
+    segments,
+    scheduledIds,
+    unscheduled,
+  };
+}
+
+function getSegmentsForDay(segments, day) {
+  const key = dateKey(day);
+
+  return segments
+    .filter((segment) => segment.dayKey === key)
+    .sort((a, b) => {
+      if (a.startIndex !== b.startIndex) return a.startIndex - b.startIndex;
+      return String(a.step.id).localeCompare(String(b.step.id));
+    });
 }
 
 function downloadBlob(response, filename) {
@@ -706,9 +870,7 @@ function DateHeader({ calendarDays, today, timeSlots }) {
                       key={`${dateKey(day)}-${slot.key}`}
                       className={`h-[36px] border-r ${
                         slot.isHour ? 'border-l-2 border-l-slate-400' : 'border-l border-l-slate-200'
-                      } ${
-                        slot.isBreak ? 'bg-amber-100 text-amber-700' : 'bg-white'
-                      }`}
+                      } ${slot.isBreak ? 'bg-amber-100 text-amber-700' : 'bg-white'}`}
                       title={slot.isBreak ? `${slot.breakLabel}: ${slot.key}` : slot.key}
                     />
                   ))}
@@ -748,22 +910,6 @@ function DateHeader({ calendarDays, today, timeSlots }) {
   );
 }
 
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), max);
-}
-
-function getCurrentMinuteOfDay(now) {
-  return now.getHours() * 60 + now.getMinutes();
-}
-
-function getTwentyFourHourLeftInDay(day, now, timeSlots) {
-  const dayWidth = getDayWidth(day, timeSlots);
-  const currentMinute = getCurrentMinuteOfDay(now);
-  const dayProgress = currentMinute / (24 * 60);
-
-  return dayWidth * dayProgress;
-}
-
 function TodayLine({ calendarDays, now, timeSlots }) {
   const today = startOfDay(now);
   const left = getTodayLeft(calendarDays, today, timeSlots);
@@ -784,17 +930,23 @@ function TodayLine({ calendarDays, now, timeSlots }) {
   );
 }
 
-function StepCard({ step }) {
+function StepCard({ segment, compact = false }) {
+  const step = segment.step;
+
   return (
     <div
       className={`rounded-md ${step.jobColour.card} px-2 py-1 text-[10px] font-bold leading-tight text-white shadow-sm`}
-      title={`${step.jobLabel} | ${step.name} | ${formatHours(step.plannedMinutes)}`}
+      title={`${step.jobLabel} | ${step.name} | Segment: ${formatHours(segment.displayMinutes)} | Total step: ${formatHours(step.plannedMinutes)} | Resource: ${step.resource}`}
     >
       <div className="flex items-center gap-1">
         {getStepIcon(step.department)}
-        <span className="truncate">{step.name}</span>
+        <span className="truncate">{compact ? step.name : step.jobLabel}</span>
       </div>
-      <div className="text-[9px] opacity-90">{formatHours(step.plannedMinutes)}</div>
+      {!compact && <div className="truncate opacity-90">{step.name}</div>}
+      <div className="text-[9px] opacity-90">
+        {formatHours(segment.displayMinutes)}
+        {segment.displayMinutes < step.plannedMinutes ? ` of ${formatHours(step.plannedMinutes)}` : ''}
+      </div>
     </div>
   );
 }
@@ -854,20 +1006,45 @@ export default function ProductionPage() {
     loadJobs();
   }, []);
 
-  const scheduledJobs = useMemo(() => {
-    return jobs.map((job, index) => {
+  const scheduledData = useMemo(() => {
+    const jobModels = jobs.map((job, index) => {
       const colour = jobColours[index % jobColours.length];
-      const steps = buildWorkflow(job, colour, today);
-      const totalMinutes = steps.reduce((sum, step) => sum + safeNumber(step.plannedMinutes), 0);
+      const rawSteps = buildRawWorkflow(job, colour, today);
+      const totalMinutes = rawSteps.reduce((sum, step) => sum + safeNumber(step.plannedMinutes), 0);
 
       return {
         job,
         colour,
-        steps,
+        rawSteps,
         totalMinutes,
       };
     });
-  }, [jobs, today]);
+
+    const allSteps = jobModels.flatMap((item) => item.rawSteps);
+    const schedule = scheduleSteps(allSteps, calendarDays, timeSlots);
+
+    const segmentsByJob = new Map();
+
+    schedule.segments.forEach((segment) => {
+      if (!segmentsByJob.has(segment.jobId)) {
+        segmentsByJob.set(segment.jobId, []);
+      }
+
+      segmentsByJob.get(segment.jobId).push(segment);
+    });
+
+    const scheduledJobs = jobModels.map((item) => ({
+      ...item,
+      segments: segmentsByJob.get(item.job.id) || [],
+    }));
+
+    return {
+      scheduledJobs,
+      allSegments: schedule.segments,
+      allSteps,
+      unscheduled: schedule.unscheduled,
+    };
+  }, [jobs, today, calendarDays, timeSlots]);
 
   useEffect(() => {
     if (loading) return;
@@ -883,14 +1060,14 @@ export default function ProductionPage() {
         resourceScrollRef.current.scrollLeft = scrollToToday;
       }
     }, 150);
-  }, [loading, scheduledJobs.length, calendarDays, today, timeSlots]);
+  }, [loading, scheduledData.scheduledJobs.length, calendarDays, today, timeSlots]);
 
   const filteredJobs = useMemo(() => {
     const term = jobSearch.trim().toLowerCase();
 
-    if (!term) return scheduledJobs;
+    if (!term) return scheduledData.scheduledJobs;
 
-    return scheduledJobs.filter(({ job }) => {
+    return scheduledData.scheduledJobs.filter(({ job }) => {
       return (
         String(job.client_name || '').toLowerCase().includes(term) ||
         String(job.invoice_number || '').toLowerCase().includes(term) ||
@@ -898,31 +1075,32 @@ export default function ProductionPage() {
         String(job.estimate_number || '').toLowerCase().includes(term)
       );
     });
-  }, [scheduledJobs, jobSearch]);
+  }, [scheduledData.scheduledJobs, jobSearch]);
 
   const resourceRows = useMemo(() => {
     const rows = new Map();
 
-    scheduledJobs.forEach(({ steps }) => {
-      steps.forEach((step) => {
-        const department = String(step.department || 'OTHER').toUpperCase();
+    scheduledData.allSegments.forEach((segment) => {
+      const step = segment.step;
+      const department = String(step.department || 'OTHER').toUpperCase();
 
-        if (departmentFilter !== 'ALL' && department !== departmentFilter) return;
+      if (departmentFilter !== 'ALL' && department !== departmentFilter) return;
 
-        const resource = step.resource || department;
-        const key = `${department}-${resource}`;
+      const resource = step.resource || department;
+      const key = `${department}-${resource}`;
 
-        if (!rows.has(key)) {
-          rows.set(key, {
-            id: key,
-            department,
-            resource,
-            events: [],
-          });
-        }
+      if (!rows.has(key)) {
+        rows.set(key, {
+          id: key,
+          department,
+          resource,
+          segments: [],
+          totalMinutes: 0,
+        });
+      }
 
-        rows.get(key).events.push(step);
-      });
+      rows.get(key).segments.push(segment);
+      rows.get(key).totalMinutes += safeNumber(segment.displayMinutes, 0);
     });
 
     return Array.from(rows.values()).sort((a, b) => {
@@ -935,19 +1113,19 @@ export default function ProductionPage() {
 
       return String(a.resource || '').localeCompare(String(b.resource || ''));
     });
-  }, [scheduledJobs, departmentFilter]);
+  }, [scheduledData.allSegments, departmentFilter]);
 
   const productionStats = useMemo(() => {
-    const totalJobs = scheduledJobs.length;
-    const totalSteps = scheduledJobs.reduce((sum, item) => sum + item.steps.length, 0);
-    const totalMinutes = scheduledJobs.reduce((sum, item) => sum + item.totalMinutes, 0);
+    const totalJobs = scheduledData.scheduledJobs.length;
+    const totalSteps = scheduledData.allSteps.length;
+    const totalMinutes = scheduledData.allSteps.reduce((sum, step) => sum + step.plannedMinutes, 0);
 
     return {
       totalJobs,
       totalSteps,
       totalMinutes,
     };
-  }, [scheduledJobs]);
+  }, [scheduledData]);
 
   const downloadJobPack = async (job) => {
     try {
@@ -967,7 +1145,7 @@ export default function ProductionPage() {
         <div>
           <h1 className="text-4xl font-black tracking-tight">Production Tracking</h1>
           <p className="mt-2 text-slate-600">
-            Calendar view for posted production jobs, department capacity, machinery, labour and installation work.
+            Capacity-based production schedule from quote data, recipe steps, staff, machines, labour and installation.
           </p>
         </div>
 
@@ -988,7 +1166,6 @@ export default function ProductionPage() {
           </div>
         </div>
 
-        {/* JOB OVERVIEW CALENDAR */}
         <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
           <div className="border-b bg-slate-50 p-4">
             <h2 className="flex items-center gap-2 text-lg font-black">
@@ -996,7 +1173,7 @@ export default function ProductionPage() {
               Job Overview Calendar
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              The job column stays fixed. Only the date columns scroll left and right.
+              Jobs are split across available production time. Breaks, weekends and dependent steps are respected.
             </p>
           </div>
 
@@ -1020,15 +1197,15 @@ export default function ProductionPage() {
                   </div>
                 </div>
 
-                {filteredJobs.map(({ job, colour, steps, totalMinutes }) => (
-                  <div key={job.id} className="min-h-[148px] border-b bg-white px-4 py-4">
+                {filteredJobs.map(({ job, colour, rawSteps, totalMinutes }) => (
+                  <div key={job.id} className="min-h-[158px] border-b bg-white px-4 py-4">
                     <div className="flex gap-3">
                       <div className={`mt-1 h-4 w-4 shrink-0 rounded-full ${colour.dot}`} />
 
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-black text-slate-900">{getJobLabel(job)}</div>
                         <div className="mt-1 text-xs text-slate-500">
-                          {steps.length} steps • {formatHours(totalMinutes)}
+                          {rawSteps.length} steps • {formatHours(totalMinutes)}
                         </div>
 
                         <div className="mt-2 flex flex-wrap gap-2">
@@ -1040,13 +1217,13 @@ export default function ProductionPage() {
                             {truncateFileName(job.job_ticket_document_filename)}
                           </span>
 
-                            <span className="rounded-full bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700">
-                              Launched: {formatDateBadge(job.production_posted_at)}
-                            </span>
+                          <span className="rounded-full bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700">
+                            Launched: {formatDateBadge(job.production_posted_at)}
+                          </span>
 
-                            <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${job.due_date ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
-                              Due: {formatDateBadge(job.due_date)}
-                            </span>
+                          <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${job.due_date ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
+                            Due: {formatDateBadge(job.due_date)}
+                          </span>
                         </div>
 
                         <Button
@@ -1081,7 +1258,7 @@ export default function ProductionPage() {
                     <DateHeader calendarDays={calendarDays} today={today} timeSlots={timeSlots} />
                   </div>
 
-                  {filteredJobs.map(({ job, colour, steps }) => (
+                  {filteredJobs.map(({ job, segments }) => (
                     <div
                       key={job.id}
                       className="grid"
@@ -1091,17 +1268,17 @@ export default function ProductionPage() {
                     >
                       {calendarDays.map((day) => {
                         const header = formatDayHeader(day, today);
-                        const placements = header.weekend ? [] : getStepPlacementsForDay(steps, day, timeSlots);
+                        const placements = header.weekend ? [] : getSegmentsForDay(segments, day);
 
                         return (
                           <div
                             key={`${job.id}-${dateKey(day)}`}
-                            className={`relative min-h-[148px] border-b border-r ${
+                            className={`relative min-h-[158px] border-b border-r ${
                               header.isToday ? 'bg-red-50/40' : header.weekend ? 'bg-slate-100' : 'bg-slate-50'
                             }`}
                           >
                             {header.weekend ? (
-                              <div className="flex h-full min-h-[148px] items-center justify-center px-2 text-center text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                              <div className="flex h-full min-h-[158px] items-center justify-center px-2 text-center text-[10px] font-bold uppercase tracking-wide text-slate-400">
                                 Weekend
                               </div>
                             ) : (
@@ -1114,8 +1291,8 @@ export default function ProductionPage() {
                                     <div
                                       key={`${job.id}-${dateKey(day)}-${slot.key}`}
                                       className={`border-r ${
-                                    slot.isHour ? 'border-l-2 border-l-slate-300' : 'border-l border-l-slate-100'
-                                  } ${slot.isBreak ? 'bg-amber-100/70' : ''}`}
+                                        slot.isHour ? 'border-l-2 border-l-slate-300' : 'border-l border-l-slate-100'
+                                      } ${slot.isBreak ? 'bg-amber-100/70' : ''}`}
                                       title={slot.isBreak ? `${slot.breakLabel}: ${slot.key}` : slot.key}
                                     />
                                   ))}
@@ -1125,14 +1302,14 @@ export default function ProductionPage() {
                                   className="relative z-10 grid gap-y-1 p-2"
                                   style={{ gridTemplateColumns: timeSlots.map(() => `${SLOT_WIDTH}px`).join(' ') }}
                                 >
-                                  {placements.map((placement, placementIndex) => (
+                                  {placements.map((segment) => (
                                     <div
-                                      key={`${placement.step.id}-${placementIndex}`}
+                                      key={segment.id}
                                       style={{
-                                        gridColumn: `${placement.startIndex + 1} / span ${placement.span}`,
+                                        gridColumn: `${segment.startIndex + 1} / span ${segment.span}`,
                                       }}
                                     >
-                                      <StepCard step={placement.step} />
+                                      <StepCard segment={segment} compact />
                                     </div>
                                   ))}
                                 </div>
@@ -1151,16 +1328,15 @@ export default function ProductionPage() {
           )}
         </section>
 
-        {/* DEPARTMENT / MACHINE CALENDAR */}
         <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
           <div className="flex flex-col gap-4 border-b bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="flex items-center gap-2 text-lg font-black">
                 <Factory size={18} />
-                Department / Machine Calendar
+                Department / Resource Calendar
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                Rows show resources so you can see when machinery, labour, installation and dispatch are busy.
+                Admin now shows by quoting staff member. Other rows show the actual resource, machine, labour, installation or department.
               </p>
             </div>
 
@@ -1192,11 +1368,11 @@ export default function ProductionPage() {
                 </div>
 
                 {resourceRows.map((row) => (
-                  <div key={row.id} className="min-h-[118px] border-b bg-white px-4 py-4">
+                  <div key={row.id} className="min-h-[128px] border-b bg-white px-4 py-4">
                     <div className="text-sm font-black text-slate-900">{row.resource}</div>
                     <div className="mt-1 text-xs text-slate-500">{row.department}</div>
                     <div className="mt-2 text-xs text-slate-500">
-                      {row.events.length} item{row.events.length === 1 ? '' : 's'}
+                      {row.segments.length} item{row.segments.length === 1 ? '' : 's'} • {formatHours(row.totalMinutes)}
                     </div>
                   </div>
                 ))}
@@ -1228,17 +1404,17 @@ export default function ProductionPage() {
                     >
                       {calendarDays.map((day) => {
                         const header = formatDayHeader(day, today);
-                        const placements = header.weekend ? [] : getStepPlacementsForDay(row.events, day, timeSlots);
+                        const placements = header.weekend ? [] : getSegmentsForDay(row.segments, day);
 
                         return (
                           <div
                             key={`${row.id}-${dateKey(day)}`}
-                            className={`relative min-h-[118px] border-b border-r ${
+                            className={`relative min-h-[128px] border-b border-r ${
                               header.isToday ? 'bg-red-50/40' : header.weekend ? 'bg-slate-100' : 'bg-slate-50'
                             }`}
                           >
                             {header.weekend ? (
-                              <div className="flex h-full min-h-[118px] items-center justify-center px-2 text-center text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                              <div className="flex h-full min-h-[128px] items-center justify-center px-2 text-center text-[10px] font-bold uppercase tracking-wide text-slate-400">
                                 Weekend
                               </div>
                             ) : (
@@ -1251,8 +1427,8 @@ export default function ProductionPage() {
                                     <div
                                       key={`${row.id}-${dateKey(day)}-${slot.key}`}
                                       className={`border-r ${
-                                    slot.isHour ? 'border-l-2 border-l-slate-300' : 'border-l border-l-slate-100'
-                                  } ${slot.isBreak ? 'bg-amber-100/70' : ''}`}
+                                        slot.isHour ? 'border-l-2 border-l-slate-300' : 'border-l border-l-slate-100'
+                                      } ${slot.isBreak ? 'bg-amber-100/70' : ''}`}
                                       title={slot.isBreak ? `${slot.breakLabel}: ${slot.key}` : slot.key}
                                     />
                                   ))}
@@ -1262,21 +1438,14 @@ export default function ProductionPage() {
                                   className="relative z-10 grid gap-y-1 p-2"
                                   style={{ gridTemplateColumns: timeSlots.map(() => `${SLOT_WIDTH}px`).join(' ') }}
                                 >
-                                  {placements.map((placement, placementIndex) => (
+                                  {placements.map((segment) => (
                                     <div
-                                      key={`${placement.step.id}-${placementIndex}`}
+                                      key={segment.id}
                                       style={{
-                                        gridColumn: `${placement.startIndex + 1} / span ${placement.span}`,
+                                        gridColumn: `${segment.startIndex + 1} / span ${segment.span}`,
                                       }}
                                     >
-                                      <div
-                                        className={`rounded-md ${placement.step.jobColour.card} px-2 py-1 text-[10px] font-bold leading-tight text-white shadow-sm`}
-                                        title={`${placement.step.jobLabel} | ${placement.step.name}`}
-                                      >
-                                        <div className="truncate">{placement.step.jobLabel}</div>
-                                        <div className="truncate opacity-90">{placement.step.name}</div>
-                                        <div className="text-[9px] opacity-90">{formatHours(placement.step.plannedMinutes)}</div>
-                                      </div>
+                                      <StepCard segment={segment} />
                                     </div>
                                   ))}
                                 </div>
